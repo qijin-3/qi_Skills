@@ -39,4 +39,4 @@ ln -s ~/qi_Skills/skills/<skill-name> <skill-name>
 
 ## License
 
-MIT
+AGPL-3.0 — See [LICENSE](./LICENSE) for details.
