@@ -1,0 +1,5093 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="一份以俯视地图呈现的互动旅行游记。" />
+    <title>我的旅行游记</title>
+    <style>
+:root {
+  color-scheme: dark;
+  font-family:
+    "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui,
+    sans-serif;
+  --ink: #0a0a0c;
+  --ink-soft: #141418;
+  --paper: #e8e4dc;
+  --paper-dim: rgba(232, 228, 220, 0.72);
+  --line: rgba(232, 228, 220, 0.2);
+  --line-strong: rgba(232, 228, 220, 0.42);
+  --red: #a03030;
+  --blue: #2a5070;
+  --white: #d8d4cc;
+  --green: #3a6040;
+  --blackGold: #9a8a6a;
+  --tone: var(--blackGold);
+  --tone-soft: rgba(154, 138, 106, 0.18);
+  --panel-width-min: min(430px, 34vw);
+  --panel-width: max(var(--panel-width-min), 40%);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(160, 48, 48, 0.12), transparent 30%),
+    radial-gradient(circle at 78% 64%, rgba(42, 80, 112, 0.12), transparent 34%),
+    var(--ink);
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  --tone: var(--blackGold);
+  --tone-soft: rgba(184, 138, 59, 0.18);
+  display: block;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.app-shell[data-tone="red"] {
+  --tone: var(--red);
+  --tone-soft: rgba(183, 53, 37, 0.2);
+}
+
+.app-shell[data-tone="blue"] {
+  --tone: var(--blue);
+  --tone-soft: rgba(45, 95, 141, 0.2);
+}
+
+.app-shell[data-tone="white"] {
+  --tone: var(--white);
+  --tone-soft: rgba(233, 223, 204, 0.16);
+}
+
+.app-shell[data-tone="green"] {
+  --tone: var(--green);
+  --tone-soft: rgba(63, 111, 74, 0.2);
+}
+
+.app-shell[data-tone="blackGold"] {
+  --tone: var(--blackGold);
+  --tone-soft: rgba(184, 138, 59, 0.2);
+}
+
+.map-stage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(244, 234, 216, 0.05), transparent 38%),
+    radial-gradient(circle at 50% 20%, var(--tone-soft), transparent 42%),
+    #090806;
+  isolation: isolate;
+}
+
+.map-route-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.map-route-overlay__segment {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.map-route-overlay__segment.is-animating {
+  animation: routeSegmentDraw var(--segment-duration, 0.8s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform: scale(0.98) rotate(0.3deg);
+  transform-origin: center;
+  animation: birdDescent 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.map-stage__shade {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(13, 11, 8, 0.24), transparent 25%, rgba(13, 11, 8, 0.46) 100%),
+    radial-gradient(circle at 50% 50%, transparent 44%, rgba(0, 0, 0, 0.48));
+  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.7);
+}
+
+.cinema-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0.055;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  animation: grainShift 600ms steps(4) infinite;
+}
+
+.date-trigger__kicker,
+.photo-frame figcaption {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.date-switcher {
+  position: absolute;
+  top: clamp(16px, 2.5vw, 28px);
+  left: clamp(16px, 3vw, 32px);
+  right: auto;
+  z-index: 9;
+  width: max-content;
+  max-width: min(248px, calc(100% - var(--panel-width) - 48px));
+}
+
+.date-switcher__bar {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  max-width: 248px;
+  gap: 0;
+  border: 1px solid var(--line);
+  background: rgba(13, 11, 8, 0.62);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.28);
+}
+
+.date-nav-btn,
+.location-nav-btn {
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--paper-dim);
+  border: 0;
+  border-right: 1px solid rgba(247, 240, 223, 0.1);
+  background: transparent;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.date-nav-btn {
+  flex-basis: 26px;
+  font-size: 1.15rem;
+}
+
+.location-nav-btn {
+  flex-basis: 24px;
+  font-size: 0.95rem;
+  color: rgba(247, 240, 223, 0.55);
+}
+
+.date-switcher__bar > .date-nav-btn:last-of-type {
+  border-right: 0;
+  border-left: 1px solid rgba(247, 240, 223, 0.1);
+}
+
+.date-nav-btn:hover:not(:disabled),
+.location-nav-btn:hover:not(:disabled) {
+  color: var(--paper);
+  background: var(--tone-soft);
+}
+
+.date-nav-btn:disabled,
+.location-nav-btn:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.date-trigger {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  padding: 6px 8px 5px;
+  text-align: center;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.date-trigger:hover,
+.date-switcher.is-picker-open .date-trigger {
+  background: rgba(244, 234, 216, 0.05);
+}
+
+.date-trigger__kicker {
+  color: var(--paper-dim);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.date-trigger strong {
+  color: var(--tone);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.date-trigger__location {
+  margin-top: 1px;
+  color: var(--paper-dim);
+  font-size: 0.62rem;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date-switcher--cleared .date-trigger strong {
+  color: var(--paper);
+}
+
+.date-switcher--cleared .date-trigger__location {
+  display: none;
+}
+
+.date-picker {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: auto;
+  width: min(400px, calc(100vw - var(--panel-width) - 64px));
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 11, 8, 0.92);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: 200ms ease;
+  pointer-events: none;
+}
+
+.date-switcher.is-picker-open .date-picker {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.date-picker__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--paper-dim);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+.date-picker__head > span:first-child {
+  margin-right: auto;
+}
+
+.date-picker__action {
+  padding: 6px 10px;
+  color: var(--paper-dim);
+  border: 1px solid rgba(247, 240, 223, 0.16);
+  background: rgba(244, 234, 216, 0.04);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.date-picker__action:hover {
+  color: var(--paper);
+  border-color: var(--tone);
+}
+
+.date-picker__action--clear {
+  color: var(--tone);
+  border-color: rgba(184, 138, 59, 0.35);
+}
+
+.date-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: min(42vh, 320px);
+  overflow: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.date-cell {
+  flex: 0 0 72px;
+  display: grid;
+  gap: 4px;
+  padding: 12px 10px;
+  color: var(--paper-dim);
+  border: 1px solid rgba(247, 240, 223, 0.12);
+  background:
+    linear-gradient(180deg, rgba(244, 234, 216, 0.06), transparent),
+    rgba(244, 234, 216, 0.03);
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.date-cell:hover,
+.date-cell.is-active {
+  color: var(--paper);
+  border-color: var(--tone);
+  background: linear-gradient(180deg, var(--tone-soft), rgba(244, 234, 216, 0.04));
+}
+
+.date-cell span {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.date-cell small {
+  opacity: 0.7;
+}
+
+.details-panel {
+  position: absolute;
+  top: clamp(16px, 2.5vw, 28px);
+  right: clamp(14px, 2vw, 28px);
+  bottom: clamp(16px, 2.5vw, 28px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  max-width: calc(100% - 24px);
+  min-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--paper);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+
+.details-panel--hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.details-panel > [data-details-content] {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.details-panel__inner {
+  height: 100%;
+  max-height: 100%;
+  padding: 8px 12px 12px 16px;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 234, 216, 0.42) rgba(13, 11, 8, 0.22);
+  animation: rackFocus 520ms ease-out both;
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.72);
+}
+
+.details-panel__inner::-webkit-scrollbar {
+  width: 8px;
+}
+
+.details-panel__inner::-webkit-scrollbar-track {
+  background: rgba(13, 11, 8, 0.22);
+  border-radius: 4px;
+}
+
+.details-panel__inner::-webkit-scrollbar-thumb {
+  background: rgba(244, 234, 216, 0.38);
+  border: 1px solid rgba(13, 11, 8, 0.35);
+  border-radius: 4px;
+}
+
+.details-panel__inner::-webkit-scrollbar-thumb:hover {
+  background: rgba(244, 234, 216, 0.55);
+}
+
+.details-panel__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.details-panel__head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding-bottom: 8px;
+  font-family: "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  font-size: clamp(1.8rem, 3.2vw, 3.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  color: var(--paper);
+}
+
+.details-panel__toggle {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  padding: 0;
+  color: var(--paper-dim);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: color 180ms ease, transform 200ms ease;
+}
+
+.details-panel__toggle:hover {
+  color: var(--paper);
+}
+
+.details-panel__toggle-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  fill: none;
+}
+
+.details-panel--collapsed .details-panel__toggle-icon {
+  transform: rotate(180deg);
+}
+
+.details-panel__body {
+  display: block;
+}
+
+.details-panel--collapsed .details-panel__body {
+  display: none;
+}
+
+.details-panel blockquote {
+  margin: 14px 0 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--paper);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  line-height: 1.75;
+}
+
+.panel-summary {
+  margin: 0 0 10px;
+  color: var(--paper-dim);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+}
+
+.location-sequence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 12px;
+}
+
+.location-sequence button {
+  padding: 4px 7px;
+  color: var(--paper-dim);
+  border: 1px solid var(--line);
+  background: rgba(13, 11, 8, 0.35);
+  backdrop-filter: blur(8px);
+  font-size: 0.62rem;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.location-sequence button:hover,
+.location-sequence button.is-active {
+  color: var(--paper);
+  border-color: var(--tone);
+  background: var(--tone-soft);
+}
+
+.photo-board {
+  display: grid;
+  gap: 14px;
+}
+
+.photo-frame {
+  margin: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: jumpCut 420ms ease-out forwards;
+  animation-delay: calc(var(--i) * 70ms);
+}
+
+.photo-frame__media {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.photo-frame__media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  filter: saturate(0.9) contrast(1.12);
+}
+
+.photo-frame:hover .photo-frame__media img {
+  transform: scale(1.015) translate(1%, 0.5%);
+  transition: transform 8s ease;
+}
+
+.photo-frame__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--paper);
+  font-size: 1.1rem;
+  line-height: 1;
+  border: 1px solid rgba(244, 234, 216, 0.35);
+  border-radius: 50%;
+  background: rgba(13, 11, 8, 0.72);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease, background 160ms ease;
+}
+
+.photo-frame:hover .photo-frame__delete,
+.photo-frame__delete:focus-visible {
+  opacity: 1;
+}
+
+.photo-frame__delete:hover {
+  background: rgba(183, 53, 37, 0.92);
+  border-color: transparent;
+}
+
+.photo-dropzone {
+  padding: 28px 18px;
+  text-align: center;
+  color: var(--paper-dim);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  border: 1px dashed var(--line);
+  background: rgba(13, 11, 8, 0.18);
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.photo-dropzone.is-dragover {
+  color: var(--paper);
+  border-color: var(--tone);
+  background: var(--tone-soft);
+}
+
+.photo-dropzone__pick {
+  padding: 0;
+  color: var(--tone);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.details-panel .photo-frame figcaption {
+  margin-top: 8px;
+  color: var(--paper-dim);
+  font-size: 0.68rem;
+}
+
+.fallback-map {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(244, 234, 216, 0.09), transparent 24%),
+    radial-gradient(circle at 57% 62%, rgba(63, 111, 74, 0.12), transparent 26%),
+    #090806;
+}
+
+.fallback-map::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(244, 234, 216, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 234, 216, 0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.fallback-map__svg,
+.fallback-map__points {
+  position: absolute;
+  inset: 0;
+}
+
+.fallback-map__route {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.fallback-map__route--full {
+  stroke: rgba(244, 234, 216, 0.14);
+  stroke-width: 2.2;
+  stroke-dasharray: 8 12;
+  stroke-opacity: 0.22;
+}
+
+.fallback-map__route--active {
+  stroke: var(--route-color);
+  stroke-width: 5.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-opacity: 0.55;
+  filter: url("#routeGlow");
+}
+
+.map-point {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  z-index: 4;
+  width: 0;
+  height: 0;
+  color: var(--paper);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.map-point span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.map-location-marker__dot,
+.map-point > span {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(244, 234, 216, 0.82);
+  border-radius: 50%;
+  background: var(--tone, #b88a3b);
+  box-shadow: 0 0 0 7px rgba(244, 234, 216, 0.06), 0 0 22px var(--tone);
+}
+
+.map-location-marker__label,
+.map-point__label {
+  position: absolute;
+  left: 0;
+  top: 9px;
+  transform: translateX(-50%);
+  display: block;
+  max-width: 96px;
+  padding: 2px 6px;
+  color: var(--paper);
+  background: rgba(13, 11, 8, 0.62);
+  border: 1px solid var(--line);
+  font-size: 0.62rem;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.map-point__label {
+  max-width: 90px;
+}
+
+.map-point--dimmed {
+  opacity: 0.2;
+  filter: grayscale(1);
+}
+
+.map-point--pending,
+.map-location-marker--pending,
+.leaflet-location-marker--pending {
+  opacity: 0.14;
+  filter: grayscale(1);
+}
+
+.map-point--pending > span,
+.map-location-marker--pending .map-location-marker__dot {
+  opacity: 0.35;
+}
+
+.map-point--revealing > span,
+.map-location-marker--revealing .map-location-marker__dot,
+.leaflet-location-marker--revealing .map-location-marker__dot {
+  animation: mapPointReveal 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.fallback-map__route--segment {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.fallback-map__route--segment.is-animating {
+  animation: routeSegmentDraw var(--segment-duration, 0.8s) ease-out forwards;
+}
+
+@keyframes mapPointReveal {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+    box-shadow: 0 0 0 0 transparent, 0 0 0 var(--tone);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.22);
+    box-shadow: 0 0 0 12px var(--tone-soft), 0 0 40px var(--tone);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 7px rgba(244, 234, 216, 0.06), 0 0 22px var(--tone);
+  }
+}
+
+@keyframes routeSegmentDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.map-point--active {
+  opacity: 1;
+}
+
+.map-point--selected {
+  z-index: 8;
+}
+
+.map-point--selected > span {
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 10px var(--tone-soft), 0 0 34px var(--tone);
+}
+
+.map-point--selected .map-point__label {
+  top: 12px;
+}
+
+.map-point--dimmed .map-point__label {
+  opacity: 0.45;
+}
+
+
+.app-shell--gated .date-switcher,
+.app-shell--gated .details-panel {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-shell--gated .map-stage__shade {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(13, 11, 8, 0.52), rgba(13, 11, 8, 0.78) 72%),
+    linear-gradient(180deg, rgba(13, 11, 8, 0.35), rgba(13, 11, 8, 0.55));
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.45);
+}
+
+.entry-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  justify-items: center;
+  padding: clamp(24px, 6vw, 64px);
+  font-family: "Songti SC", "STSong", "Noto Serif CJK SC", Georgia, "Times New Roman", serif;
+  pointer-events: auto;
+}
+
+.entry-gate__content {
+  display: grid;
+  gap: clamp(10px, 2vw, 18px);
+  max-width: min(720px, 92vw);
+  text-align: center;
+}
+
+.entry-gate__title {
+  margin: 0;
+  font-size: clamp(2.4rem, 7vw, 4.6rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  line-height: 1.15;
+  color: var(--paper);
+  text-shadow: 0 8px 48px rgba(0, 0, 0, 0.55);
+}
+
+.entry-gate__subtitle {
+  margin: 0;
+  font-size: clamp(0.78rem, 2vw, 1rem);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  text-indent: 0.34em;
+  color: var(--paper-dim);
+}
+
+.entry-gate__cta {
+  margin-bottom: clamp(8px, 3vh, 24px);
+  padding: 14px 42px;
+  color: var(--paper);
+  font-size: 0.92rem;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 11, 8, 0.55);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.entry-gate__cta:hover {
+  color: var(--ink);
+  border-color: var(--tone);
+  background: var(--paper);
+  transform: translateY(-2px);
+}
+
+.entry-gate--leaving {
+  animation: entryGateOut 680ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes entryGateOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.fatal-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--ink);
+  color: var(--paper);
+  text-align: center;
+}
+
+@keyframes birdDescent {
+  from {
+    opacity: 0;
+    transform: scale(1.08) rotate(1.2deg);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(0.98) rotate(0.3deg);
+    filter: blur(0);
+  }
+}
+
+@keyframes curtainIn {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes rackFocus {
+  from {
+    opacity: 0;
+    filter: blur(16px);
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes jumpCut {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes grainShift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-2%, -1%);
+  }
+  50% {
+    transform: translate(1%, 2%);
+  }
+  75% {
+    transform: translate(2%, -2%);
+  }
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .map-stage {
+    min-height: 100vh;
+  }
+
+  .details-panel {
+    top: auto;
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    max-width: none;
+    max-height: 42vh;
+  }
+
+  .date-switcher {
+    left: 16px;
+    right: auto;
+    max-width: min(248px, calc(100vw - 32px));
+  }
+
+  .date-picker {
+    width: min(400px, calc(100vw - 32px));
+  }
+
+}
+
+@media (max-width: 640px) {
+  .map-stage {
+    min-height: 82vh;
+  }
+
+  .date-cell {
+    flex-basis: 64px;
+    padding: 10px 8px;
+  }
+
+  .details-panel__inner {
+    padding: 8px 4px 12px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+
+
+.map-canvas--leaflet,
+.map-canvas--leaflet .leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #090806;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  background: #090806;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  color: rgba(244, 234, 216, 0.55);
+  background: rgba(13, 11, 8, 0.55);
+}
+
+.map-tiles--cinematic-dark {
+  filter: saturate(0.88) contrast(1.05) brightness(0.9);
+}
+
+.map-tiles--cinematic-warm {
+  filter: saturate(1.05) contrast(1.02) brightness(0.98) sepia(0.08);
+}
+
+.map-tiles--paper-muted {
+  filter: saturate(0.72) contrast(0.96) brightness(1.04);
+}
+
+.map-tiles--osm-standard {
+  filter: none;
+}
+
+.leaflet-div-icon.leaflet-location-marker {
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.leaflet-location-marker,
+.map-location-marker {
+  position: relative;
+  display: block;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.map-location-marker__dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.map-location-marker__label {
+  top: 9px;
+}
+
+.map-stage--full-journey .map-location-marker__label,
+.map-stage--full-journey .map-point__label {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.map-location-marker--selected .map-location-marker__label {
+  top: 12px;
+}
+
+.map-location-marker--dimmed,
+.leaflet-location-marker--dimmed {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+
+.map-location-marker--dimmed .map-location-marker__label,
+.leaflet-location-marker--dimmed .map-location-marker__label {
+  opacity: 0.45;
+}
+
+.map-location-marker--active,
+.leaflet-location-marker--active {
+  opacity: 1;
+}
+
+.map-location-marker--selected .map-location-marker__dot,
+.leaflet-location-marker--selected .map-location-marker__dot {
+  width: 18px;
+  height: 18px;
+}
+
+.map-location-marker--selected .map-location-marker__label,
+.leaflet-location-marker--selected .map-location-marker__label {
+  border-color: var(--tone);
+  color: var(--paper);
+}
+
+.journey-play-btn {
+  position: absolute;
+  top: clamp(16px, 2.5vw, 28px);
+  right: clamp(16px, 3vw, 32px);
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(13, 11, 8, 0.62);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.journey-play-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--paper);
+  background: rgba(13, 11, 8, 0.78);
+}
+
+.journey-play-btn.is-playing {
+  border-color: var(--tone);
+  color: var(--tone);
+}
+
+.journey-play-btn[hidden] {
+  display: none;
+}
+
+.journey-play-btn__icon {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.journey-play-btn__icon--stop {
+  font-size: 0.72rem;
+}
+
+.map-location-preview {
+  position: absolute;
+  z-index: 11;
+  left: 0;
+  top: 0;
+  width: 176px;
+  transform: translate(-50%, calc(-100% - 12px));
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms;
+}
+
+.map-location-preview.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, calc(-100% - 16px));
+}
+
+.map-location-preview--below {
+  transform: translate(-50%, 12px);
+}
+
+.map-location-preview--below.is-visible {
+  transform: translate(-50%, 16px);
+}
+
+.map-playback-previews {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+}
+
+.map-location-preview--playback-stack {
+  width: 148px;
+  opacity: 0;
+  transform: translate(-50%, 0);
+  will-change: transform, opacity;
+  transition: opacity 240ms ease;
+}
+
+.map-location-preview--playback-stack.is-visible {
+  opacity: 1;
+}
+
+.map-stage--journey-playing .map-location-marker,
+.map-stage--journey-playing .map-point {
+  pointer-events: none;
+}
+
+.map-location-preview__media {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: rgba(13, 11, 8, 0.92);
+  box-shadow:
+    0 14px 42px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(244, 234, 216, 0.06);
+}
+
+.map-location-preview__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.map-location-preview__caption {
+  display: block;
+  margin-top: 6px;
+  padding: 0 4px;
+  color: var(--paper);
+  font-size: 0.64rem;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-key-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  z-index: 7;
+  max-width: 420px;
+  padding: 10px 14px;
+  color: var(--paper-dim);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+  border: 1px solid var(--line);
+  background: rgba(13, 11, 8, 0.72);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+    </style>
+</head>
+  <body>
+    <div id="app"></div>
+    <script id="travel-embedded-data" type="application/json">
+{"days":[],"locations":[],"map":{"journalTitle":"我的游记","journalTitleEn":"My Travel Journal","entryButtonLabel":"进入","provider":"leaflet","routeAnimation":"light","routeAnimationPointRevealMs":460,"routeAnimationSegmentScale":1.35,"routeAnimationSegmentSteps":16,"activeStyle":"cinematic-dark","fitPadding":[80,460,120,80],"fitPaddingFullJourney":[40,40,56,40],"fitMaxZoom":12,"boundsPaddingRatio":0.06,"styles":{"cinematic-dark":{"label":"电影深色","tileUrl":"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png","attribution":"&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap<\/a> &copy; <a href='https://carto.com/attributions'>CARTO<\/a>","subdomains":"abcd","maxZoom":19,"tileClass":"map-tiles map-tiles--cinematic-dark"},"cinematic-warm":{"label":"暖色旅途","tileUrl":"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png","attribution":"&copy; OpenStreetMap &copy; CARTO","subdomains":"abcd","maxZoom":19,"tileClass":"map-tiles map-tiles--cinematic-warm"},"paper-muted":{"label":"宣纸灰","tileUrl":"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png","attribution":"&copy; OpenStreetMap &copy; CARTO","subdomains":"abcd","maxZoom":19,"tileClass":"map-tiles map-tiles--paper-muted"},"osm-standard":{"label":"标准 OSM","tileUrl":"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png","attribution":"&copy; OpenStreetMap contributors","maxZoom":19,"tileClass":"map-tiles map-tiles--osm-standard"}},"routes":{"full":{"color":"rgba(244, 234, 216, 0.16)","weight":3,"opacity":0.22,"dashArray":"10 14"},"active":{"weight":6,"opacity":0.55}},"amap":{"key":"","securityCode":"","mapStyle":"amap://styles/dark"}}}
+    </script>
+<script>
+
+const TONE_COLORS = {
+  red: "#b73525",
+  blue: "#2d5f8d",
+  white: "#e9dfcc",
+  green: "#3f6f4a",
+  blackGold: "#b88a3b",
+};
+
+/**
+ * 创建旅行地图控制器：默认 Leaflet（免 Key），可选高德；视野随全部地点自动适配。
+ */
+function createTravelMap({ container, onSelectLocation, onFullJourneyPlaybackChange }) {
+  let days = [];
+  let locations = [];
+  let mapConfig = {};
+  let engine = "none";
+
+  let leafletMap = null;
+  let leafletTileLayer = null;
+  let leafletMarkers = new Map();
+  let leafletFullRoute = null;
+  let leafletActiveRoute = null;
+  let leafletAnimSegment = null;
+
+  let amap = null;
+  let AMapApi = null;
+  let amapMarkers = new Map();
+  let amapFullRoute = null;
+  let amapActiveRoute = null;
+  let amapAnimSegment = null;
+
+  let fallbackLayer = null;
+  let geoBounds = null;
+  let overlapMeta = { showLabel: new Map(), zRank: new Map() };
+  let allRoutePath = [];
+
+  const ROUTE_POINT_REVEAL_MS = 480;
+  const ROUTE_POINT_REVEAL_LIGHT_MS = 460;
+  const ROUTE_SEGMENT_MIN_MS = 420;
+  const ROUTE_SEGMENT_MAX_MS = 1400;
+  const ROUTE_SEGMENT_MS_PER_DEG = 5200;
+  const ROUTE_SEGMENT_FRAME_MIN_MS = 33;
+  const ROUTE_SEGMENT_LIGHT_DURATION_SCALE = 1.35;
+  const ROUTE_SEGMENT_LIGHT_FRAME_MIN_MS = 48;
+  const ROUTE_SEGMENT_LIGHT_STEPS_MIN = 8;
+  const ROUTE_SEGMENT_LIGHT_STEPS_MAX = 12;
+
+  let markerVisualCache = new Map();
+  let routeOverlayMoveHandler = null;
+  let routeAnimationToken = 0;
+  let lastAnimatedDate = null;
+  let isRouteAnimating = false;
+  let animationContext = null;
+
+  let isFullJourneyPlaying = false;
+  let fullJourneyPlaybackContext = null;
+  let previewPlacement = "above";
+
+  let isFullJourneyHoverEnabled = false;
+  let locationPreviewEl = null;
+  let locationPreviewImg = null;
+  let locationPreviewCaption = null;
+  let locationPreviewLocationId = "";
+  let locationPreviewStageEl = null;
+  let locationById = new Map();
+  let firstPhotoByLocationId = new Map();
+  let previewHoverRoot = null;
+  let previewHoverListenersBound = false;
+  let previewShowTimer = 0;
+  let previewHideTimer = 0;
+  let previewReleaseTimer = 0;
+  let previewPendingLocationId = "";
+  let previewPositionRaf = 0;
+  let previewMapMoveHandler = null;
+  let previewMapListenersAttached = false;
+
+  let playbackPreviewLayerEl = null;
+  let playbackPreviewCards = new Map();
+  let playbackPreviewOffsets = new Map();
+  let playbackPreviewPositionRaf = 0;
+  let playbackPreviewMapMoveHandler = null;
+  let playbackPreviewMapListenersAttached = false;
+  let playbackPreviewLastPositionAt = 0;
+
+  const PREVIEW_SHOW_DELAY_MS = 48;
+  const PLAYBACK_POINT_FLY_SEC = 0.75;
+  const PLAYBACK_SEGMENT_PAN_MIN_SEC = 0.38;
+  const PLAYBACK_SEGMENT_PAN_MAX_SEC = 0.82;
+  const PLAYBACK_FOCUS_ZOOM = 9;
+  const PLAYBACK_SHORT_SEGMENT_MS = 1350;
+  const PLAYBACK_CAMERA_EDGE_RATIO = 0.32;
+  const PLAYBACK_CAMERA_ZOOM_OUT_THRESHOLD = 1.15;
+  const PLAYBACK_CARD_WIDTH = 148;
+  const PLAYBACK_CARD_HEIGHT = 136;
+  const PLAYBACK_CARD_GAP_X = 22;
+  const PLAYBACK_CARD_GAP_Y = 16;
+  const PLAYBACK_PREVIEW_REPOSITION_MIN_MS = 90;
+  const PREVIEW_HIDE_DELAY_MS = 48;
+  const previewHoverListenerOptions = { capture: true, passive: true };
+
+  /**
+   * 重建地点索引与首张预览图缓存（init / 照片持久化后调用）。
+   */
+  function rebuildLocationPreviewIndex() {
+    locationById = new Map(locations.map((location) => [location.id, location]));
+    firstPhotoByLocationId = new Map();
+    locations.forEach((location) => {
+      const photo = (location.photos || []).find((item) => item?.src);
+      if (photo) firstPhotoByLocationId.set(location.id, photo);
+    });
+  }
+
+  /**
+   * 创建并挂载全程模式下的地点悬停预览层。
+   */
+  function ensureLocationPreview() {
+    if (locationPreviewEl) return;
+    locationPreviewStageEl = container.closest(".map-stage");
+    if (!locationPreviewStageEl) return;
+
+    locationPreviewEl = document.createElement("div");
+    locationPreviewEl.className = "map-location-preview";
+    locationPreviewEl.setAttribute("role", "tooltip");
+    locationPreviewEl.setAttribute("aria-hidden", "true");
+    locationPreviewEl.innerHTML = `
+      <div class="map-location-preview__media">
+        <img class="map-location-preview__img" alt="" decoding="async" />
+      </div>
+      <span class="map-location-preview__caption"></span>`;
+    locationPreviewStageEl.appendChild(locationPreviewEl);
+    locationPreviewImg = locationPreviewEl.querySelector(".map-location-preview__img");
+    locationPreviewCaption = locationPreviewEl.querySelector(".map-location-preview__caption");
+  }
+
+  /**
+   * 获取当前引擎用于事件委托的监听根节点（需能收到 marker 内冒泡/捕获的鼠标事件）。
+   */
+  function getPreviewHoverRoot() {
+    if (engine === "leaflet" && leafletMap) {
+      return leafletMap.getContainer() || container;
+    }
+    if (engine === "amap") return container;
+    return fallbackLayer || container;
+  }
+
+  /**
+   * 从事件目标解析地点 id。
+   */
+  function resolvePreviewLocationId(target) {
+    return target?.closest?.("[data-location-id]")?.dataset?.locationId || "";
+  }
+
+  /**
+   * 取消预览显示/隐藏的调度计时器。
+   */
+  function clearPreviewHoverTimers() {
+    if (previewShowTimer) {
+      window.clearTimeout(previewShowTimer);
+      previewShowTimer = 0;
+    }
+    if (previewHideTimer) {
+      window.clearTimeout(previewHideTimer);
+      previewHideTimer = 0;
+    }
+    previewPendingLocationId = "";
+  }
+
+  /**
+   * 读取指定地点 marker 的锚点元素（用于定位预览框）。
+   */
+  function getMarkerAnchorElement(locationId) {
+    if (engine === "leaflet") {
+      return leafletMarkers.get(locationId)?.getElement?.() || null;
+    }
+    if (engine === "amap") {
+      const marker = amapMarkers.get(locationId);
+      if (!marker) return null;
+      const content = marker.getContent?.();
+      if (content instanceof HTMLElement) return content;
+      return marker.dom || null;
+    }
+    return fallbackLayer?.querySelector(`[data-location-id="${locationId}"]`) || null;
+  }
+
+  /**
+   * 将悬停预览定位到 marker 锚点上方（同步布局，仅在 rAF 中调用）。
+   */
+  function positionLocationPreview(locationId, placement = previewPlacement) {
+    if (!locationPreviewEl || !locationPreviewStageEl) return;
+    const anchor = getMarkerAnchorElement(locationId);
+    if (!anchor) return;
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const stageRect = locationPreviewStageEl.getBoundingClientRect();
+    const centerX = anchorRect.left + anchorRect.width / 2 - stageRect.left;
+    locationPreviewEl.style.left = `${centerX}px`;
+
+    if (placement === "below") {
+      locationPreviewEl.style.top = `${anchorRect.bottom - stageRect.top}px`;
+      return;
+    }
+
+    locationPreviewEl.style.top = `${anchorRect.top - stageRect.top}px`;
+  }
+
+  /**
+   * 通过 rAF 合并定位请求，避免地图连续移动时反复触发布局。
+   */
+  function scheduleLocationPreviewPosition() {
+    if (previewPositionRaf) return;
+    previewPositionRaf = window.requestAnimationFrame(() => {
+      previewPositionRaf = 0;
+      if (locationPreviewLocationId) {
+        positionLocationPreview(locationPreviewLocationId);
+      }
+    });
+  }
+
+  /**
+   * 地图平移/缩放时在预览可见期间更新位置。
+   */
+  function attachPreviewMapMoveListeners() {
+    if (previewMapListenersAttached) return;
+    previewMapMoveHandler = scheduleLocationPreviewPosition;
+    if (engine === "leaflet" && leafletMap) {
+      leafletMap.on("move zoom resize", previewMapMoveHandler);
+    } else if (engine === "amap" && amap) {
+      amap.on("mapmove zoomchange resize", previewMapMoveHandler);
+    }
+    previewMapListenersAttached = true;
+  }
+
+  /**
+   * 预览隐藏后移除地图移动监听，避免空闲时持续触发。
+   */
+  function detachPreviewMapMoveListeners() {
+    if (!previewMapListenersAttached || !previewMapMoveHandler) return;
+    if (engine === "leaflet" && leafletMap) {
+      leafletMap.off("move zoom resize", previewMapMoveHandler);
+    } else if (engine === "amap" && amap) {
+      amap.off("mapmove zoomchange resize", previewMapMoveHandler);
+    }
+    previewMapListenersAttached = false;
+    previewMapMoveHandler = null;
+  }
+
+  /**
+   * 显示指定地点的首张照片预览。
+   */
+  function showLocationPreview(location, options = {}) {
+    const { placement = "above" } = options;
+    const photo = firstPhotoByLocationId.get(location.id);
+    if (!photo) return;
+
+    ensureLocationPreview();
+    if (!locationPreviewEl || !locationPreviewImg || !locationPreviewCaption) return;
+
+    clearPreviewHoverTimers();
+    previewPlacement = placement;
+    locationPreviewEl.classList.toggle("map-location-preview--below", placement === "below");
+    locationPreviewLocationId = location.id;
+
+    if (locationPreviewImg.dataset.locationId !== location.id) {
+      locationPreviewImg.dataset.locationId = location.id;
+      // 优先用轻量缩略图，避免预览加载/解码全尺寸大图
+      locationPreviewImg.src = photo.thumb || photo.src;
+      locationPreviewImg.alt = photo.caption || location.name;
+      locationPreviewCaption.textContent = photo.caption || location.name;
+    }
+
+    scheduleLocationPreviewPosition();
+    locationPreviewEl.classList.add("is-visible");
+    locationPreviewEl.setAttribute("aria-hidden", "false");
+    attachPreviewMapMoveListeners();
+  }
+
+  /**
+   * 隐藏地点悬停预览。
+   */
+  function hideLocationPreview() {
+    clearPreviewHoverTimers();
+    if (previewPositionRaf) {
+      window.cancelAnimationFrame(previewPositionRaf);
+      previewPositionRaf = 0;
+    }
+    detachPreviewMapMoveListeners();
+    if (!locationPreviewEl) {
+      locationPreviewLocationId = "";
+      return;
+    }
+    locationPreviewLocationId = "";
+    previewPlacement = "above";
+    locationPreviewEl.classList.remove("is-visible", "map-location-preview--below");
+    locationPreviewEl.setAttribute("aria-hidden", "true");
+    // 淡出后清空图片源，释放已解码位图占用的内存（防止扫过多个 marker 后内存累积）
+    if (previewReleaseTimer) window.clearTimeout(previewReleaseTimer);
+    previewReleaseTimer = window.setTimeout(() => {
+      previewReleaseTimer = 0;
+      if (locationPreviewEl?.classList.contains("is-visible")) return;
+      if (!locationPreviewImg) return;
+      locationPreviewImg.removeAttribute("src");
+      locationPreviewImg.dataset.locationId = "";
+    }, 220);
+  }
+
+  /**
+   * 切换全程模式悬停预览的启用状态。
+   */
+  function setFullJourneyHoverEnabled(enabled) {
+    isFullJourneyHoverEnabled = enabled;
+    container.closest(".map-stage")?.classList.toggle("map-stage--full-journey", enabled);
+    if (!enabled) hideLocationPreview();
+  }
+
+  /**
+   * 判断节点是否位于某地点 marker 内。
+   */
+  function isPreviewMarkerTarget(node) {
+    return Boolean(resolvePreviewLocationId(node));
+  }
+
+  /**
+   * 调度显示指定地点预览（带短延迟防抖）。
+   */
+  function schedulePreviewShow(locationId) {
+    if (!isFullJourneyHoverEnabled || !firstPhotoByLocationId.has(locationId)) return;
+
+    if (previewHideTimer) {
+      window.clearTimeout(previewHideTimer);
+      previewHideTimer = 0;
+    }
+
+    if (locationPreviewLocationId === locationId && locationPreviewEl?.classList.contains("is-visible")) {
+      return;
+    }
+
+    if (previewPendingLocationId === locationId && previewShowTimer) {
+      return;
+    }
+
+    previewPendingLocationId = locationId;
+    if (previewShowTimer) window.clearTimeout(previewShowTimer);
+    previewShowTimer = window.setTimeout(() => {
+      previewShowTimer = 0;
+      if (previewPendingLocationId !== locationId || !isFullJourneyHoverEnabled) return;
+      const location = locationById.get(locationId);
+      if (location) showLocationPreview(location);
+    }, PREVIEW_SHOW_DELAY_MS);
+  }
+
+  /**
+   * 调度隐藏预览（带短延迟，避免 marker 内部移动闪烁）。
+   */
+  function schedulePreviewHide() {
+    if (!isFullJourneyHoverEnabled) return;
+
+    previewPendingLocationId = "";
+    if (previewShowTimer) {
+      window.clearTimeout(previewShowTimer);
+      previewShowTimer = 0;
+    }
+
+    if (previewHideTimer) window.clearTimeout(previewHideTimer);
+    previewHideTimer = window.setTimeout(() => {
+      previewHideTimer = 0;
+      hideLocationPreview();
+    }, PREVIEW_HIDE_DELAY_MS);
+  }
+
+  /**
+   * 鼠标移入 marker 区域（DOM 委托）。
+   */
+  function onPreviewMouseOver(event) {
+    if (!isFullJourneyHoverEnabled) return;
+    const locationId = resolvePreviewLocationId(event.target);
+    if (!locationId) return;
+    schedulePreviewShow(locationId);
+  }
+
+  /**
+   * 鼠标移出 marker 区域（DOM 委托）。
+   */
+  function onPreviewMouseOut(event) {
+    if (!isFullJourneyHoverEnabled) return;
+    if (!isPreviewMarkerTarget(event.target)) return;
+    if (isPreviewMarkerTarget(event.relatedTarget)) return;
+    schedulePreviewHide();
+  }
+
+  /**
+   * 解绑 Leaflet 各 marker 上的预览事件。
+   */
+  function unbindLeafletPreviewHover() {
+    if (engine !== "leaflet") return;
+    leafletMarkers.forEach((marker) => {
+      marker.off("mouseover.preview mouseout.preview");
+    });
+  }
+
+  /**
+   * 在 Leaflet marker 上绑定预览悬停（Leaflet 图层内 DOM 委托不可靠）。
+   */
+  function bindLeafletPreviewHover() {
+    unbindLeafletPreviewHover();
+    leafletMarkers.forEach((marker, locationId) => {
+      if (!firstPhotoByLocationId.has(locationId)) return;
+      marker.on("mouseover.preview", () => schedulePreviewShow(locationId));
+      marker.on("mouseout.preview", () => schedulePreviewHide());
+    });
+  }
+
+  /**
+   * 解绑预览悬停监听。
+   */
+  function unbindPreviewHoverDelegation() {
+    unbindLeafletPreviewHover();
+    if (!previewHoverListenersBound || !previewHoverRoot) return;
+    previewHoverRoot.removeEventListener("mouseover", onPreviewMouseOver, previewHoverListenerOptions);
+    previewHoverRoot.removeEventListener("mouseout", onPreviewMouseOut, previewHoverListenerOptions);
+    previewHoverListenersBound = false;
+    previewHoverRoot = null;
+  }
+
+  /**
+   * 绑定预览悬停：Leaflet 用 marker 事件，其余引擎用地图容器委托。
+   */
+  function bindPreviewHoverDelegation() {
+    unbindPreviewHoverDelegation();
+    if (engine === "leaflet") {
+      bindLeafletPreviewHover();
+      previewHoverListenersBound = true;
+      return;
+    }
+
+    const root = getPreviewHoverRoot();
+    if (!root) return;
+    previewHoverRoot = root;
+    root.addEventListener("mouseover", onPreviewMouseOver, previewHoverListenerOptions);
+    root.addEventListener("mouseout", onPreviewMouseOut, previewHoverListenerOptions);
+    previewHoverListenersBound = true;
+  }
+
+  /**
+   * 取地点关联日期中最晚的一天（用于重叠标注优先级）。
+   */
+  function getLatestDate(location) {
+    if (!location.dates?.length) return "";
+    return location.dates.reduce((latest, date) => (date > latest ? date : latest), location.dates[0]);
+  }
+
+  /**
+   * 按坐标分组并计算重叠处显示哪条标签、层级排序。
+   */
+  function buildOverlapMeta(locationList) {
+    const groups = new Map();
+    locationList.forEach((location) => {
+      const [lng, lat] = location.coordinates;
+      const key = `${Number(lng).toFixed(5)},${Number(lat).toFixed(5)}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(location);
+    });
+
+    const showLabel = new Map();
+    const zRank = new Map();
+    groups.forEach((group) => {
+      const sorted = [...group].sort((a, b) => getLatestDate(b).localeCompare(getLatestDate(a)));
+      sorted.forEach((location, index) => {
+        showLabel.set(location.id, location.id === sorted[0].id);
+        zRank.set(location.id, sorted.length - index);
+      });
+    });
+    return { showLabel, zRank };
+  }
+
+  /**
+   * 刷新重叠地点的标签与层级元数据。
+   */
+  function rebuildOverlapMeta() {
+    overlapMeta = buildOverlapMeta(locations);
+  }
+
+  /**
+   * 计算 Leaflet marker 的层级偏移。
+   */
+  function getMarkerZIndexOffset(locationId, markerState) {
+    const rank = overlapMeta.zRank.get(locationId) || 0;
+    const stateBoost = markerState === "selected" ? 200 : markerState === "active" ? 100 : 0;
+    return rank * 8 + stateBoost;
+  }
+
+  /**
+   * 初始化地图：读取 map.json 配置并选择渲染引擎。
+   */
+  async function init(nextDays, nextLocations, nextMapConfig) {
+    days = nextDays;
+    locations = nextLocations;
+    mapConfig = nextMapConfig || {};
+    rebuildOverlapMeta();
+    rebuildLocationPreviewIndex();
+    allRoutePath = buildAllRoutePath();
+    clearMarkerVisualCache();
+    const boundsPaddingRatio = Number(mapConfig.boundsPaddingRatio);
+    geoBounds = computeGeoBounds(
+      locations.map((location) => location.coordinates),
+      Number.isFinite(boundsPaddingRatio) ? Math.min(boundsPaddingRatio, 0.06) : 0.06,
+    );
+
+    const provider = (mapConfig.provider || "leaflet").toLowerCase();
+    if (provider === "amap" && mapConfig.amap?.key) {
+      try {
+        await initAmap();
+        engine = "amap";
+        return;
+      } catch (error) {
+        console.warn("AMap unavailable, falling back to Leaflet.", error);
+      }
+    }
+
+    if (provider !== "svg") {
+      try {
+        await initLeaflet();
+        engine = "leaflet";
+        return;
+      } catch (error) {
+        console.warn("Leaflet unavailable, falling back to SVG.", error);
+      }
+    }
+
+    initSvgFallback();
+    engine = "svg";
+  }
+
+  /**
+   * 解析日期视图：无选中日期时展示全程（全部点位高亮、不画当日折线）。
+   */
+  function resolveDayView(activeDay) {
+    if (!activeDay) {
+      return {
+        activeIds: new Set(locations.map((location) => location.id)),
+        activePath: [],
+        color: TONE_COLORS.blackGold,
+        fitAll: true,
+      };
+    }
+
+    const activePath = activeDay.routeLocationIds
+      .map((id) => locationById.get(id))
+      .filter(Boolean);
+
+    return {
+      activeIds: new Set(activeDay.routeLocationIds),
+      activePath,
+      color: TONE_COLORS[activeDay.tone] || TONE_COLORS.blackGold,
+      fitAll: false,
+    };
+  }
+
+  /**
+   * 读取路线入场动画模式：instant / light / full。
+   */
+  function getRouteAnimationMode() {
+    const mode = String(mapConfig.routeAnimation || "light").toLowerCase();
+    if (mode === "instant" || mode === "light" || mode === "full") return mode;
+    return "light";
+  }
+
+  /**
+   * 清空 marker 外观缓存（取消动画或切换引擎时调用）。
+   */
+  function clearMarkerVisualCache() {
+    markerVisualCache.clear();
+  }
+
+  /**
+   * 取消正在进行的路线入场动画。
+   */
+  function cancelRouteAnimation() {
+    routeAnimationToken += 1;
+    animationContext = null;
+    isRouteAnimating = false;
+    clearRouteOverlay();
+  }
+
+  /**
+   * 获取地图上的 SVG 路线动画层元素。
+   */
+  function getRouteOverlayElements() {
+    const svg = document.querySelector(".map-route-overlay");
+    const path = svg?.querySelector(".map-route-overlay__segment");
+    return { svg, path };
+  }
+
+  /**
+   * 停止并清空 SVG 路线动画层。
+   */
+  function clearRouteOverlay() {
+    const { svg, path } = getRouteOverlayElements();
+    if (routeOverlayMoveHandler && leafletMap) {
+      leafletMap.off("move", routeOverlayMoveHandler);
+      leafletMap.off("zoom", routeOverlayMoveHandler);
+      routeOverlayMoveHandler = null;
+    }
+    if (!path) return;
+    path.classList.remove("is-animating");
+    path.style.removeProperty("--segment-duration");
+    path.setAttribute("d", "");
+    if (svg) svg.style.opacity = "0";
+  }
+
+  /**
+   * 按当前 Leaflet 视野更新叠加层路线段的 path。
+   */
+  function syncRouteOverlayPath(fromLL, toLL) {
+    const { path } = getRouteOverlayElements();
+    if (!path || !leafletMap) return;
+    const p1 = leafletMap.latLngToContainerPoint(fromLL);
+    const p2 = leafletMap.latLngToContainerPoint(toLL);
+    path.setAttribute("d", `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`);
+  }
+
+  /**
+   * 用 CSS stroke 动画绘制单段路线（GPU 合成，几乎不占 JS 主线程）。
+   */
+  function runLeafletCssSegmentAnimation(token, fromLL, toLL, color, durationMs, onComplete) {
+    return new Promise((resolve) => {
+      const { svg, path } = getRouteOverlayElements();
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let settled = false;
+      let fallbackTimer = 0;
+
+      if (!path || !leafletMap || reducedMotion) {
+        onComplete();
+        resolve();
+        return;
+      }
+
+      leafletAnimSegment?.setLatLngs([]);
+
+      /**
+       * 动画结束或取消时移除叠加层并提交 Leaflet 折线。
+       */
+      function finish() {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(fallbackTimer);
+        path.removeEventListener("animationend", onAnimEnd);
+        clearRouteOverlay();
+        if (token === routeAnimationToken) onComplete();
+        resolve();
+      }
+
+      /**
+       * CSS animationend 回调。
+       */
+      function onAnimEnd() {
+        finish();
+      }
+
+      routeOverlayMoveHandler = () => {
+        if (token !== routeAnimationToken) return;
+        syncRouteOverlayPath(fromLL, toLL);
+      };
+      leafletMap.on("move", routeOverlayMoveHandler);
+      leafletMap.on("zoom", routeOverlayMoveHandler);
+
+      const strokeWeight = mapConfig.routes?.active?.weight ?? 6;
+      path.style.stroke = color;
+      path.style.strokeWidth = String(strokeWeight);
+      path.style.opacity = String(mapConfig.routes?.active?.opacity ?? 0.55);
+      syncRouteOverlayPath(fromLL, toLL);
+      svg.style.opacity = "1";
+
+      path.classList.remove("is-animating");
+      path.style.setProperty("--segment-duration", `${durationMs}ms`);
+      void path.offsetWidth;
+      path.classList.add("is-animating");
+
+      path.addEventListener("animationend", onAnimEnd, { once: true });
+      fallbackTimer = window.setTimeout(finish, durationMs + 150);
+    });
+  }
+
+  /**
+   * 缓出三次方缓动，用于路线绘制。
+   */
+  function easeOutCubic(value) {
+    return 1 - (1 - value) ** 3;
+  }
+
+  /**
+   * 按经纬度距离估算单段路线动画时长。
+   */
+  function computeSegmentDuration(fromCoords, toCoords) {
+    const dx = toCoords[0] - fromCoords[0];
+    const dy = toCoords[1] - fromCoords[1];
+    const dist = Math.hypot(dx, dy);
+    return Math.min(
+      ROUTE_SEGMENT_MAX_MS,
+      Math.max(ROUTE_SEGMENT_MIN_MS, dist * ROUTE_SEGMENT_MS_PER_DEG),
+    );
+  }
+
+  /**
+   * 读取地点点亮等待时长（可在 map.json 覆盖）。
+   */
+  function getPointRevealMs() {
+    const custom = Number(mapConfig.routeAnimationPointRevealMs);
+    if (Number.isFinite(custom) && custom > 0) return custom;
+    return getRouteAnimationMode() === "light"
+      ? ROUTE_POINT_REVEAL_LIGHT_MS
+      : ROUTE_POINT_REVEAL_MS;
+  }
+
+  /**
+   * 读取路线段绘制时长倍率（light 默认更慢）。
+   */
+  function getSegmentDurationScale() {
+    const custom = Number(mapConfig.routeAnimationSegmentScale);
+    if (Number.isFinite(custom) && custom > 0) return custom;
+    return getRouteAnimationMode() === "light" ? ROUTE_SEGMENT_LIGHT_DURATION_SCALE : 1;
+  }
+
+  /**
+   * 按模式计算单段路线动画时长。
+   */
+  function computeSegmentDurationForAnimation(fromCoords, toCoords) {
+    const scale = getSegmentDurationScale();
+    const dx = toCoords[0] - fromCoords[0];
+    const dy = toCoords[1] - fromCoords[1];
+    const dist = Math.hypot(dx, dy);
+    return Math.min(
+      ROUTE_SEGMENT_MAX_MS * scale,
+      Math.max(ROUTE_SEGMENT_MIN_MS * scale, dist * ROUTE_SEGMENT_MS_PER_DEG * scale),
+    );
+  }
+
+  /**
+   * 读取路线段绘制的最小帧间隔（越大越省 CPU、动效越「步进」）。
+   */
+  function getSegmentFrameMinMs() {
+    const custom = Number(mapConfig.routeAnimationSegmentFrameMs);
+    if (Number.isFinite(custom) && custom > 0) return custom;
+    return getRouteAnimationMode() === "light"
+      ? ROUTE_SEGMENT_LIGHT_FRAME_MIN_MS
+      : ROUTE_SEGMENT_FRAME_MIN_MS;
+  }
+
+  /**
+   * 读取 light 模式下单段路线的离散步数（步数越少越省 CPU）。
+   */
+  function getSegmentStepCount(durationMs) {
+    const custom = Number(mapConfig.routeAnimationSegmentSteps);
+    if (Number.isFinite(custom) && custom >= 4) {
+      return Math.min(20, Math.floor(custom));
+    }
+    return Math.min(
+      ROUTE_SEGMENT_LIGHT_STEPS_MAX,
+      Math.max(ROUTE_SEGMENT_LIGHT_STEPS_MIN, Math.round(durationMs / 130)),
+    );
+  }
+
+  /**
+   * 分步执行单段路线动画（light 专用，用 setTimeout 替代 rAF 循环）。
+   */
+  function runSteppedSegmentAnimation(token, durationMs, onProgress, onComplete) {
+    const steps = getSegmentStepCount(durationMs);
+    const stepMs = Math.max(40, durationMs / steps);
+
+    return new Promise((resolve) => {
+      let step = 0;
+
+      /**
+       * 按固定步进更新路线段，避免 requestAnimationFrame 持续占用 CPU。
+       */
+      function tick() {
+        if (token !== routeAnimationToken) {
+          resolve();
+          return;
+        }
+
+        step += 1;
+        const progress = easeOutCubic(Math.min(1, step / steps));
+        onProgress(progress);
+
+        if (step >= steps) {
+          onComplete();
+          resolve();
+          return;
+        }
+
+        setTimeout(tick, stepMs);
+      }
+
+      onProgress(0);
+      setTimeout(tick, stepMs);
+    });
+  }
+
+  /**
+   * 按当前模式选择绘线实现（light 在 Leaflet 上走 CSS 叠加层；其余为分步或 rAF）。
+   */
+  function runRouteSegmentAnimation(token, durationMs, onProgress, onComplete) {
+    if (getRouteAnimationMode() === "light") {
+      return runSteppedSegmentAnimation(token, durationMs, onProgress, onComplete);
+    }
+    return runThrottledSegmentAnimation(
+      token,
+      durationMs,
+      getSegmentFrameMinMs(),
+      onProgress,
+      onComplete,
+    );
+  }
+
+  /**
+   * 节流执行单段路线进度动画（full 模式）。
+   */
+  function runThrottledSegmentAnimation(token, durationMs, frameMinMs, onProgress, onComplete) {
+    return new Promise((resolve) => {
+      const startedAt = performance.now();
+      let lastDrawAt = 0;
+
+      /**
+       * 按进度回调绘制当前帧，结束后执行收尾逻辑。
+       */
+      function frame(now) {
+        if (token !== routeAnimationToken) {
+          resolve();
+          return;
+        }
+
+        const progress = easeOutCubic(Math.min(1, (now - startedAt) / durationMs));
+        if (progress >= 1 || now - lastDrawAt >= frameMinMs) {
+          lastDrawAt = now;
+          onProgress(progress);
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(frame);
+          return;
+        }
+
+        onComplete();
+        resolve();
+      }
+
+      requestAnimationFrame(frame);
+    });
+  }
+
+  /**
+   * 等待地点点亮动效完成。
+   */
+  function waitPointReveal(token, delayMs = getPointRevealMs()) {
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(token === routeAnimationToken), delayMs);
+    });
+  }
+
+  /**
+   * 路线动画开始时同步当日路线相关 marker（非路线点仅置灰一次）。
+   */
+  function syncMarkersForRouteAnimation(routeIds, revealedIds, selectedLocationId) {
+    const routeIdSet = new Set(routeIds);
+    locations.forEach((location) => {
+      const markerState = routeIdSet.has(location.id)
+        ? resolveRouteMarkerState(location.id, routeIds, revealedIds, selectedLocationId)
+        : "dimmed";
+      syncMarkerState(location, markerState, selectedLocationId, false);
+    });
+  }
+
+  /**
+   * 计算路线动画中单个 marker 的状态。
+   */
+  function resolveRouteMarkerState(locationId, routeIds, revealedIds, selectedLocationId) {
+    if (selectedLocationId === locationId) return "selected";
+    if (!routeIds.includes(locationId)) return "dimmed";
+    if (revealedIds.has(locationId)) return "active";
+    return "pending";
+  }
+
+  /**
+   * 动画进行中仅刷新选中态，不中断路线序列。
+   */
+  function refreshRouteSelection(selectedLocationId) {
+    if (!animationContext) return;
+
+    animationContext.selectedLocationId = selectedLocationId;
+    const { routeIds, revealedIds } = animationContext;
+
+    routeIds.forEach((locationId) => {
+      const location = locations.find((item) => item.id === locationId);
+      if (!location) return;
+      const markerState = resolveRouteMarkerState(
+        location.id,
+        routeIds,
+        revealedIds,
+        selectedLocationId,
+      );
+      syncMarkerState(location, markerState, selectedLocationId, false);
+    });
+
+    const selected = locations.find((item) => item.id === selectedLocationId);
+    if (selected && !routeIds.includes(selectedLocationId)) {
+      syncMarkerState(selected, "selected", selectedLocationId, false);
+    }
+  }
+
+  /**
+   * 生成 marker 外观缓存键，用于跳过重复的 DOM 更新。
+   */
+  function markerVisualCacheKey(location, markerState, selectedLocationId, revealing) {
+    const showLabel =
+      overlapMeta.showLabel.get(location.id) || location.id === selectedLocationId;
+    return `${markerState}|${revealing ? 1 : 0}|${showLabel ? 1 : 0}`;
+  }
+
+  /**
+   * 按当前引擎同步单个 marker 外观。
+   */
+  function syncMarkerState(location, markerState, selectedLocationId, revealing = false) {
+    const cacheKey = markerVisualCacheKey(location, markerState, selectedLocationId, revealing);
+    if (markerVisualCache.get(location.id) === cacheKey) return;
+    markerVisualCache.set(location.id, cacheKey);
+
+    if (engine === "leaflet") {
+      const marker = leafletMarkers.get(location.id);
+      marker.setIcon(leafletMarkerIcon(location, markerState, selectedLocationId, revealing));
+      marker.setZIndexOffset(getMarkerZIndexOffset(location.id, markerState));
+      return;
+    }
+
+    if (engine === "amap") {
+      const marker = amapMarkers.get(location.id);
+      marker.setContent(markerHTML(location, markerState, selectedLocationId, { revealing }));
+      marker.setZIndex(getMarkerZIndexOffset(location.id, markerState));
+      return;
+    }
+
+    const button = fallbackLayer?.querySelector(`[data-location-id="${location.id}"]`);
+    if (!button) return;
+
+    button.className = `map-point map-point--${markerState}${revealing ? " map-point--revealing" : ""}`;
+    button.style.zIndex = String(getMarkerZIndexOffset(location.id, markerState));
+  }
+
+  /**
+   * 立即刷新地图（无路线入场动画）。
+   */
+  function runInstantUpdate(activeDay, selectedLocationId, view) {
+    setFullJourneyHoverEnabled(!activeDay);
+    if (engine === "amap") {
+      updateAmapInstant(activeDay, selectedLocationId, view);
+      return;
+    }
+    if (engine === "leaflet") {
+      updateLeafletInstant(activeDay, selectedLocationId, view);
+      return;
+    }
+    updateSvgFallbackInstant(activeDay, selectedLocationId, view);
+  }
+
+  /**
+   * 按日期切换时顺序点亮地点并逐段绘制路线。
+   */
+  async function runRouteAnimation(activeDay, selectedLocationId, view, token, mode) {
+    if (mode === "light") {
+      if (engine === "amap") {
+        await animateAmapRouteLight(activeDay, selectedLocationId, view, token);
+      } else if (engine === "leaflet") {
+        await animateLeafletRouteLight(activeDay, selectedLocationId, view, token);
+      } else {
+        await animateSvgRouteLight(activeDay, selectedLocationId, view, token);
+      }
+    } else if (engine === "amap") {
+      await animateAmapRoute(activeDay, selectedLocationId, view, token);
+    } else if (engine === "leaflet") {
+      await animateLeafletRoute(activeDay, selectedLocationId, view, token);
+    } else {
+      await animateSvgRoute(activeDay, selectedLocationId, view, token);
+    }
+
+    if (token !== routeAnimationToken) return;
+    runInstantUpdate(activeDay, animationContext?.selectedLocationId ?? selectedLocationId, view);
+  }
+
+  /**
+   * 构建全程路线地点序列（按行程顺序，同 id 仅保留首次出现）。
+   */
+  function buildAllRouteLocations() {
+    const seen = new Set();
+    const result = [];
+    days.forEach((day) => {
+      day.routeLocationIds.forEach((id) => {
+        if (seen.has(id)) return;
+        const location = locationById.get(id);
+        if (!location) return;
+        seen.add(id);
+        result.push(location);
+      });
+    });
+    return result;
+  }
+
+  /**
+   * 是否正在播放全程路线。
+   */
+  function isFullJourneyPlaybackActive() {
+    return isFullJourneyPlaying;
+  }
+
+  /**
+   * 通知外部全程播放状态已变更。
+   */
+  function notifyFullJourneyPlaybackChange() {
+    onFullJourneyPlaybackChange?.(isFullJourneyPlaying);
+  }
+
+  /**
+   * 取消全程播放（仅清理状态，不恢复视图）。
+   */
+  function cancelFullJourneyPlayback() {
+    isFullJourneyPlaying = false;
+    fullJourneyPlaybackContext = null;
+    cancelRouteAnimation();
+    hideLocationPreview();
+    clearPlaybackPreviewCards();
+    if (engine === "leaflet" && leafletMap?.stop) {
+      leafletMap.stop();
+    }
+    locationPreviewStageEl?.classList.remove("map-stage--journey-playing");
+    notifyFullJourneyPlaybackChange();
+  }
+
+  /**
+   * 停止全程播放并恢复全部旅程默认视图。
+   */
+  function stopFullJourneyPlayback() {
+    const wasPlaying = isFullJourneyPlaying;
+    cancelFullJourneyPlayback();
+    setFullJourneyHoverEnabled(true);
+    if (wasPlaying) {
+      runInstantUpdate(null, "", resolveDayView(null));
+    }
+  }
+
+  /**
+   * 读取全程播放时的聚焦缩放级别。
+   */
+  function getPlaybackFocusZoom() {
+    return Math.min(getFitMaxZoom(true), PLAYBACK_FOCUS_ZOOM);
+  }
+
+  /**
+   * 是否应跳过地图飞行动画（系统减少动效偏好）。
+   */
+  function prefersReducedMapMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  /**
+   * 按路线段时长计算平移镜头时长（秒，较短且恒定更顺滑）。
+   */
+  function getPlaybackSegmentPanSec(durationMs) {
+    return Math.min(
+      PLAYBACK_SEGMENT_PAN_MAX_SEC,
+      Math.max(PLAYBACK_SEGMENT_PAN_MIN_SEC, durationMs / 1700),
+    );
+  }
+
+  /**
+   * 计算两点经纬度平面距离（用于判断点位疏密）。
+   */
+  function computeCoordDistance(fromCoords, toCoords) {
+    if (!fromCoords || !toCoords) return 0;
+    const dx = toCoords[0] - fromCoords[0];
+    const dy = toCoords[1] - fromCoords[1];
+    return Math.hypot(dx, dy);
+  }
+
+  /**
+   * 根据点位疏密决定播放镜头缩放级别：近点自动临时放大。
+   */
+  function getPlaybackTargetZoomByDistance(distance) {
+    const base = getPlaybackFocusZoom();
+    const maxZoom = getFitMaxZoom(true);
+    if (distance <= 0.09) return Math.min(maxZoom, base + 2);
+    if (distance <= 0.2) return Math.min(maxZoom, base + 1);
+    if (distance >= 0.62) return Math.max(8, base - 0.6);
+    return base;
+  }
+
+  /**
+   * 计算某个地点播放时应使用的焦点缩放级别。
+   */
+  function getPlaybackLocationTargetZoom(routeLocations, index) {
+    const current = routeLocations[index];
+    if (!current) return getPlaybackFocusZoom();
+    const prev = routeLocations[index - 1];
+    const next = routeLocations[index + 1];
+    const dPrev = prev ? computeCoordDistance(prev.coordinates, current.coordinates) : Number.POSITIVE_INFINITY;
+    const dNext = next ? computeCoordDistance(current.coordinates, next.coordinates) : Number.POSITIVE_INFINITY;
+    const nearest = Math.min(dPrev, dNext);
+    return getPlaybackTargetZoomByDistance(nearest);
+  }
+
+  /**
+   * 计算某段路径播放时应使用的目标缩放级别。
+   */
+  function getPlaybackSegmentTargetZoom(from, to) {
+    return getPlaybackTargetZoomByDistance(computeCoordDistance(from?.coordinates, to?.coordinates));
+  }
+
+  /**
+   * 判断 Leaflet 目标点是否仍处于舒适视区内；在范围内则不移动相机。
+   */
+  function isLeafletPointInCameraComfortZone(latLng) {
+    if (!leafletMap) return true;
+    const point = leafletMap.latLngToContainerPoint(latLng);
+    const size = leafletMap.getSize();
+    const marginX = size.x * PLAYBACK_CAMERA_EDGE_RATIO;
+    const marginY = size.y * PLAYBACK_CAMERA_EDGE_RATIO;
+    return (
+      point.x >= marginX
+      && point.x <= size.x - marginX
+      && point.y >= marginY
+      && point.y <= size.y - marginY
+    );
+  }
+
+  /**
+   * 判断高德目标点是否仍处于舒适视区内；API 不可用时保守地触发平移。
+   */
+  function isAmapPointInCameraComfortZone(coords) {
+    if (!amap || typeof amap.lngLatToContainer !== "function") return false;
+    const point = amap.lngLatToContainer(coords);
+    const containerEl = amap.getContainer?.() || container;
+    const width = containerEl.clientWidth || window.innerWidth;
+    const height = containerEl.clientHeight || window.innerHeight;
+    const marginX = width * PLAYBACK_CAMERA_EDGE_RATIO;
+    const marginY = height * PLAYBACK_CAMERA_EDGE_RATIO;
+    return (
+      point.x >= marginX
+      && point.x <= width - marginX
+      && point.y >= marginY
+      && point.y <= height - marginY
+    );
+  }
+
+  /**
+   * 带滞后的缩放决策，避免相邻路段频繁放大/缩小造成顿挫。
+   */
+  function resolvePlaybackCameraZoom(currentZoom, targetZoom) {
+    if (targetZoom > currentZoom + 0.35) return targetZoom;
+    if (currentZoom - targetZoom > PLAYBACK_CAMERA_ZOOM_OUT_THRESHOLD) return targetZoom;
+    return currentZoom;
+  }
+
+  /**
+   * 创建并挂载播放预览卡片容器。
+   */
+  function ensurePlaybackPreviewLayer() {
+    if (playbackPreviewLayerEl) return;
+    locationPreviewStageEl = container.closest(".map-stage");
+    if (!locationPreviewStageEl) return;
+
+    playbackPreviewLayerEl = document.createElement("div");
+    playbackPreviewLayerEl.className = "map-playback-previews";
+    playbackPreviewLayerEl.setAttribute("aria-hidden", "true");
+    locationPreviewStageEl.appendChild(playbackPreviewLayerEl);
+  }
+
+  /**
+   * 计算同坐标预览卡的垂直错位偏移（避免完全重叠）。
+   */
+  function getPlaybackPreviewStackOffset(locationId) {
+    const location = locationById.get(locationId);
+    if (!location) return 0;
+
+    const coordKey = location.coordinates.join(",");
+    let stackIndex = 0;
+    let selfIndex = 0;
+
+    playbackPreviewCards.forEach((_, id) => {
+      const item = locationById.get(id);
+      if (!item || item.coordinates.join(",") !== coordKey) return;
+      if (id === locationId) selfIndex = stackIndex;
+      stackIndex += 1;
+    });
+
+    return selfIndex * 14;
+  }
+
+  /**
+   * 计算新预览卡的稳定偏移（播放期间保持不变，避免卡片漂移）。
+   */
+  function computePlaybackPreviewOffset(locationId) {
+    return { dx: 0, dy: getPlaybackPreviewStackOffset(locationId) };
+  }
+
+  /**
+   * 将单张播放预览卡定位到 marker 下方（使用稳定偏移）。
+   */
+  function positionPlaybackPreviewCard(cardEl, locationId) {
+    const anchor = getMarkerAnchorElement(locationId);
+    if (!anchor || !cardEl || !locationPreviewStageEl) return;
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const stageRect = locationPreviewStageEl.getBoundingClientRect();
+    const offset = playbackPreviewOffsets.get(locationId)
+      || { dx: 0, dy: getPlaybackPreviewStackOffset(locationId) };
+    const baseX = anchorRect.left + anchorRect.width / 2 - stageRect.left;
+    const baseY = anchorRect.bottom - stageRect.top;
+    const x = baseX + offset.dx;
+    const y = baseY + offset.dy;
+    cardEl.style.left = `${x}px`;
+    cardEl.style.top = `${y}px`;
+    cardEl.style.transform = "translate(-50%, 0)";
+    cardEl.dataset.previewX = String(x);
+    cardEl.dataset.previewY = String(y);
+  }
+
+  /**
+   * 合并更新所有播放预览卡位置（地图移动/缩放时）。
+   */
+  function scheduleAllPlaybackPreviewPositions() {
+    if (playbackPreviewPositionRaf) return;
+    const now = performance.now();
+    if (now - playbackPreviewLastPositionAt < PLAYBACK_PREVIEW_REPOSITION_MIN_MS) return;
+    playbackPreviewPositionRaf = window.requestAnimationFrame(() => {
+      playbackPreviewPositionRaf = 0;
+      playbackPreviewLastPositionAt = performance.now();
+      playbackPreviewCards.forEach((cardEl, locationId) => {
+        positionPlaybackPreviewCard(cardEl, locationId);
+      });
+    });
+  }
+
+  /**
+   * 地图移动时持续同步播放预览卡位置。
+   */
+  function attachPlaybackPreviewMapMoveListeners() {
+    if (playbackPreviewMapListenersAttached) return;
+    playbackPreviewMapMoveHandler = scheduleAllPlaybackPreviewPositions;
+    if (engine === "leaflet" && leafletMap) {
+      leafletMap.on("move zoom resize", playbackPreviewMapMoveHandler);
+    } else if (engine === "amap" && amap) {
+      amap.on("mapmove zoomchange resize", playbackPreviewMapMoveHandler);
+    }
+    playbackPreviewMapListenersAttached = true;
+  }
+
+  /**
+   * 播放结束后移除地图移动监听。
+   */
+  function detachPlaybackPreviewMapMoveListeners() {
+    if (!playbackPreviewMapListenersAttached || !playbackPreviewMapMoveHandler) return;
+    if (engine === "leaflet" && leafletMap) {
+      leafletMap.off("move zoom resize", playbackPreviewMapMoveHandler);
+    } else if (engine === "amap" && amap) {
+      amap.off("mapmove zoomchange resize", playbackPreviewMapMoveHandler);
+    }
+    playbackPreviewMapListenersAttached = false;
+    playbackPreviewMapMoveHandler = null;
+  }
+
+  /**
+   * 清空并移除所有播放预览卡。
+   */
+  function clearPlaybackPreviewCards() {
+    detachPlaybackPreviewMapMoveListeners();
+    if (playbackPreviewPositionRaf) {
+      window.cancelAnimationFrame(playbackPreviewPositionRaf);
+      playbackPreviewPositionRaf = 0;
+    }
+    playbackPreviewLastPositionAt = 0;
+    playbackPreviewCards.forEach((cardEl) => cardEl.remove());
+    playbackPreviewCards.clear();
+    playbackPreviewOffsets.clear();
+    playbackPreviewLayerEl?.remove();
+    playbackPreviewLayerEl = null;
+  }
+
+  /**
+   * 为地点追加一张播放预览卡（保留已显示的旧卡片）。
+   */
+  function addPlaybackLocationPreview(location) {
+    const photo = firstPhotoByLocationId.get(location.id);
+    if (!photo || playbackPreviewCards.has(location.id)) return;
+
+    ensurePlaybackPreviewLayer();
+    if (!playbackPreviewLayerEl) return;
+
+    const cardEl = document.createElement("div");
+    cardEl.className = "map-location-preview map-location-preview--playback-stack";
+    cardEl.dataset.locationId = location.id;
+    cardEl.setAttribute("role", "img");
+    cardEl.setAttribute("aria-label", photo.caption || location.name);
+    cardEl.innerHTML = `
+      <div class="map-location-preview__media">
+        <img class="map-location-preview__img" alt="" decoding="async" loading="lazy" />
+      </div>
+      <span class="map-location-preview__caption"></span>`;
+
+    const img = cardEl.querySelector(".map-location-preview__img");
+    const caption = cardEl.querySelector(".map-location-preview__caption");
+    img.src = photo.thumb || photo.src;
+    img.alt = photo.caption || location.name;
+    caption.textContent = photo.caption || location.name;
+
+    playbackPreviewLayerEl.appendChild(cardEl);
+    playbackPreviewCards.set(location.id, cardEl);
+    playbackPreviewOffsets.set(location.id, computePlaybackPreviewOffset(location.id));
+    scheduleAllPlaybackPreviewPositions();
+    window.requestAnimationFrame(() => cardEl.classList.add("is-visible"));
+    attachPlaybackPreviewMapMoveListeners();
+  }
+
+  /**
+   * 等待 Leaflet 飞行动画结束。
+   */
+  function waitLeafletMoveEnd(token, timeoutMs) {
+    return new Promise((resolve) => {
+      if (token !== routeAnimationToken || !leafletMap) {
+        resolve(false);
+        return;
+      }
+
+      let settled = false;
+
+      /**
+       * 结束等待并返回是否仍在播放。
+       */
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        leafletMap.off("moveend", onEnd);
+        window.clearTimeout(timer);
+        resolve(ok && token === routeAnimationToken);
+      }
+
+      /**
+       * moveend 回调。
+       */
+      function onEnd() {
+        finish(true);
+      }
+
+      leafletMap.once("moveend", onEnd);
+      const timer = window.setTimeout(() => finish(true), timeoutMs);
+    });
+  }
+
+  /**
+   * Leaflet：平滑飞到单个地点。
+   */
+  async function flyLeafletToLocation(location, token, targetZoom = getPlaybackFocusZoom()) {
+    if (!leafletMap) return false;
+
+    const ll = toLatLng(location.coordinates);
+    const zoom = Math.min(getFitMaxZoom(true), targetZoom);
+
+    if (prefersReducedMapMotion()) {
+      leafletMap.setView(ll, zoom, { animate: false });
+      return token === routeAnimationToken;
+    }
+
+    leafletMap.flyTo(ll, zoom, {
+      duration: PLAYBACK_POINT_FLY_SEC,
+      easeLinearity: 0.22,
+    });
+    return waitLeafletMoveEnd(token, PLAYBACK_POINT_FLY_SEC * 1000 + 140);
+  }
+
+  /**
+   * Leaflet：沿路线段平滑移动视野。
+   */
+  async function flyLeafletAlongSegment(from, to, durationMs, token) {
+    if (!leafletMap) return false;
+    if (durationMs <= PLAYBACK_SHORT_SEGMENT_MS) return token === routeAnimationToken;
+
+    const toLL = toLatLng(to.coordinates);
+    const panSec = getPlaybackSegmentPanSec(durationMs);
+    const targetZoom = getPlaybackSegmentTargetZoom(from, to);
+    const currentZoom = leafletMap.getZoom();
+    const cameraZoom = resolvePlaybackCameraZoom(currentZoom, targetZoom);
+    const needZoomAdjust = Math.abs(currentZoom - cameraZoom) >= 0.35;
+    const shouldPan = !isLeafletPointInCameraComfortZone(toLL);
+
+    if (!needZoomAdjust && !shouldPan) return token === routeAnimationToken;
+
+    if (prefersReducedMapMotion()) {
+      leafletMap.setView(toLL, cameraZoom, { animate: false });
+      return token === routeAnimationToken;
+    }
+
+    /**
+     * 分段过程中优先只平移；只有点位太近需要拉开时才临时调整缩放。
+     */
+    if (needZoomAdjust) {
+      leafletMap.setView(toLL, cameraZoom, {
+        animate: true,
+        duration: panSec,
+        easeLinearity: 0.2,
+        noMoveStart: true,
+      });
+    } else {
+      leafletMap.panTo(toLL, {
+        animate: true,
+        duration: panSec,
+        easeLinearity: 0.16,
+        noMoveStart: true,
+      });
+    }
+    return waitLeafletMoveEnd(token, panSec * 1000 + 120);
+  }
+
+  /**
+   * 高德：平滑飞到单个地点。
+   */
+  async function flyAmapToLocation(location, token, targetZoom = getPlaybackFocusZoom()) {
+    if (!amap) return false;
+
+    const waitMs = prefersReducedMapMotion() ? 0 : PLAYBACK_POINT_FLY_SEC * 1000;
+    amap.setZoomAndCenter(Math.min(getFitMaxZoom(true), targetZoom), location.coordinates, waitMs === 0);
+    if (waitMs === 0) return token === routeAnimationToken;
+
+    return new Promise((resolve) => {
+      window.setTimeout(() => resolve(token === routeAnimationToken), waitMs + 80);
+    });
+  }
+
+  /**
+   * 高德：沿路线段平滑移动视野。
+   */
+  async function flyAmapAlongSegment(from, to, durationMs, token) {
+    if (!amap) return false;
+    if (durationMs <= PLAYBACK_SHORT_SEGMENT_MS) return token === routeAnimationToken;
+
+    const waitMs = prefersReducedMapMotion() ? 0 : getPlaybackSegmentPanSec(durationMs) * 1000;
+    const target = to.coordinates;
+    if (!target) return token === routeAnimationToken;
+    const targetZoom = getPlaybackSegmentTargetZoom(from, to);
+    const currentZoom = amap.getZoom ? Number(amap.getZoom()) : targetZoom;
+    const cameraZoom = Number.isFinite(currentZoom)
+      ? resolvePlaybackCameraZoom(currentZoom, targetZoom)
+      : targetZoom;
+    const needZoomAdjust = Number.isFinite(currentZoom) && Math.abs(currentZoom - cameraZoom) >= 0.35;
+    const shouldPan = !isAmapPointInCameraComfortZone(target);
+    if (!needZoomAdjust && !shouldPan) return token === routeAnimationToken;
+    if (waitMs === 0) {
+      amap.setZoomAndCenter(cameraZoom, target, true);
+      return token === routeAnimationToken;
+    }
+
+    /**
+     * 高德分段同样只做平移，不在每段重算缩放，保持顺滑且省性能。
+     */
+    if (needZoomAdjust) {
+      amap.setZoomAndCenter(cameraZoom, target, false);
+    } else if (typeof amap.panTo === "function") {
+      amap.panTo(target);
+    } else {
+      amap.setCenter(target);
+    }
+    if (waitMs === 0) return token === routeAnimationToken;
+
+    return new Promise((resolve) => {
+      window.setTimeout(() => resolve(token === routeAnimationToken), waitMs + 80);
+    });
+  }
+
+  /**
+   * 按引擎平滑聚焦到单个地点。
+   */
+  async function flyMapToLocation(location, token, targetZoom = getPlaybackFocusZoom()) {
+    if (engine === "leaflet") return flyLeafletToLocation(location, token, targetZoom);
+    if (engine === "amap") return flyAmapToLocation(location, token, targetZoom);
+    return token === routeAnimationToken;
+  }
+
+  /**
+   * 按引擎沿路线段平滑移动视野（与绘线并行）。
+   */
+  async function flyMapAlongSegment(from, to, durationMs, token) {
+    if (engine === "leaflet") return flyLeafletAlongSegment(from, to, durationMs, token);
+    if (engine === "amap") return flyAmapAlongSegment(from, to, durationMs, token);
+    return token === routeAnimationToken;
+  }
+
+  /**
+   * 初始化全程播放时的底图与 marker 状态。
+   */
+  function prepareFullJourneyPlaybackMap(routeLocations, routeIds, color) {
+    setFullJourneyHoverEnabled(false);
+    hideLocationPreview();
+    clearPlaybackPreviewCards();
+    locationPreviewStageEl?.classList.add("map-stage--journey-playing");
+
+    const revealedIds = new Set();
+    fullJourneyPlaybackContext = {
+      routeIds,
+      revealedIds,
+      selectedLocationId: "",
+      color,
+    };
+
+    if (engine === "leaflet") {
+      leafletActiveRoute.setStyle({ color });
+      leafletActiveRoute.setLatLngs([]);
+      leafletAnimSegment?.setStyle({ color });
+      leafletAnimSegment?.setLatLngs([]);
+      leafletFullRoute?.setStyle(getFullRouteStyle(false));
+      syncMarkersForRouteAnimation(routeIds, revealedIds, "");
+      return;
+    }
+
+    if (engine === "amap") {
+      amapActiveRoute.setOptions({ path: [], strokeColor: color });
+      amapAnimSegment?.setOptions({ path: [], strokeColor: color });
+      amapFullRoute?.setOptions(getFullRouteStyle(false));
+      syncMarkersForRouteAnimation(routeIds, revealedIds, "");
+      return;
+    }
+
+    if (engine === "svg" && fallbackLayer) {
+      mountSvgFullJourneyPlaybackLayer(routeLocations, routeIds, revealedIds, color, "");
+      syncMarkersForRouteAnimation(routeIds, revealedIds, "");
+    }
+  }
+
+  /**
+   * Leaflet：全程逐点播放并逐段连线。
+   */
+  async function animateLeafletFullJourney(token, routeLocations, routeIds, color) {
+    const revealedIds = fullJourneyPlaybackContext.revealedIds;
+
+    for (let index = 0; index < routeLocations.length; index += 1) {
+      if (token !== routeAnimationToken) return;
+
+      const location = routeLocations[index];
+      revealedIds.add(location.id);
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(location.id, routeIds, revealedIds, ""),
+        "",
+        true,
+      );
+
+      const completedPath = routeLocations
+        .slice(0, index + 1)
+        .map((item) => toLatLng(item.coordinates));
+      leafletActiveRoute.setLatLngs(completedPath);
+
+      addPlaybackLocationPreview(location);
+
+      if (index === 0) {
+        const targetZoom = getPlaybackLocationTargetZoom(routeLocations, index);
+        const focusOk = await flyMapToLocation(location, token, targetZoom);
+        if (!focusOk) return;
+      } else {
+        scheduleAllPlaybackPreviewPositions();
+      }
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(location.id, routeIds, revealedIds, ""),
+        "",
+        false,
+      );
+
+      if (index >= routeLocations.length - 1) continue;
+
+      const from = routeLocations[index];
+      const to = routeLocations[index + 1];
+      const fromLL = toLatLng(from.coordinates);
+      const toLL = toLatLng(to.coordinates);
+      const duration = computeSegmentDurationForAnimation(from.coordinates, to.coordinates);
+
+      /**
+       * 将本段终点并入主路线折线。
+       */
+      function commitSegmentToActiveRoute() {
+        const currentPath = leafletActiveRoute.getLatLngs();
+        leafletActiveRoute.setLatLngs([...currentPath, toLL]);
+        leafletAnimSegment.setLatLngs([]);
+      }
+
+      const cameraOk = await flyMapAlongSegment(from, to, duration, token);
+      if (!cameraOk) return;
+      await runRouteSegmentAnimation(
+        token,
+        duration,
+        (progress) => {
+          const lat = fromLL[0] + (toLL[0] - fromLL[0]) * progress;
+          const lng = fromLL[1] + (toLL[1] - fromLL[1]) * progress;
+          leafletAnimSegment.setLatLngs([fromLL, [lat, lng]]);
+        },
+        commitSegmentToActiveRoute,
+      );
+    }
+  }
+
+  /**
+   * 高德：全程逐点播放并逐段连线。
+   */
+  async function animateAmapFullJourney(token, routeLocations, routeIds, color) {
+    const revealedIds = fullJourneyPlaybackContext.revealedIds;
+
+    for (let index = 0; index < routeLocations.length; index += 1) {
+      if (token !== routeAnimationToken) return;
+
+      const location = routeLocations[index];
+      revealedIds.add(location.id);
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(location.id, routeIds, revealedIds, ""),
+        "",
+        true,
+      );
+
+      const completedPath = routeLocations
+        .slice(0, index + 1)
+        .map((item) => item.coordinates);
+      amapActiveRoute.setOptions({ path: completedPath, strokeColor: color });
+
+      addPlaybackLocationPreview(location);
+
+      if (index === 0) {
+        const targetZoom = getPlaybackLocationTargetZoom(routeLocations, index);
+        const focusOk = await flyMapToLocation(location, token, targetZoom);
+        if (!focusOk) return;
+      } else {
+        scheduleAllPlaybackPreviewPositions();
+      }
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(location.id, routeIds, revealedIds, ""),
+        "",
+        false,
+      );
+
+      if (index >= routeLocations.length - 1) continue;
+
+      const from = routeLocations[index];
+      const to = routeLocations[index + 1];
+      const duration = computeSegmentDurationForAnimation(from.coordinates, to.coordinates);
+
+      /**
+       * 将本段终点并入主路线。
+       */
+      function commitSegmentToActiveRoute() {
+        const currentPath = amapActiveRoute.getPath() || [];
+        amapActiveRoute.setOptions({ path: [...currentPath, to.coordinates] });
+        amapAnimSegment.setOptions({ path: [] });
+      }
+
+      const cameraOk = await flyMapAlongSegment(from, to, duration, token);
+      if (!cameraOk) return;
+      await runRouteSegmentAnimation(
+        token,
+        duration,
+        (progress) => {
+          const lng = from.coordinates[0] + (to.coordinates[0] - from.coordinates[0]) * progress;
+          const lat = from.coordinates[1] + (to.coordinates[1] - from.coordinates[1]) * progress;
+          amapAnimSegment.setOptions({ path: [from.coordinates, [lng, lat]] });
+        },
+        commitSegmentToActiveRoute,
+      );
+    }
+  }
+
+  /**
+   * 构建 SVG 全程播放层（底图 + 分段路径 + 点位）。
+   */
+  function mountSvgFullJourneyPlaybackLayer(
+    routeLocations,
+    routeIds,
+    revealedIds,
+    color,
+    selectedLocationId,
+  ) {
+    const points = buildProjectedPoints();
+    const allPath = buildPathD(allRoutePath.map(([lng, lat]) => project(lng, lat)));
+    const segmentPaths = routeLocations.slice(0, -1).map((from, index) => ({
+      index,
+      d: buildSegmentPathD(from, routeLocations[index + 1]),
+      duration: computeSegmentDurationForAnimation(
+        from.coordinates,
+        routeLocations[index + 1].coordinates,
+      ),
+    }));
+
+    fallbackLayer.innerHTML = `
+      <svg class="fallback-map__svg" viewBox="0 0 1000 620" role="img" aria-label="旅行俯视路线图">
+        <defs>
+          <filter id="routeGlow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <path class="fallback-map__route fallback-map__route--full" d="${allPath}" style="${getSvgFullRouteStyle(false)}" />
+        ${segmentPaths
+          .map(
+            ({ index, d }) => `
+          <path class="fallback-map__route fallback-map__route--active fallback-map__route--segment"
+            data-segment="${index}"
+            pathLength="1"
+            d="${d}"
+            style="--route-color:${color}" />`,
+          )
+          .join("")}
+      </svg>
+      <div class="fallback-map__points">
+        ${points
+          .map(({ location, x, y }) => {
+            const markerState = resolveRouteMarkerState(
+              location.id,
+              routeIds,
+              revealedIds,
+              selectedLocationId,
+            );
+            const showLabel =
+              overlapMeta.showLabel.get(location.id) || location.id === selectedLocationId;
+            const labelHTML = showLabel
+              ? `<small class="map-point__label">${location.name}</small>`
+              : "";
+            return `
+              <button class="map-point map-point--${markerState}" type="button"
+                style="--x:${x}%;--y:${y}%;--tone:${color};z-index:${getMarkerZIndexOffset(location.id, markerState)}"
+                data-location-id="${location.id}" aria-label="查看${location.name}">
+                <span></span>${labelHTML}
+              </button>`;
+          })
+          .join("")}
+      </div>`;
+
+    fallbackLayer.querySelectorAll("[data-location-id]").forEach((button) => {
+      button.addEventListener("click", () => onSelectLocation(button.dataset.locationId));
+    });
+
+    return segmentPaths;
+  }
+
+  /**
+   * SVG：全程逐点播放并逐段连线。
+   */
+  async function animateSvgFullJourney(token, routeLocations, routeIds, color) {
+    if (!fallbackLayer) return;
+
+    const revealedIds = fullJourneyPlaybackContext.revealedIds;
+    const segmentPaths = mountSvgFullJourneyPlaybackLayer(
+      routeLocations,
+      routeIds,
+      revealedIds,
+      color,
+      "",
+    );
+
+    for (let index = 0; index < routeLocations.length; index += 1) {
+      if (token !== routeAnimationToken) return;
+
+      const location = routeLocations[index];
+      revealedIds.add(location.id);
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(location.id, routeIds, revealedIds, ""),
+        "",
+        true,
+      );
+
+      addPlaybackLocationPreview(location);
+
+      const revealOk = await waitPointReveal(token, 280);
+      if (!revealOk) return;
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(location.id, routeIds, revealedIds, ""),
+        "",
+        false,
+      );
+      scheduleAllPlaybackPreviewPositions();
+
+      if (index >= routeLocations.length - 1) continue;
+
+      const segment = segmentPaths[index];
+      const segmentRunning = await waitSvgSegmentDraw(segment.index, segment.duration, token);
+      if (!segmentRunning) return;
+      scheduleAllPlaybackPreviewPositions();
+    }
+  }
+
+  /**
+   * 执行全程路线播放动画序列。
+   */
+  async function animateFullJourneyPlayback(token) {
+    const routeLocations = buildAllRouteLocations();
+    if (!routeLocations.length) return;
+
+    const routeIds = routeLocations.map((location) => location.id);
+    const color = TONE_COLORS.blackGold;
+
+    prepareFullJourneyPlaybackMap(routeLocations, routeIds, color);
+
+    if (engine === "leaflet") {
+      await animateLeafletFullJourney(token, routeLocations, routeIds, color);
+    } else if (engine === "amap") {
+      await animateAmapFullJourney(token, routeLocations, routeIds, color);
+    } else {
+      await animateSvgFullJourney(token, routeLocations, routeIds, color);
+    }
+  }
+
+  /**
+   * 开始全程路线播放；播放中再次调用则停止。
+   */
+  function startFullJourneyPlayback() {
+    if (isFullJourneyPlaying) {
+      stopFullJourneyPlayback();
+      return;
+    }
+
+    const routeLocations = buildAllRouteLocations();
+    if (!routeLocations.length) return;
+
+    cancelRouteAnimation();
+    isFullJourneyPlaying = true;
+    notifyFullJourneyPlaybackChange();
+    const token = routeAnimationToken;
+
+    animateFullJourneyPlayback(token).finally(() => {
+      if (token !== routeAnimationToken || !isFullJourneyPlaying) return;
+      stopFullJourneyPlayback();
+    });
+  }
+
+  /**
+   * 根据当前日期与选中地点刷新地图状态。
+   */
+  function update(activeDay, selectedLocationId) {
+    if (isFullJourneyPlaying && activeDay) {
+      stopFullJourneyPlayback();
+    }
+
+    const view = resolveDayView(activeDay);
+
+    if (!activeDay || view.fitAll) {
+      cancelRouteAnimation();
+      if (!activeDay) lastAnimatedDate = null;
+      if (isFullJourneyPlaying) return;
+      runInstantUpdate(activeDay, selectedLocationId, view);
+      return;
+    }
+
+    if (isRouteAnimating && activeDay.date === lastAnimatedDate) {
+      refreshRouteSelection(selectedLocationId);
+      return;
+    }
+
+    const animationMode = getRouteAnimationMode();
+    const shouldAnimate =
+      animationMode !== "instant"
+      && activeDay.date !== lastAnimatedDate
+      && view.activePath.length > 0;
+
+    cancelRouteAnimation();
+    lastAnimatedDate = activeDay.date;
+
+    if (!shouldAnimate) {
+      runInstantUpdate(activeDay, selectedLocationId, view);
+      return;
+    }
+
+    isRouteAnimating = true;
+    const token = routeAnimationToken;
+    animationContext = {
+      activeDay,
+      selectedLocationId,
+      view,
+      routeIds: activeDay.routeLocationIds,
+      revealedIds: new Set(),
+    };
+
+    runRouteAnimation(activeDay, selectedLocationId, view, token, animationMode).finally(() => {
+      if (token === routeAnimationToken) {
+        isRouteAnimating = false;
+        animationContext = null;
+      }
+    });
+  }
+
+  /**
+   * 按全部地点坐标计算地理边界（支持川藏线以外的任意地点）。
+   */
+  function computeGeoBounds(coordinatesList, ratio) {
+    const valid = coordinatesList.filter(
+      (coords) => Array.isArray(coords) && coords.length === 2 && coords.every(Number.isFinite),
+    );
+    if (!valid.length) {
+      return { minLng: -180, maxLng: 180, minLat: -85, maxLat: 85 };
+    }
+
+    const lngs = valid.map((coords) => coords[0]);
+    const lats = valid.map((coords) => coords[1]);
+    let minLng = Math.min(...lngs);
+    let maxLng = Math.max(...lngs);
+    let minLat = Math.min(...lats);
+    let maxLat = Math.max(...lats);
+    const lngPad = Math.max((maxLng - minLng) * ratio, 0.35);
+    const latPad = Math.max((maxLat - minLat) * ratio, 0.35);
+
+    if (minLng === maxLng) {
+      minLng -= lngPad;
+      maxLng += lngPad;
+    }
+    if (minLat === maxLat) {
+      minLat -= latPad;
+      maxLat += latPad;
+    }
+
+    return {
+      minLng: minLng - lngPad,
+      maxLng: maxLng + lngPad,
+      minLat: minLat - latPad,
+      maxLat: maxLat + latPad,
+    };
+  }
+
+  /**
+   * 将 [lng, lat] 转为 Leaflet 使用的 [lat, lng]。
+   */
+  function toLatLng(coords) {
+    return [coords[1], coords[0]];
+  }
+
+  /**
+   * 读取地图视野边距配置（top, right, bottom, left）。
+   */
+  function getFitPaddingArray(useFullJourney = false) {
+    if (useFullJourney) {
+      const compactDefault = [40, 40, 56, 40];
+      const configured = Array.isArray(mapConfig.fitPaddingFullJourney)
+        ? mapConfig.fitPaddingFullJourney
+        : compactDefault;
+      return compactDefault.map((fallback, index) => {
+        const value = Number(configured[index]);
+        return Math.min(Number.isFinite(value) ? value : fallback, fallback);
+      });
+    }
+    return mapConfig.fitPadding || [80, 460, 120, 80];
+  }
+
+  /**
+   * 读取视野最大缩放级别；全程模式稍微放大，让路线默认更贴近屏幕。
+   */
+  function getFitMaxZoom(useFullJourney = false) {
+    const configured = Number(mapConfig.fitMaxZoom);
+    const fallback = useFullJourney ? 12 : 11;
+    const zoom = Number.isFinite(configured) ? configured : fallback;
+    return useFullJourney ? Math.max(zoom, 12) : zoom;
+  }
+
+  /**
+   * 生成全程路线样式；总览模式沿用每日高亮路线的实线视觉。
+   */
+  function getFullRouteStyle(isFullJourney = false) {
+    const fullStyle = mapConfig.routes?.full || {};
+    const activeStyle = mapConfig.routes?.active || {};
+    return {
+      color: isFullJourney
+        ? TONE_COLORS.blackGold
+        : (fullStyle.color || "rgba(244, 234, 216, 0.16)"),
+      weight: isFullJourney ? (activeStyle.weight ?? 6) : (fullStyle.weight ?? 3),
+      opacity: isFullJourney
+        ? (activeStyle.opacity ?? 0.55)
+        : (fullStyle.opacity ?? 0.22),
+      dashArray: isFullJourney ? null : (fullStyle.dashArray || "10 14"),
+      strokeStyle: isFullJourney ? "solid" : "dashed",
+      lineCap: "round",
+      lineJoin: "round",
+    };
+  }
+
+  /**
+   * 生成 SVG 降级地图的全程底线内联样式。
+   */
+  function getSvgFullRouteStyle(isFullJourney = false) {
+    const style = getFullRouteStyle(isFullJourney);
+    const dash = style.dashArray ? `;stroke-dasharray:${style.dashArray}` : "";
+    return `stroke:${style.color};stroke-width:${style.weight};stroke-opacity:${style.opacity}${dash}`;
+  }
+
+  /**
+   * 将 fitPadding 转为 Leaflet padding 选项；全部旅程时不为右侧浮窗预留空白。
+   */
+  function getFitPadding(useFullJourney = false) {
+    const pad = getFitPaddingArray(useFullJourney);
+    return {
+      paddingTopLeft: [pad[3] ?? 72, pad[0] ?? 72],
+      paddingBottomRight: [pad[1] ?? 72, pad[2] ?? 96],
+    };
+  }
+
+  /**
+   * 动态加载外部脚本。
+   */
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-src="${src}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === "true") {
+          resolve();
+          return;
+        }
+        existing.addEventListener("load", () => resolve());
+        existing.addEventListener("error", () => reject(new Error(`Failed: ${src}`)));
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.dataset.src = src;
+      script.onload = () => {
+        script.dataset.loaded = "true";
+        resolve();
+      };
+      script.onerror = () => reject(new Error(`Failed: ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  /**
+   * 动态加载 Leaflet 样式表。
+   */
+  function loadStylesheet(href) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`link[data-href="${href}"]`)) {
+        resolve();
+        return;
+      }
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.dataset.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error(`Failed: ${href}`));
+      document.head.appendChild(link);
+    });
+  }
+
+  /**
+   * 加载 Leaflet 库与样式。
+   */
+  async function ensureLeaflet() {
+    await loadStylesheet("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
+    await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
+    if (!window.L) {
+      throw new Error("Leaflet 未加载");
+    }
+  }
+
+  /**
+   * 按 map.json 的 activeStyle 创建瓦片图层。
+   */
+  function createTileLayer() {
+    const styleKey = mapConfig.activeStyle || "cinematic-dark";
+    const style = mapConfig.styles?.[styleKey] || mapConfig.styles?.["cinematic-dark"];
+    if (!style) {
+      throw new Error(`未找到地图样式：${styleKey}`);
+    }
+
+    container.dataset.mapStyle = styleKey;
+    return window.L.tileLayer(style.tileUrl, {
+      attribution: style.attribution,
+      subdomains: style.subdomains,
+      maxZoom: style.maxZoom ?? 19,
+      className: style.tileClass || "",
+    });
+  }
+
+  /**
+   * 初始化 Leaflet 地图（默认、免 Key）。
+   */
+  async function initLeaflet() {
+    await ensureLeaflet();
+    container.innerHTML = "";
+    container.classList.add("map-canvas--leaflet");
+
+    leafletMap = window.L.map(container, {
+      zoomControl: false,
+      attributionControl: true,
+      preferCanvas: true,
+    });
+
+    leafletTileLayer = createTileLayer();
+    leafletTileLayer.addTo(leafletMap);
+
+    const allPath = allRoutePath.map(toLatLng);
+    const fullStyle = getFullRouteStyle(false);
+    leafletFullRoute = window.L.polyline(allPath, {
+      ...fullStyle,
+    }).addTo(leafletMap);
+
+    leafletActiveRoute = window.L.polyline([], {
+      color: TONE_COLORS.blackGold,
+      weight: mapConfig.routes?.active?.weight ?? 6,
+      opacity: mapConfig.routes?.active?.opacity ?? 0.55,
+    }).addTo(leafletMap);
+
+    leafletAnimSegment = window.L.polyline([], {
+      color: TONE_COLORS.blackGold,
+      weight: mapConfig.routes?.active?.weight ?? 6,
+      opacity: mapConfig.routes?.active?.opacity ?? 0.55,
+    }).addTo(leafletMap);
+
+    locations.forEach((location) => {
+      const marker = window.L.marker(toLatLng(location.coordinates), {
+        icon: leafletMarkerIcon(location, "dimmed"),
+        zIndexOffset: getMarkerZIndexOffset(location.id, "dimmed"),
+      });
+      marker.on("click", () => onSelectLocation(location.id));
+      leafletMarkers.set(location.id, marker);
+      marker.addTo(leafletMap);
+    });
+
+    bindPreviewHoverDelegation();
+
+    const bounds = window.L.latLngBounds([
+      [geoBounds.minLat, geoBounds.minLng],
+      [geoBounds.maxLat, geoBounds.maxLng],
+    ]);
+    leafletMap.fitBounds(bounds, {
+      ...getFitPadding(true),
+      maxZoom: getFitMaxZoom(true),
+    });
+  }
+
+  /**
+   * 立即刷新 Leaflet 路线、点位与视野。
+   */
+  function updateLeafletInstant(activeDay, selectedLocationId, view) {
+    const pathLatLngs = view.activePath.map((location) => toLatLng(location.coordinates));
+
+    leafletMap.invalidateSize({ animate: false });
+
+    leafletActiveRoute.setStyle({ color: view.color });
+    leafletActiveRoute.setLatLngs(pathLatLngs);
+    leafletAnimSegment?.setLatLngs([]);
+    leafletFullRoute?.setStyle(getFullRouteStyle(view.fitAll));
+
+    locations.forEach((location) => {
+      const markerState = selectedLocationId === location.id
+        ? "selected"
+        : view.activeIds.has(location.id)
+          ? "active"
+          : "dimmed";
+      syncMarkerState(location, markerState, selectedLocationId, false);
+    });
+
+    if (view.fitAll) {
+      const allLatLngs = locations.map((location) => toLatLng(location.coordinates));
+      if (allLatLngs.length > 1) {
+        leafletMap.fitBounds(window.L.latLngBounds(allLatLngs), {
+          ...getFitPadding(true),
+          maxZoom: getFitMaxZoom(true),
+          animate: false,
+        });
+      }
+      return;
+    }
+
+    if (pathLatLngs.length > 1) {
+      leafletMap.fitBounds(window.L.latLngBounds(pathLatLngs), {
+        ...getFitPadding(false),
+        maxZoom: getFitMaxZoom(false),
+        animate: false,
+      });
+      return;
+    }
+
+    if (pathLatLngs.length === 1) {
+      leafletMap.setView(pathLatLngs[0], Math.max(leafletMap.getZoom(), 8), { animate: false });
+    }
+  }
+
+  /**
+   * 将 Leaflet 路线视野对齐到当日路径（无平移动画，降低切换日期时 CPU）。
+   */
+  function fitLeafletToRoute(routeLocations, useFullJourneyPadding = false) {
+    const pathLatLngs = routeLocations.map((location) => toLatLng(location.coordinates));
+    if (pathLatLngs.length > 1) {
+      leafletMap.fitBounds(window.L.latLngBounds(pathLatLngs), {
+        ...getFitPadding(useFullJourneyPadding),
+        maxZoom: getFitMaxZoom(useFullJourneyPadding),
+        animate: false,
+      });
+      return;
+    }
+    if (pathLatLngs.length === 1) {
+      leafletMap.setView(pathLatLngs[0], Math.max(leafletMap.getZoom(), 8), { animate: false });
+    }
+  }
+
+  /**
+   * Leaflet 轻量路线入场：分步绘线，无 rAF 循环。
+   */
+  async function animateLeafletRouteLight(activeDay, selectedLocationId, view, token) {
+    await animateLeafletRoute(activeDay, selectedLocationId, view, token);
+  }
+
+  /**
+   * Leaflet 路线入场：逐点点亮并逐段绘制连线。
+   */
+  async function animateLeafletRoute(activeDay, selectedLocationId, view, token) {
+    const routeLocations = view.activePath;
+    const routeIds = activeDay.routeLocationIds;
+    const revealedIds = animationContext.revealedIds;
+    const color = view.color;
+
+    leafletActiveRoute.setStyle({ color });
+    leafletActiveRoute.setLatLngs([]);
+    leafletAnimSegment.setStyle({ color });
+    leafletAnimSegment.setLatLngs([]);
+
+    syncMarkersForRouteAnimation(routeIds, revealedIds, selectedLocationId);
+    fitLeafletToRoute(routeLocations);
+
+    for (let index = 0; index < routeLocations.length; index += 1) {
+      if (token !== routeAnimationToken) return;
+
+      const location = routeLocations[index];
+      revealedIds.add(location.id);
+
+      const markerState = resolveRouteMarkerState(
+        location.id,
+        routeIds,
+        revealedIds,
+        animationContext.selectedLocationId,
+      );
+      syncMarkerState(location, markerState, animationContext.selectedLocationId, true);
+
+      const completedPath = routeLocations
+        .slice(0, index + 1)
+        .map((item) => toLatLng(item.coordinates));
+      leafletActiveRoute.setLatLngs(completedPath);
+
+      const stillRunning = await waitPointReveal(token);
+      if (!stillRunning) return;
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(
+          location.id,
+          routeIds,
+          revealedIds,
+          animationContext.selectedLocationId,
+        ),
+        animationContext.selectedLocationId,
+        false,
+      );
+
+      if (index >= routeLocations.length - 1) continue;
+
+      const from = routeLocations[index];
+      const to = routeLocations[index + 1];
+      const fromLL = toLatLng(from.coordinates);
+      const toLL = toLatLng(to.coordinates);
+      const duration = computeSegmentDurationForAnimation(from.coordinates, to.coordinates);
+
+      /**
+       * 收尾：将本段终点并入 Leaflet 主路线。
+       */
+      function commitSegmentToActiveRoute() {
+        const currentPath = leafletActiveRoute.getLatLngs();
+        leafletActiveRoute.setLatLngs([...currentPath, toLL]);
+        leafletAnimSegment.setLatLngs([]);
+      }
+
+      if (getRouteAnimationMode() === "light") {
+        await runLeafletCssSegmentAnimation(
+          token,
+          fromLL,
+          toLL,
+          color,
+          duration,
+          commitSegmentToActiveRoute,
+        );
+      } else {
+        await runRouteSegmentAnimation(
+          token,
+          duration,
+          (progress) => {
+            const lat = fromLL[0] + (toLL[0] - fromLL[0]) * progress;
+            const lng = fromLL[1] + (toLL[1] - fromLL[1]) * progress;
+            leafletAnimSegment.setLatLngs([fromLL, [lat, lng]]);
+          },
+          commitSegmentToActiveRoute,
+        );
+      }
+    }
+  }
+
+  /**
+   * 生成 Leaflet 自定义 marker 图标。
+   */
+  function leafletMarkerIcon(location, state, selectedLocationId = "", revealing = false) {
+    return window.L.divIcon({
+      className: `leaflet-location-marker leaflet-location-marker--${state}${revealing ? " leaflet-location-marker--revealing" : ""}`,
+      html: markerHTML(location, state, selectedLocationId, { revealing }),
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+  }
+
+  /**
+   * 通过 CDN 加载高德地图（仅在 provider=amap 且配置了 key 时使用）。
+   */
+  function loadAmapApi(key) {
+    const securityCode = mapConfig.amap?.securityCode;
+    if (securityCode) {
+      window._AMapSecurityConfig = { securityJsCode: securityCode };
+    }
+
+    return new Promise((resolve, reject) => {
+      if (window.AMap) {
+        resolve(window.AMap);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}`;
+      script.async = true;
+      script.onload = () => (window.AMap ? resolve(window.AMap) : reject(new Error("AMap 未就绪")));
+      script.onerror = () => reject(new Error("高德脚本加载失败"));
+      document.head.appendChild(script);
+    });
+  }
+
+  /**
+   * 初始化高德地图（可选）。
+   */
+  async function initAmap() {
+    AMapApi = await loadAmapApi(mapConfig.amap.key);
+    container.innerHTML = "";
+    container.classList.remove("map-canvas--leaflet");
+
+    amap = new AMapApi.Map(container, {
+      viewMode: "2D",
+      zoom: 5.2,
+      center: [
+        (geoBounds.minLng + geoBounds.maxLng) / 2,
+        (geoBounds.minLat + geoBounds.maxLat) / 2,
+      ],
+      mapStyle: mapConfig.amap?.mapStyle || "amap://styles/dark",
+      features: ["bg", "road", "point"],
+    });
+
+    const allPath = allRoutePath;
+    const fullStyle = getFullRouteStyle(false);
+    amapFullRoute = new AMapApi.Polyline({
+      path: allPath,
+      strokeColor: fullStyle.color,
+      strokeWeight: fullStyle.weight,
+      strokeOpacity: fullStyle.opacity,
+      strokeStyle: "dashed",
+      lineJoin: "round",
+      lineCap: "round",
+      zIndex: 8,
+    });
+    amap.add(amapFullRoute);
+
+    amapActiveRoute = new AMapApi.Polyline({
+      path: [],
+      strokeColor: TONE_COLORS.blackGold,
+      strokeWeight: mapConfig.routes?.active?.weight ?? 6,
+      strokeOpacity: mapConfig.routes?.active?.opacity ?? 0.55,
+      lineJoin: "round",
+      lineCap: "round",
+      zIndex: 12,
+    });
+    amap.add(amapActiveRoute);
+
+    amapAnimSegment = new AMapApi.Polyline({
+      path: [],
+      strokeColor: TONE_COLORS.blackGold,
+      strokeWeight: mapConfig.routes?.active?.weight ?? 6,
+      strokeOpacity: mapConfig.routes?.active?.opacity ?? 0.55,
+      lineJoin: "round",
+      lineCap: "round",
+      zIndex: 13,
+    });
+    amap.add(amapAnimSegment);
+
+    locations.forEach((location) => {
+      const marker = new AMapApi.Marker({
+        position: location.coordinates,
+        offset: new AMapApi.Pixel(0, 0),
+        content: markerHTML(location, "dimmed"),
+        zIndex: getMarkerZIndexOffset(location.id, "dimmed"),
+      });
+      marker.on("click", () => onSelectLocation(location.id));
+      amapMarkers.set(location.id, marker);
+      amap.add(marker);
+    });
+
+    bindPreviewHoverDelegation();
+  }
+
+  /**
+   * 立即刷新高德地图状态。
+   */
+  function updateAmapInstant(activeDay, selectedLocationId, view) {
+    const activePath = view.activePath.map((location) => location.coordinates);
+
+    amapActiveRoute.setOptions({ path: activePath, strokeColor: view.color });
+    amapAnimSegment?.setOptions({ path: [], strokeColor: view.color });
+    const fullRouteStyle = getFullRouteStyle(view.fitAll);
+    amapFullRoute?.setOptions({
+      strokeColor: fullRouteStyle.color,
+      strokeWeight: fullRouteStyle.weight,
+      strokeOpacity: fullRouteStyle.opacity,
+      strokeStyle: fullRouteStyle.strokeStyle,
+    });
+
+    locations.forEach((location) => {
+      const markerState = selectedLocationId === location.id
+        ? "selected"
+        : view.activeIds.has(location.id)
+          ? "active"
+          : "dimmed";
+      syncMarkerState(location, markerState, selectedLocationId, false);
+    });
+
+    if (view.fitAll) {
+      amap.setFitView(
+        Array.from(amapMarkers.values()),
+        false,
+        getFitPaddingArray(true),
+        getFitMaxZoom(true),
+      );
+      return;
+    }
+
+    if (activePath.length > 1) {
+      amap.setFitView(
+        [amapActiveRoute],
+        false,
+        getFitPaddingArray(false),
+        getFitMaxZoom(false),
+      );
+    }
+  }
+
+  /**
+   * 高德路线入场：逐点点亮并逐段绘制连线。
+   */
+  async function animateAmapRoute(activeDay, selectedLocationId, view, token) {
+    const routeLocations = view.activePath;
+    const routeIds = activeDay.routeLocationIds;
+    const revealedIds = animationContext.revealedIds;
+    const color = view.color;
+
+    amapActiveRoute.setOptions({ path: [], strokeColor: color });
+    amapAnimSegment.setOptions({ path: [], strokeColor: color });
+
+    syncMarkersForRouteAnimation(routeIds, revealedIds, selectedLocationId);
+
+    const activePath = routeLocations.map((location) => location.coordinates);
+    if (activePath.length > 1) {
+      amap.setFitView(
+        [amapActiveRoute],
+        false,
+        getFitPaddingArray(false),
+        getFitMaxZoom(false),
+      );
+    }
+
+    for (let index = 0; index < routeLocations.length; index += 1) {
+      if (token !== routeAnimationToken) return;
+
+      const location = routeLocations[index];
+      revealedIds.add(location.id);
+
+      const markerState = resolveRouteMarkerState(
+        location.id,
+        routeIds,
+        revealedIds,
+        animationContext.selectedLocationId,
+      );
+      syncMarkerState(location, markerState, animationContext.selectedLocationId, true);
+
+      const completedPath = routeLocations
+        .slice(0, index + 1)
+        .map((item) => item.coordinates);
+      amapActiveRoute.setOptions({ path: completedPath, strokeColor: color });
+
+      const stillRunning = await waitPointReveal(token);
+      if (!stillRunning) return;
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(
+          location.id,
+          routeIds,
+          revealedIds,
+          animationContext.selectedLocationId,
+        ),
+        animationContext.selectedLocationId,
+        false,
+      );
+
+      if (index >= routeLocations.length - 1) continue;
+
+      const from = routeLocations[index];
+      const to = routeLocations[index + 1];
+      const fromCoords = from.coordinates;
+      const toCoords = to.coordinates;
+      const duration = computeSegmentDurationForAnimation(fromCoords, toCoords);
+
+      await runRouteSegmentAnimation(
+        token,
+        duration,
+        (progress) => {
+          const lng = fromCoords[0] + (toCoords[0] - fromCoords[0]) * progress;
+          const lat = fromCoords[1] + (toCoords[1] - fromCoords[1]) * progress;
+          amapAnimSegment.setOptions({ path: [fromCoords, [lng, lat]], strokeColor: color });
+        },
+        () => {
+          const currentPath = amapActiveRoute.getPath();
+          amapActiveRoute.setOptions({ path: [...currentPath, toCoords], strokeColor: color });
+          amapAnimSegment.setOptions({ path: [], strokeColor: color });
+        },
+      );
+    }
+  }
+
+  /**
+   * 高德轻量路线入场（与 Leaflet 共用分步绘线）。
+   */
+  async function animateAmapRouteLight(activeDay, selectedLocationId, view, token) {
+    await animateAmapRoute(activeDay, selectedLocationId, view, token);
+  }
+
+  /**
+   * 离线 SVG 俯视路线图（无网络时的最后降级）。
+   */
+  function initSvgFallback() {
+    container.innerHTML = "";
+    fallbackLayer = document.createElement("div");
+    fallbackLayer.className = "fallback-map";
+    container.appendChild(fallbackLayer);
+  }
+
+  /**
+   * 立即刷新 SVG 路线图。
+   */
+  function updateSvgFallbackInstant(activeDay, selectedLocationId, view) {
+    if (!fallbackLayer) return;
+
+    const points = buildProjectedPoints();
+    const allPath = buildPathD(allRoutePath.map(([lng, lat]) => project(lng, lat)));
+    const dayPath = view.activePath.length
+      ? buildPathD(
+          view.activePath.map((location) =>
+            project(location.coordinates[0], location.coordinates[1]),
+          ),
+        )
+      : "";
+    const color = view.color;
+
+    fallbackLayer.innerHTML = `
+      <svg class="fallback-map__svg" viewBox="0 0 1000 620" role="img" aria-label="旅行俯视路线图">
+        <defs>
+          <filter id="routeGlow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <path class="fallback-map__route fallback-map__route--full" d="${allPath}" style="${getSvgFullRouteStyle(view.fitAll)}" />
+        <path class="fallback-map__route fallback-map__route--active" d="${dayPath}" style="--route-color:${color}" />
+      </svg>
+      <div class="fallback-map__points">
+        ${points
+          .map(({ location, x, y }) => {
+            const state = selectedLocationId === location.id
+              ? "selected"
+              : view.activeIds.has(location.id)
+                ? "active"
+                : "dimmed";
+            const showLabel =
+              overlapMeta.showLabel.get(location.id) || location.id === selectedLocationId;
+            const labelHTML = showLabel
+              ? `<small class="map-point__label">${location.name}</small>`
+              : "";
+            return `
+              <button class="map-point map-point--${state}" type="button"
+                style="--x:${x}%;--y:${y}%;--tone:${color};z-index:${getMarkerZIndexOffset(location.id, state)}"
+                data-location-id="${location.id}" aria-label="查看${location.name}">
+                <span></span>${labelHTML}
+              </button>`;
+          })
+          .join("")}
+      </div>`;
+
+    fallbackLayer.querySelectorAll("[data-location-id]").forEach((button) => {
+      button.addEventListener("click", () => onSelectLocation(button.dataset.locationId));
+    });
+    bindPreviewHoverDelegation();
+  }
+
+  /**
+   * 构建 SVG 路线分段 path。
+   */
+  function buildSegmentPathD(fromLocation, toLocation) {
+    const fromPoint = project(fromLocation.coordinates[0], fromLocation.coordinates[1]);
+    const toPoint = project(toLocation.coordinates[0], toLocation.coordinates[1]);
+    return buildPathD([fromPoint, toPoint]);
+  }
+
+  /**
+   * 构建 SVG 路线入场所需的 DOM（全程底图 + 分段路径 + 点位按钮）。
+   */
+  function mountSvgRouteAnimationLayer(activeDay, selectedLocationId, view, revealedIds) {
+    const routeLocations = view.activePath;
+    const routeIds = activeDay.routeLocationIds;
+    const points = buildProjectedPoints();
+    const allPath = buildPathD(allRoutePath.map(([lng, lat]) => project(lng, lat)));
+    const color = view.color;
+
+    const segmentPaths = routeLocations.slice(0, -1).map((from, index) => ({
+      index,
+      d: buildSegmentPathD(from, routeLocations[index + 1]),
+      duration: computeSegmentDurationForAnimation(
+        from.coordinates,
+        routeLocations[index + 1].coordinates,
+      ),
+    }));
+
+    fallbackLayer.innerHTML = `
+      <svg class="fallback-map__svg" viewBox="0 0 1000 620" role="img" aria-label="旅行俯视路线图">
+        <defs>
+          <filter id="routeGlow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <path class="fallback-map__route fallback-map__route--full" d="${allPath}" style="${getSvgFullRouteStyle(view.fitAll)}" />
+        ${segmentPaths
+          .map(
+            ({ index, d }) => `
+          <path class="fallback-map__route fallback-map__route--active fallback-map__route--segment"
+            data-segment="${index}"
+            pathLength="1"
+            d="${d}"
+            style="--route-color:${color}" />`,
+          )
+          .join("")}
+      </svg>
+      <div class="fallback-map__points">
+        ${points
+          .map(({ location, x, y }) => {
+            const markerState = resolveRouteMarkerState(
+              location.id,
+              routeIds,
+              revealedIds,
+              selectedLocationId,
+            );
+            const showLabel =
+              overlapMeta.showLabel.get(location.id) || location.id === selectedLocationId;
+            const labelHTML = showLabel
+              ? `<small class="map-point__label">${location.name}</small>`
+              : "";
+            return `
+              <button class="map-point map-point--${markerState}" type="button"
+                style="--x:${x}%;--y:${y}%;--tone:${color};z-index:${getMarkerZIndexOffset(location.id, markerState)}"
+                data-location-id="${location.id}" aria-label="查看${location.name}">
+                <span></span>${labelHTML}
+              </button>`;
+          })
+          .join("")}
+      </div>`;
+
+    fallbackLayer.querySelectorAll("[data-location-id]").forEach((button) => {
+      button.addEventListener("click", () => onSelectLocation(button.dataset.locationId));
+    });
+
+    return segmentPaths;
+  }
+
+  /**
+   * 等待 SVG 单段路线绘制动画结束。
+   */
+  function waitSvgSegmentDraw(segmentIndex, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = fallbackLayer?.querySelector(`[data-segment="${segmentIndex}"]`);
+      if (!path) {
+        resolve(token === routeAnimationToken);
+        return;
+      }
+
+      path.style.setProperty("--segment-duration", `${durationMs}ms`);
+      path.classList.add("is-animating");
+
+      /**
+       * 动画结束或超时后进入下一段。
+       */
+      function finish() {
+        resolve(token === routeAnimationToken);
+      }
+
+      path.addEventListener("animationend", finish, { once: true });
+      setTimeout(finish, durationMs + 100);
+    });
+  }
+
+  /**
+   * SVG 轻量路线入场（与 Leaflet 共用节奏配置）。
+   */
+  async function animateSvgRouteLight(activeDay, selectedLocationId, view, token) {
+    await animateSvgRoute(activeDay, selectedLocationId, view, token);
+  }
+
+  /**
+   * SVG 路线入场：逐点点亮并逐段绘制连线。
+   */
+  async function animateSvgRoute(activeDay, selectedLocationId, view, token) {
+    if (!fallbackLayer) return;
+
+    const routeLocations = view.activePath;
+    const routeIds = activeDay.routeLocationIds;
+    const revealedIds = animationContext.revealedIds;
+
+    const segmentPaths = mountSvgRouteAnimationLayer(
+      activeDay,
+      selectedLocationId,
+      view,
+      revealedIds,
+    );
+
+    for (let index = 0; index < routeLocations.length; index += 1) {
+      if (token !== routeAnimationToken) return;
+
+      const location = routeLocations[index];
+      revealedIds.add(location.id);
+
+      const markerState = resolveRouteMarkerState(
+        location.id,
+        routeIds,
+        revealedIds,
+        animationContext.selectedLocationId,
+      );
+      syncMarkerState(location, markerState, animationContext.selectedLocationId, true);
+
+      const stillRunning = await waitPointReveal(token);
+      if (!stillRunning) return;
+
+      syncMarkerState(
+        location,
+        resolveRouteMarkerState(
+          location.id,
+          routeIds,
+          revealedIds,
+          animationContext.selectedLocationId,
+        ),
+        animationContext.selectedLocationId,
+        false,
+      );
+
+      if (index >= routeLocations.length - 1) continue;
+
+      const segment = segmentPaths[index];
+      const segmentRunning = await waitSvgSegmentDraw(segment.index, segment.duration, token);
+      if (!segmentRunning) return;
+    }
+  }
+
+  /**
+   * 构建全程路线坐标序列。
+   */
+  function buildAllRoutePath() {
+    return days
+      .flatMap((day) => day.routeLocationIds)
+      .map((id) => locationById.get(id))
+      .filter(Boolean)
+      .map((location) => location.coordinates);
+  }
+
+  /**
+   * 生成 marker HTML（重叠坐标仅渲染时间上较新的地点名称）。
+   */
+  function markerHTML(location, state, selectedLocationId = "", options = {}) {
+    const { revealing = false } = options;
+    const showLabel =
+      overlapMeta.showLabel.get(location.id) || location.id === selectedLocationId;
+    const labelHTML = showLabel
+      ? `<span class="map-location-marker__label">${location.name}</span>`
+      : "";
+    const revealClass = revealing ? " map-location-marker--revealing" : "";
+    return `<button class="map-location-marker map-location-marker--${state}${revealClass}" type="button" data-location-id="${location.id}" title="${location.name}"><span class="map-location-marker__dot"></span>${labelHTML}</button>`;
+  }
+
+  /**
+   * 将地点投影到 SVG 百分比坐标（边界来自全部地点）。
+   */
+  function buildProjectedPoints() {
+    return locations.map((location) => {
+      const [x, y] = project(location.coordinates[0], location.coordinates[1]);
+      return { location, x, y };
+    });
+  }
+
+  /**
+   * 经纬度投影到 0-100 平面。
+   */
+  function project(lng, lat) {
+    const { minLng, maxLng, minLat, maxLat } = geoBounds;
+    const x = ((lng - minLng) / (maxLng - minLng)) * 88 + 6;
+    const y = (1 - (lat - minLat) / (maxLat - minLat)) * 78 + 11;
+    return [Number(x.toFixed(2)), Number(y.toFixed(2))];
+  }
+
+  /**
+   * 生成 SVG path。
+   */
+  function buildPathD(points) {
+    return points.map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x * 10} ${y * 6.2}`).join(" ");
+  }
+
+  return {
+    init,
+    update,
+    rebuildLocationPreviewIndex,
+    startFullJourneyPlayback,
+    stopFullJourneyPlayback,
+    isFullJourneyPlaybackActive,
+  };
+}
+
+
+const PHOTOS_STORAGE_KEY = "travels-location-photos";
+
+const state = {
+  days: [],
+  locations: [],
+  mapConfig: {},
+  activeDate: null,
+  selectedLocationId: "",
+  map: null,
+  detailsPanelExpanded: true,
+};
+
+/**
+ * 加载行程数据：file:// 使用 HTML 内嵌 JSON；http(s) 优先读取 ./data/ 便于开发时改 JSON。
+ */
+async function loadTravelData() {
+  const embeddedEl = document.getElementById("travel-embedded-data");
+  const canFetchRemote =
+    window.location.protocol === "http:" || window.location.protocol === "https:";
+
+  if (canFetchRemote) {
+    try {
+      const base = new URL("./data/", window.location.href);
+      const [days, locations, mapConfig] = await Promise.all([
+        fetch(new URL("days.json", base)).then((response) => {
+          if (!response.ok) throw new Error(`days.json ${response.status}`);
+          return response.json();
+        }),
+        fetch(new URL("locations.json", base)).then((response) => {
+          if (!response.ok) throw new Error(`locations.json ${response.status}`);
+          return response.json();
+        }),
+        fetch(new URL("map.json", base)).then((response) => {
+          if (!response.ok) throw new Error(`map.json ${response.status}`);
+          return response.json();
+        }),
+      ]);
+      return { days, locations, mapConfig };
+    } catch (error) {
+      console.warn("远程 data/ 加载失败，改用内嵌数据。", error);
+    }
+  }
+
+  if (!embeddedEl?.textContent?.trim()) {
+    throw new Error(
+      "未找到内嵌旅行数据。请运行 python3 scripts/embed-travel-data.py 将 data/ 同步进 index.html。",
+    );
+  }
+
+  const payload = JSON.parse(embeddedEl.textContent.trim());
+  if (!Array.isArray(payload.days) || !Array.isArray(payload.locations)) {
+    throw new Error("内嵌旅行数据格式无效，需包含 days 与 locations 数组。");
+  }
+
+  return {
+    days: payload.days,
+    locations: payload.locations,
+    mapConfig: payload.map ?? payload.mapConfig ?? {},
+  };
+}
+
+/**
+ * 启动旅行周记应用，加载数据并完成首屏渲染。
+ */
+async function bootstrap() {
+  const app = document.querySelector("#app");
+  app.innerHTML = renderShell();
+
+  const { days, locations, mapConfig } = await loadTravelData();
+  loadPersistedPhotos(locations);
+
+  state.days = days;
+  state.locations = locations;
+  state.mapConfig = mapConfig;
+  state.activeDate = null;
+  state.selectedLocationId = locations[0]?.id || "";
+  state.map = createTravelMap({
+    container: document.querySelector("#map"),
+    onSelectLocation: selectLocation,
+    onFullJourneyPlaybackChange: syncJourneyPlayButton,
+  });
+
+  renderStaticContent();
+  bindEvents();
+  await state.map.init(days, locations, mapConfig);
+  syncEntryGateCopy(mapConfig);
+  bindEntryGate();
+  updateView();
+}
+
+/**
+ * 将 map.json 中的游记标题与按钮文案写入入口层。
+ */
+function syncEntryGateCopy(mapConfig) {
+  const title = mapConfig.journalTitle || "我的游记";
+  const subtitle = mapConfig.journalTitleEn || "Sichuan–Tibet Travel Journal";
+  const enterLabel = mapConfig.entryButtonLabel || "进入";
+
+  const titleEl = document.querySelector("[data-entry-title]");
+  const subtitleEl = document.querySelector("[data-entry-subtitle]");
+  const enterEl = document.querySelector("[data-entry-enter]");
+
+  if (titleEl) titleEl.textContent = title;
+  if (subtitleEl) subtitleEl.textContent = subtitle;
+  if (enterEl) enterEl.textContent = enterLabel;
+}
+
+/**
+ * 绑定入口层「进入」按钮，点击后淡出并解锁主界面交互。
+ */
+function bindEntryGate() {
+  const gate = document.querySelector("[data-entry-gate]");
+  const enterBtn = document.querySelector("[data-entry-enter]");
+  if (!gate || !enterBtn) return;
+
+  enterBtn.addEventListener("click", () => dismissEntryGate());
+}
+
+/**
+ * 关闭入口层，显示日期切换与详情面板。
+ */
+function dismissEntryGate() {
+  const shell = document.querySelector(".app-shell");
+  const gate = document.querySelector("[data-entry-gate]");
+  if (!shell || !gate || !shell.classList.contains("app-shell--gated")) return;
+
+  gate.classList.add("entry-gate--leaving");
+
+  const finish = () => {
+    shell.classList.remove("app-shell--gated");
+    gate.remove();
+  };
+
+  gate.addEventListener("animationend", finish, { once: true });
+  window.setTimeout(finish, 720);
+}
+
+/**
+ * 渲染页面固定骨架，动态内容由后续函数填充。
+ */
+function renderShell() {
+  return `
+    <main class="app-shell app-shell--gated" data-tone="blackGold">
+      <section class="map-stage" aria-label="川藏自驾地图">
+        <div id="map" class="map-canvas"></div>
+        <svg class="map-route-overlay" aria-hidden="true">
+          <path class="map-route-overlay__segment" pathLength="1" d="" />
+        </svg>
+        <div class="cinema-grain" aria-hidden="true"></div>
+        <div class="map-stage__shade" aria-hidden="true"></div>
+        <div class="entry-gate" data-entry-gate aria-label="游记封面">
+          <div class="entry-gate__content">
+            <h1 class="entry-gate__title" data-entry-title>我的游记</h1>
+            <p class="entry-gate__subtitle" data-entry-subtitle>Sichuan–Tibet Travel Journal</p>
+          </div>
+          <button type="button" class="entry-gate__cta" data-entry-enter>进入</button>
+        </div>
+        <button
+          type="button"
+          class="journey-play-btn"
+          data-journey-play
+          hidden
+          aria-label="播放全程路线"
+        >
+          <span class="journey-play-btn__icon journey-play-btn__icon--play" data-journey-play-icon aria-hidden="true">▶</span>
+        </button>
+        <section class="date-switcher" data-date-switcher aria-label="按日期与地点切换行程">
+          <div class="date-switcher__bar">
+            <button class="date-nav-btn" type="button" data-date-prev aria-label="前一天">«</button>
+            <button class="location-nav-btn" type="button" data-location-prev aria-label="上一个地点">‹</button>
+            <button class="date-trigger" type="button" data-date-trigger aria-expanded="false" aria-haspopup="dialog">
+              <span class="date-trigger__kicker" data-current-weekday></span>
+              <strong data-current-date></strong>
+              <span class="date-trigger__location" data-current-location></span>
+            </button>
+            <button class="location-nav-btn" type="button" data-location-next aria-label="下一个地点">›</button>
+            <button class="date-nav-btn" type="button" data-date-next aria-label="后一天">»</button>
+          </div>
+          <div class="date-picker" data-date-picker role="dialog" aria-label="选择行程日期">
+            <div class="date-picker__head">
+              <span>选择日期</span>
+              <button class="date-picker__action date-picker__action--clear" type="button" data-date-clear>查看全程</button>
+              <button class="date-picker__action" type="button" data-date-picker-close>关闭</button>
+            </div>
+            <div class="date-rail" data-date-rail></div>
+          </div>
+        </section>
+        <aside class="details-panel" aria-live="polite" data-details-panel>
+          <div data-details-content></div>
+        </aside>
+      </section>
+    </main>
+  `;
+}
+
+/**
+ * 渲染日期列表等只依赖原始数据的静态内容。
+ */
+function renderStaticContent() {
+  const rail = document.querySelector("[data-date-rail]");
+  rail.innerHTML = state.days
+    .map((day) => `
+      <button
+        class="date-cell"
+        type="button"
+        data-date="${day.date}"
+      >
+        <span>${day.label}</span>
+        <small>${day.weekday.replace("星期", "周")}</small>
+      </button>
+    `)
+    .join("");
+}
+
+/**
+ * 打开日期选择弹层。
+ */
+function openDatePicker() {
+  const switcher = document.querySelector("[data-date-switcher]");
+  const trigger = document.querySelector("[data-date-trigger]");
+  switcher.classList.add("is-picker-open");
+  trigger.setAttribute("aria-expanded", "true");
+}
+
+/**
+ * 关闭日期选择弹层。
+ */
+function closeDatePicker() {
+  const switcher = document.querySelector("[data-date-switcher]");
+  const trigger = document.querySelector("[data-date-trigger]");
+  switcher.classList.remove("is-picker-open");
+  trigger.setAttribute("aria-expanded", "false");
+}
+
+/**
+ * 清除日期筛选，进入全程总览模式。
+ */
+function clearDateFilter() {
+  state.activeDate = null;
+  closeDatePicker();
+  updateView();
+}
+
+/**
+ * 获取当前日期内的地点 id 列表（按当日路线顺序）。
+ */
+function getActiveDayLocationIds() {
+  const activeDay = getActiveDay();
+  return activeDay?.routeLocationIds ?? [];
+}
+
+/**
+ * 刷新日期切换条的文案与箭头可用状态。
+ */
+function syncDateSwitcherUI() {
+  const switcher = document.querySelector("[data-date-switcher]");
+  const hasDay = Boolean(state.activeDate);
+  const activeDay = getActiveDay();
+  const selectedLocation = getSelectedLocation();
+  const currentIndex = hasDay
+    ? state.days.findIndex((day) => day.date === state.activeDate)
+    : -1;
+
+  switcher.classList.toggle("date-switcher--cleared", !hasDay);
+  document.querySelector("[data-current-weekday]").textContent = hasDay ? activeDay.weekday : "全程";
+  document.querySelector("[data-current-date]").textContent = hasDay ? activeDay.label : "全部旅程";
+  document.querySelector("[data-current-location]").textContent = hasDay
+    ? selectedLocation?.name || ""
+    : "";
+
+  const prevBtn = document.querySelector("[data-date-prev]");
+  const nextBtn = document.querySelector("[data-date-next]");
+  prevBtn.disabled = hasDay && currentIndex <= 0;
+  nextBtn.disabled = hasDay && currentIndex >= state.days.length - 1;
+
+  const locPrevBtn = document.querySelector("[data-location-prev]");
+  const locNextBtn = document.querySelector("[data-location-next]");
+  locPrevBtn.disabled = !hasDay;
+  locNextBtn.disabled = !hasDay;
+
+  document.querySelectorAll("[data-date-rail] [data-date]").forEach((button) => {
+    button.classList.toggle("is-active", hasDay && button.dataset.date === state.activeDate);
+  });
+
+  syncJourneyPlayButton();
+}
+
+/**
+ * 同步全程播放按钮的可见性与播放/停止状态。
+ */
+function syncJourneyPlayButton() {
+  const playBtn = document.querySelector("[data-journey-play]");
+  const playIcon = document.querySelector("[data-journey-play-icon]");
+  if (!playBtn || !playIcon) return;
+
+  const show = !state.activeDate;
+  const playing = state.map?.isFullJourneyPlaybackActive?.() ?? false;
+
+  playBtn.hidden = !show;
+  playBtn.classList.toggle("is-playing", playing);
+  playBtn.setAttribute("aria-label", playing ? "停止播放" : "播放全程路线");
+  playIcon.textContent = playing ? "■" : "▶";
+  playIcon.classList.toggle("journey-play-btn__icon--stop", playing);
+}
+
+/**
+ * 绑定日期切换、键盘导航和窗口级交互。
+ */
+function bindEvents() {
+  document.querySelector("[data-date-prev]").addEventListener("click", () => stepDate(-1));
+  document.querySelector("[data-date-next]").addEventListener("click", () => stepDate(1));
+  document.querySelector("[data-location-prev]").addEventListener("click", () => stepLocation(-1));
+  document.querySelector("[data-location-next]").addEventListener("click", () => stepLocation(1));
+
+  document.querySelector("[data-date-trigger]").addEventListener("click", () => {
+    const switcher = document.querySelector("[data-date-switcher]");
+    if (switcher.classList.contains("is-picker-open")) {
+      closeDatePicker();
+      return;
+    }
+    openDatePicker();
+  });
+
+  document.querySelector("[data-date-picker-close]").addEventListener("click", closeDatePicker);
+  document.querySelector("[data-date-clear]").addEventListener("click", clearDateFilter);
+
+  document.querySelector("[data-journey-play]")?.addEventListener("click", () => {
+    if (!state.activeDate) {
+      state.map.startFullJourneyPlayback();
+    }
+  });
+
+  document.querySelector("[data-details-panel]").addEventListener("click", (event) => {
+    if (event.target.closest("[data-details-toggle]")) {
+      toggleDetailsPanel();
+      return;
+    }
+
+    if (event.target.closest("[data-photo-pick]")) {
+      document.querySelector("[data-photo-input]")?.click();
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-photo-delete]");
+    if (deleteButton) {
+      removePhotoFromLocation(deleteButton.dataset.photoDelete);
+    }
+  });
+
+  bindPhotoBoardDragAndDrop();
+
+  document.querySelector("[data-date-rail]").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-date]");
+    if (!button) return;
+    selectDate(button.dataset.date);
+    closeDatePicker();
+  });
+
+  document.addEventListener("click", (event) => {
+    const switcher = document.querySelector("[data-date-switcher]");
+    if (!switcher.classList.contains("is-picker-open")) return;
+    if (switcher.contains(event.target)) return;
+    closeDatePicker();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeDatePicker();
+      return;
+    }
+    const tag = event.target?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) return;
+
+    if (event.key === "ArrowLeft") {
+      stepDate(-1);
+    }
+    if (event.key === "ArrowRight") {
+      stepDate(1);
+    }
+    if (event.key === "ArrowUp") {
+      stepLocation(-1);
+    }
+    if (event.key === "ArrowDown") {
+      stepLocation(1);
+    }
+  });
+}
+
+/**
+ * 按日期设置当前行程，并选中指定地点（缺省为当日首个地点）。
+ */
+function selectDateWithLocation(date, locationId = "") {
+  const day = state.days.find((item) => item.date === date);
+  if (!day) return;
+
+  const routeIds = day.routeLocationIds;
+  state.activeDate = date;
+  state.selectedLocationId =
+    locationId && routeIds.includes(locationId) ? locationId : routeIds[0] || "";
+  updateView();
+}
+
+/**
+ * 按日期设置当前行程，并默认选中当日第一个地点。
+ */
+function selectDate(date) {
+  selectDateWithLocation(date);
+}
+
+/**
+ * 通过键盘左右键切换前后日期。
+ */
+function stepDate(delta) {
+  if (!state.activeDate) {
+    selectDate(state.days[delta > 0 ? 0 : state.days.length - 1].date);
+    return;
+  }
+
+  const currentIndex = state.days.findIndex((day) => day.date === state.activeDate);
+  const nextIndex = Math.min(Math.max(currentIndex + delta, 0), state.days.length - 1);
+  if (nextIndex !== currentIndex) {
+    selectDate(state.days[nextIndex].date);
+  }
+}
+
+/**
+ * 在已选日期内按路线顺序切换地点；到达当日首尾时自动切换前后日期。
+ */
+function stepLocation(delta) {
+  if (!state.activeDate) {
+    if (!state.days.length) return;
+    const edgeDay = state.days[delta > 0 ? 0 : state.days.length - 1];
+    const edgeIds = edgeDay.routeLocationIds;
+    selectDateWithLocation(
+      edgeDay.date,
+      delta > 0 ? edgeIds[0] : edgeIds[edgeIds.length - 1],
+    );
+    return;
+  }
+
+  const dayLocationIds = getActiveDayLocationIds();
+  if (!dayLocationIds.length) return;
+
+  const currentIndex = dayLocationIds.indexOf(state.selectedLocationId);
+  const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+  const nextIndex = baseIndex + delta;
+
+  if (nextIndex >= 0 && nextIndex < dayLocationIds.length) {
+    selectLocation(dayLocationIds[nextIndex]);
+    return;
+  }
+
+  const dayIndex = state.days.findIndex((day) => day.date === state.activeDate);
+  const targetDayIndex = dayIndex + delta;
+  if (targetDayIndex < 0 || targetDayIndex >= state.days.length) return;
+
+  const targetDay = state.days[targetDayIndex];
+  const targetIds = targetDay.routeLocationIds;
+  if (!targetIds.length) return;
+
+  const targetLocationId = delta > 0 ? targetIds[0] : targetIds[targetIds.length - 1];
+  selectDateWithLocation(targetDay.date, targetLocationId);
+}
+
+/**
+ * 切换详情浮窗展开 / 收起状态。
+ */
+function toggleDetailsPanel() {
+  state.detailsPanelExpanded = !state.detailsPanelExpanded;
+  syncDetailsPanelExpanded();
+}
+
+/**
+ * 全部旅程（未选日期）时隐藏详情浮窗。
+ */
+function syncDetailsPanelVisibility() {
+  const panel = document.querySelector("[data-details-panel]");
+  const visible = Boolean(state.activeDate);
+  panel.classList.toggle("details-panel--hidden", !visible);
+}
+
+/**
+ * 将展开状态同步到详情浮窗 DOM。
+ */
+function syncDetailsPanelExpanded() {
+  const panel = document.querySelector("[data-details-panel]");
+  panel.classList.toggle("details-panel--collapsed", !state.detailsPanelExpanded);
+
+  const toggle = panel.querySelector("[data-details-toggle]");
+  if (!toggle) return;
+
+  toggle.setAttribute("aria-expanded", String(state.detailsPanelExpanded));
+  toggle.setAttribute(
+    "aria-label",
+    state.detailsPanelExpanded ? "收起详情" : "展开详情",
+  );
+}
+
+/**
+ * 解析地点应对应的行程日期（取该地点在路线中首次出现的日期）。
+ */
+function resolveDateForLocation(locationId) {
+  const day = state.days.find((item) => item.routeLocationIds.includes(locationId));
+  if (day) return day.date;
+
+  const location = state.locations.find((item) => item.id === locationId);
+  return location?.dates?.[0] ?? null;
+}
+
+/**
+ * 设置当前选中地点；全程模式下点击地图会切入该地点所属日期并打开详情浮窗。
+ */
+function selectLocation(locationId) {
+  const location = state.locations.find((item) => item.id === locationId);
+  if (!location) return;
+
+  state.selectedLocationId = locationId;
+
+  if (!state.activeDate || !location.dates.includes(state.activeDate)) {
+    const date = resolveDateForLocation(locationId);
+    if (date) state.activeDate = date;
+  }
+
+  updateView();
+}
+
+/**
+ * 根据当前状态刷新地图、日期栏和详情面板。
+ */
+function updateView() {
+  const activeDay = getActiveDay();
+  const selectedLocation = getSelectedLocation();
+  const shell = document.querySelector(".app-shell");
+  const hasDay = Boolean(activeDay);
+
+  if (hasDay && state.map?.isFullJourneyPlaybackActive?.()) {
+    state.map.stopFullJourneyPlayback();
+  }
+
+  shell.dataset.tone = hasDay ? activeDay.tone : "blackGold";
+
+  syncDateSwitcherUI();
+  syncDetailsPanelVisibility();
+
+  if (hasDay) {
+    renderDetails(activeDay, selectedLocation);
+    syncDetailsPanelExpanded();
+  } else {
+    document.querySelector("[data-details-content]").innerHTML = "";
+  }
+
+  state.map.update(activeDay, selectedLocation.id);
+}
+
+/**
+ * 渲染右侧地点详情、日记摘录与可编辑照片区。
+ */
+function renderDetails(activeDay, location) {
+  const content = document.querySelector("[data-details-content]");
+  const hasDay = Boolean(activeDay);
+  const activeLocations = hasDay
+    ? activeDay.routeLocationIds
+        .map((id) => state.locations.find((item) => item.id === id))
+        .filter(Boolean)
+    : [];
+
+  const locationSequenceHTML = hasDay
+    ? `
+      <div class="location-sequence" aria-label="当天地点">
+        ${activeLocations
+          .map((item) => `
+            <button
+              type="button"
+              class="${item.id === location.id ? "is-active" : ""}"
+              data-location-jump="${item.id}"
+            >
+              ${item.name}
+            </button>
+          `)
+          .join("")}
+      </div>`
+    : "";
+
+  const expanded = state.detailsPanelExpanded;
+
+  content.innerHTML = `
+    <div class="details-panel__inner" data-reveal="rack">
+      <div class="details-panel__head">
+        <h2>${location.name}</h2>
+        <button
+          type="button"
+          class="details-panel__toggle"
+          data-details-toggle
+          aria-expanded="${expanded}"
+          aria-label="${expanded ? "收起详情" : "展开详情"}"
+        >
+          <svg class="details-panel__toggle-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+      </div>
+      <p class="panel-summary">${hasDay ? activeDay.summary : "在左上角选择日期，可聚焦某一天的路线与色调。"}</p>
+      ${locationSequenceHTML}
+      <div class="details-panel__body">
+        <blockquote>${location.diaryExcerpt}</blockquote>
+        <section class="photo-board" aria-label="旅行照片" data-photo-board data-location-id="${location.id}">
+          ${renderPhotos(location, activeDay)}
+        </section>
+      </div>
+    </div>
+  `;
+
+  content.querySelectorAll("[data-location-jump]").forEach((button) => {
+    button.addEventListener("click", () => selectLocation(button.dataset.locationJump));
+  });
+}
+
+/**
+ * 转义写入 HTML 属性的文本，避免破坏模板字符串。
+ */
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * 从 localStorage 恢复用户为各地点添加的照片。
+ */
+function loadPersistedPhotos(locations) {
+  let stored = {};
+  try {
+    const raw = localStorage.getItem(PHOTOS_STORAGE_KEY);
+    if (raw) stored = JSON.parse(raw);
+  } catch (error) {
+    console.warn("无法读取已保存的照片。", error);
+  }
+
+  locations.forEach((location) => {
+    const saved = stored[location.id];
+    if (Array.isArray(saved) && saved.length > 0) {
+      location.photos = saved;
+    }
+  });
+}
+
+/**
+ * 将指定地点的照片数组写入 localStorage。
+ */
+function persistLocationPhotos(locationId) {
+  const location = state.locations.find((item) => item.id === locationId);
+  if (!location) return;
+
+  let stored = {};
+  try {
+    const raw = localStorage.getItem(PHOTOS_STORAGE_KEY);
+    if (raw) stored = JSON.parse(raw);
+  } catch {
+    stored = {};
+  }
+
+  stored[locationId] = location.photos || [];
+  try {
+    localStorage.setItem(PHOTOS_STORAGE_KEY, JSON.stringify(stored));
+  } catch (error) {
+    console.warn("照片保存失败，可能超出浏览器存储限额。", error);
+  }
+}
+
+/**
+ * 将单个图片文件读取为可持久化的 data URL（仅作为压缩失败时的兜底）。
+ */
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * 将文件解码为 HTMLImageElement，用于离屏缩放。
+ */
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("图片解码失败"));
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * 用 canvas 把图片等比缩放到指定最大边并导出 JPEG data URL。
+ */
+function downscaleImage(img, maxSize, quality) {
+  const ratio = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.max(1, Math.round(img.naturalWidth * ratio));
+  const height = Math.max(1, Math.round(img.naturalHeight * ratio));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
+/**
+ * 把用户选择的图片文件转为照片记录对象列表（上传即在浏览器端压缩，
+ * 生成 medium + thumb 两档，避免原图撑爆内存与 localStorage 配额）。
+ */
+async function filesToPhotoRecords(files) {
+  const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+  const records = await Promise.all(
+    imageFiles.map(async (file) => {
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const id = `photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      try {
+        const img = await loadImageFromFile(file);
+        return {
+          id,
+          src: downscaleImage(img, 1600, 0.8),
+          thumb: downscaleImage(img, 480, 0.7),
+          caption: baseName,
+        };
+      } catch (error) {
+        console.warn("图片压缩失败，回退为原图存储。", error);
+        const src = await readFileAsDataUrl(file);
+        return { id, src, thumb: src, caption: baseName };
+      }
+    }),
+  );
+  return records;
+}
+
+/**
+ * 为当前地点追加照片并刷新详情面板。
+ */
+async function addPhotosToLocation(locationId, files) {
+  const location = state.locations.find((item) => item.id === locationId);
+  if (!location || !files?.length) return;
+
+  const records = await filesToPhotoRecords(files);
+  if (!records.length) return;
+
+  if (!Array.isArray(location.photos)) location.photos = [];
+  location.photos.push(...records);
+  persistLocationPhotos(locationId);
+  state.map?.rebuildLocationPreviewIndex?.();
+  refreshPhotoBoardIfVisible(locationId);
+}
+
+/**
+ * 删除指定地点的一张照片。
+ */
+function removePhotoFromLocation(photoId) {
+  const board = document.querySelector("[data-photo-board]");
+  const locationId = board?.dataset.locationId;
+  if (!locationId || !photoId) return;
+
+  const location = state.locations.find((item) => item.id === locationId);
+  if (!location?.photos?.length) return;
+
+  location.photos = location.photos.filter((photo) => {
+    const id = photo.id || photo.src;
+    return id !== photoId;
+  });
+  persistLocationPhotos(locationId);
+  state.map?.rebuildLocationPreviewIndex?.();
+  refreshPhotoBoardIfVisible(locationId);
+}
+
+/**
+ * 若详情面板正在展示该地点，则仅重绘照片区域。
+ */
+function refreshPhotoBoardIfVisible(locationId) {
+  const activeDay = getActiveDay();
+  const location = state.locations.find((item) => item.id === locationId);
+  if (!activeDay || !location || state.selectedLocationId !== locationId) return;
+
+  const board = document.querySelector("[data-photo-board]");
+  if (!board) return;
+
+  board.innerHTML = renderPhotos(location, activeDay);
+}
+
+/**
+ * 处理文件选择或拖拽放入的图片。
+ */
+async function handlePhotoFiles(locationId, fileList) {
+  if (!locationId || !fileList?.length) return;
+  await addPhotosToLocation(locationId, fileList);
+}
+
+/**
+ * 绑定照片区的拖拽放入与文件选择交互。
+ */
+function bindPhotoBoardDragAndDrop() {
+  const panel = document.querySelector("[data-details-panel]");
+  if (!panel || panel.dataset.photoDndBound === "true") return;
+  panel.dataset.photoDndBound = "true";
+
+  panel.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-photo-input]");
+    if (!input) return;
+    const board = input.closest("[data-photo-board]");
+    if (!board) return;
+    handlePhotoFiles(board.dataset.locationId, input.files);
+    input.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach((type) => {
+    panel.addEventListener(type, (event) => {
+      const zone = event.target.closest("[data-photo-dropzone]");
+      if (!zone) return;
+      event.preventDefault();
+      zone.classList.add("is-dragover");
+    });
+  });
+
+  panel.addEventListener("dragleave", (event) => {
+    const zone = event.target.closest("[data-photo-dropzone]");
+    if (!zone || zone.contains(event.relatedTarget)) return;
+    zone.classList.remove("is-dragover");
+  });
+
+  panel.addEventListener("drop", (event) => {
+    const zone = event.target.closest("[data-photo-dropzone]");
+    if (!zone) return;
+    event.preventDefault();
+    zone.classList.remove("is-dragover");
+    const board = zone.closest("[data-photo-board]");
+    if (!board) return;
+    handlePhotoFiles(board.dataset.locationId, event.dataTransfer?.files);
+  });
+}
+
+/**
+ * 渲染用户照片与可拖拽添加的投放区。
+ */
+function renderPhotos(location, activeDay) {
+  const dayLabel = activeDay?.label || "旅途";
+  const photos = (location.photos || []).filter((photo) => photo.src);
+
+  const frames = photos
+    .map((photo, index) => {
+      const photoId = photo.id || photo.src;
+      const caption = photo.caption || `${dayLabel} · ${location.name}`;
+      return `
+        <figure class="photo-frame" style="--i:${index}" data-photo-id="${escapeHtml(photoId)}">
+          <div class="photo-frame__media">
+            <img src="${escapeHtml(photo.src)}" alt="${escapeHtml(caption)}" loading="lazy" decoding="async" />
+            <button
+              type="button"
+              class="photo-frame__delete"
+              data-photo-delete="${escapeHtml(photoId)}"
+              aria-label="删除照片"
+            >×</button>
+          </div>
+          <figcaption>${escapeHtml(caption)}</figcaption>
+        </figure>
+      `;
+    })
+    .join("");
+
+  return `
+    ${frames}
+    <div class="photo-dropzone" data-photo-dropzone>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        data-photo-input
+        aria-label="选择图片文件"
+      />
+      <p>拖拽图片到此处，或 <button type="button" class="photo-dropzone__pick" data-photo-pick>选择文件</button></p>
+    </div>
+  `;
+}
+
+/**
+ * 获取当前日期对象。
+ */
+function getActiveDay() {
+  if (!state.activeDate) return null;
+  return state.days.find((day) => day.date === state.activeDate) || null;
+}
+
+/**
+ * 获取当前地点对象，并在缺失时回落到当天第一个地点。
+ */
+function getSelectedLocation() {
+  const activeDay = getActiveDay();
+  const selected = state.locations.find((location) => location.id === state.selectedLocationId);
+  if (selected) return selected;
+
+  if (activeDay?.routeLocationIds?.[0]) {
+    return state.locations.find((location) => location.id === activeDay.routeLocationIds[0]);
+  }
+
+  return state.locations[0];
+}
+
+bootstrap().catch((error) => {
+  console.error(error);
+  document.querySelector("#app").innerHTML = `
+    <main class="fatal-error">
+      <h1>旅行地图暂时无法加载</h1>
+      <p>${error.message}</p>
+    </main>
+  `;
+});
+
+    </script>
+  </body>
+</html>

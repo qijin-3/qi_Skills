@@ -1,0 +1,75 @@
+{
+  "journalTitle": "黄金公路测试",
+  "journalTitleEn": "Golden Road Test",
+  "entryButtonLabel": "进入",
+  "provider": "leaflet",
+  "routeAnimation": "light",
+  "routeAnimationPointRevealMs": 460,
+  "routeAnimationSegmentScale": 1.35,
+  "routeAnimationSegmentSteps": 16,
+  "activeStyle": "cinematic-dark",
+  "fitPadding": [
+    80,
+    460,
+    120,
+    80
+  ],
+  "fitPaddingFullJourney": [
+    40,
+    40,
+    56,
+    40
+  ],
+  "fitMaxZoom": 12,
+  "boundsPaddingRatio": 0.06,
+  "styles": {
+    "cinematic-dark": {
+      "label": "电影深色",
+      "tileUrl": "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+      "subdomains": "abcd",
+      "maxZoom": 19,
+      "tileClass": "map-tiles map-tiles--cinematic-dark"
+    },
+    "cinematic-warm": {
+      "label": "暖色旅途",
+      "tileUrl": "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      "attribution": "&copy; OpenStreetMap &copy; CARTO",
+      "subdomains": "abcd",
+      "maxZoom": 19,
+      "tileClass": "map-tiles map-tiles--cinematic-warm"
+    },
+    "paper-muted": {
+      "label": "宣纸灰",
+      "tileUrl": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      "attribution": "&copy; OpenStreetMap &copy; CARTO",
+      "subdomains": "abcd",
+      "maxZoom": 19,
+      "tileClass": "map-tiles map-tiles--paper-muted"
+    },
+    "osm-standard": {
+      "label": "标准 OSM",
+      "tileUrl": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "attribution": "&copy; OpenStreetMap contributors",
+      "maxZoom": 19,
+      "tileClass": "map-tiles map-tiles--osm-standard"
+    }
+  },
+  "routes": {
+    "full": {
+      "color": "rgba(232, 228, 220, 0.16)",
+      "weight": 3,
+      "opacity": 0.22,
+      "dashArray": "10 14"
+    },
+    "active": {
+      "weight": 6,
+      "opacity": 0.55
+    }
+  },
+  "amap": {
+    "key": "",
+    "securityCode": "",
+    "mapStyle": "amap://styles/dark"
+  }
+}
