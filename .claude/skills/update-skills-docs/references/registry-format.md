@@ -1,50 +1,57 @@
-# 技能注册表格式说明
+# 技能同步配置说明
 
-注册表文件：`skills-registry.yaml`（仓库根目录）
+唯一配置文件：`skills-sync.yaml`（仓库根目录）
 
-## 字段
+## 格式
 
-| 字段 | 来源 | 说明 |
-|------|------|------|
-| `path` | 自动 | 技能目录，相对仓库根目录，如 `skills/travel_journal/travel-journal` |
-| `name` | 自动 | SKILL.md frontmatter 的 `name`，也是 `~/.claude/skills/` 下的软链接名 |
-| `description` | 自动 | 从 SKILL.md frontmatter 提取并压缩为单行 |
-| `category` | 自动 | 根据目录结构推断（见下方规则） |
-| `sync` | **手动** | `true` = 同步到 Claude Code；`false` = 仅登记 |
+```yaml
+sync:
+  - 10x-impact-judge
+  - idea-validator
+
+unsync:
+  - meeting
+  - travel-journal
+```
+
+- **sync** — 会软链接到 `~/.claude/skills/`
+- **unsync** — 仅登记在仓库，不安装到本地 Claude Code
+
+在两组之间**复制粘贴** `name` 即可切换。`name` 来自 SKILL.md frontmatter，不是目录名。
 
 ## 目录结构与嵌套技能
 
-`skills/` 下技能可能出现在不同深度：
-
 ```
 skills/
-├── idea-validator/           # 直接子目录 → category: uncategorized
+├── meeting/                  # 单技能
 │   └── SKILL.md
-├── engineering/
-│   └── my-skill/             # 分类目录 → category: engineering
+├── product design/           # 分组目录
+│   ├── idea-validator/
+│   │   └── SKILL.md
+│   └── deep-research/
 │       └── SKILL.md
-└── travel_journal/           # 分组目录（非技能本身）
-    ├── travel-journal/       # → category: travel_journal
-    │   └── SKILL.md
+└── travel_journal/
+    ├── travel-journal/
     └── install-travel-journal/
-        └── SKILL.md
 ```
 
-扫描规则：递归查找所有 `SKILL.md`，排除 `deprecated/`、`node_modules/`、`template/` 路径。
+扫描规则：递归查找所有 `SKILL.md`，排除 `deprecated/`、`node_modules/`、`template/`。
 
-软链接名始终使用 frontmatter 的 `name`，**不是**目录 basename。例如 `travel_journal/travel-journal/` 链接为 `~/.claude/skills/travel-journal`。
+软链接名始终使用 frontmatter 的 `name`。
 
-## Category 推断
+## 工作流
 
-1. 路径仅一段（`skills/foo`）→ `uncategorized`
-2. 首段为已知分类（`engineering`、`productivity`、`misc`）→ 使用该分类
-3. 其他多段路径 → 首段作为分组名（如 `travel_journal`）
+1. 在 `skills/` 下创建技能
+2. 运行 `python3 scripts/skills-registry.py all`
+   - 新技能自动加入 `unsync`
+   - README 自动更新
+   - sync 组中的技能创建软链接
+3. 要发布技能：将 `name` 从 `unsync` 移到 `sync`，再运行 `all`
 
-## 手动操作
+## 同步与软链接清理
 
-新增技能后运行扫描，新条目默认 `sync: false`。要发布到 Claude Code：
+运行 `sync` 或 `all` 时会：
 
-1. 编辑 `skills-registry.yaml`，将对应技能的 `sync` 改为 `true`
-2. 运行 `python scripts/skills-registry.py all`
-
-取消同步：将 `sync` 改为 `false` 后重新运行 sync，脚本会自动移除指向本仓库的失效软链接。
+- 为 `sync` 组中的技能创建/更新软链接
+- **移除**已移到 `unsync` 的技能软链接
+- 扫描 `~/.claude/skills/`，清理所有指向本仓库但不在 `sync` 组的残留链接
