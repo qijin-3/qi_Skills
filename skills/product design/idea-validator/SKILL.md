@@ -2,13 +2,18 @@
 name: idea-validator
 description: >
   Idea 快速验证工具 - 通过结构化多步骤方法论帮助独立开发者在投入开发前验证产品想法。
-  覆盖危险信号预筛 → 假设锁定 → 用户声音挖掘（7 平台）→ 竞品解构 → 综合评估的完整流程，最终输出可视化 HTML 报告。
+  覆盖危险信号预筛 → 假设锁定 → 用户声音挖掘（动态平台选择，最多 9 平台）→ 竞品解构 → 综合评估的完整流程，最终输出可视化 HTML 报告 + 用户反馈留档文件。
   当用户说「验证这个 idea」「分析这个产品想法」「帮我做市场调研」「这个方向值得做吗」「我有个想法」「走赛道 A」「这个产品可行吗」，或者直接描述一个产品/创业想法时触发。
 ---
 
 # Idea Validator · 产品化验证
 
 独立开发者视角的产品化 idea 验证流程。全程自动推进，用户只在 3 个节点参与：Step 0 预筛问题回答（可选）、Step 1 JTBD 回答、Step 1 假设确认。
+
+**输出文件统一存放至** `~/Downloads/idea-validator/<idea-slug>/`：
+- `report.html`：可视化 HTML 报告
+- `user-feedback.jsonl`：用户反馈数据（JSONL，可跨次调研追加复用）
+- `feedback-meta.json`：调研元信息（区域/平台/统计）
 
 ---
 
@@ -34,17 +39,15 @@ agent-reach doctor
 
 ## 平台访问配置（Step 2 依赖）
 
-| 平台 | 命令 | 前提 | 降级 |
-|------|------|------|------|
-| Reddit | `opencli reddit search "query"` | 已配置 | Exa 全网搜索 |
-| X/Twitter | `opencli twitter search "query"` | 已配置 | Exa 全网搜索 |
-| 小红书 | `opencli xiaohongshu search "query"` | 已配置 | Exa 全网搜索 |
-| App Store | iTunes Search API + Jina Reader | 无需配置 | — |
-| Google Play | 搜索页抓包名 + Jina/curl 读详情页 | 无需配置 | 直接 curl + User-Agent |
-| GitHub | `gh search issues/repos` + `gh issue list` | gh CLI（Agent-Reach 基础安装含） | GitHub API / Jina 读 Issues 页 |
-| Hacker News | Algolia HN API | 无需配置 | — |
+| 平台 | 适用区域 | 需要配置？ |
+|------|---------|-----------|
+| Reddit / X / 小红书 | 🌐 海外 / 🇨🇳 国内 | 需 Agent-Reach 配置，未配时降级为 Exa 全网搜索 |
+| App Store / Google Play | 🌐🇨🇳 通用 | 无需配置（Jina Reader + iTunes API） |
+| GitHub / Hacker News | 🌐 技术向 | 无需配置（gh CLI + Algolia API） |
+| YouTube / 哔哩哔哩 | 🌐 海外 / 🇨🇳 国内 | 无需配置（Jina Reader） |
 
-> 各平台具体命令格式、时间窗口、降级细节见 `references/search-strategy.md`
+> 各平台完整命令、降级策略、时间窗口 → `references/search-strategy.md`
+> 实际执行哪些平台由 Step 1d 的**目标用户区域判断**决定
 
 ---
 
@@ -113,12 +116,26 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 验证成功的信号是 [可量化指标]
 ```
 
-**1d.** 呈现假设 → 等用户确认或修正 → 锁定后输出摘要，进入 Step 2：
+**1d.** 呈现假设 → 等用户确认或修正 → 锁定后输出摘要，**同时判断用户画像区域**，进入 Step 2：
+
 ```
 ✓ 假设已锁定
 目标用户：___  触发场景：___  核心痛点：___
 现有替代：___  差异化方向：___  验证信号：___
+
+📍 用户画像区域判断：[🌐 海外 / 🇨🇳 国内 / 🌐🇨🇳 全球]
+启用平台：[列出将执行的平台列表]
+跳过平台：[列出跳过的平台及原因]
 ```
+
+**区域判断规则**（从目标用户描述、竞品语言、使用场景中推断）：
+
+- 🇨🇳 国内：启用 小红书 / App Store(cn) / 哔哩哔哩 / GitHub；跳过 Reddit / X / Google Play / HN / YouTube
+- 🌐 海外：启用 Reddit / X / App Store(us) / Google Play / GitHub / HN / YouTube；跳过 小红书 / 哔哩哔哩  
+- 🌐🇨🇳 全球：启用全部 9 个平台，搜索词需中英双语
+- 技术开发者向（任何区域）：额外确保 GitHub + HN 已启用
+
+> 详细判断信号和平台矩阵 → `references/search-strategy.md`「用户画像区域判断与平台选择」
 
 ---
 
@@ -126,7 +143,7 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 
 > 搜索词生成规则、各平台完整命令、降级策略见 `references/search-strategy.md`
 
-**2a. 生成搜索词矩阵**（中英文各需生成）：
+**2a. 生成搜索词矩阵**（根据区域判断生成对应语言的搜索词）：
 
 | 类型 | 目的 | 模板示例 |
 |------|------|---------|
@@ -135,26 +152,63 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 | 期望词 | 找未被满足需求 | `wish [产品类别] could / feature request` |
 | 付费词 | 验证付费意愿 | `worth paying for / [竞品] too expensive` |
 
-**2b. 7 平台定向搜索**（按 `references/search-strategy.md` 执行，**每个平台都必须执行**）：
+**2b. 定向平台搜索**（仅执行 Step 1d 判断出的**启用平台**，跳过的平台在报告中标注原因）：
 
-- **Reddit** → 情绪帖、迁移帖、求推荐讨论
-- **X/Twitter** → 实时抱怨、切换宣告、求推荐
-- **小红书** → 避坑帖、推荐帖评论区反对意见
-- **App Store** → 两步法：iTunes API 查 App ID → Jina 读评论页；提取 1–2 星与功能缺失抱怨
-- **Google Play** → 两步法：搜索页提取 `id=com.xxx` 包名 → Jina/curl 读详情页评论；提取 1–2 星与功能缺失抱怨
-- **GitHub** → `gh search issues` 搜痛点/功能请求；`gh search repos` 找开源竞品；对已知竞品仓库读 Issues/Discussions
-- **Hacker News** → 搜 `Ask HN: What do you use for X`、竞品 Show HN 评论区质疑
+- **Reddit** → 情绪帖、迁移帖、求推荐讨论（🌐 海外/全球）
+- **X/Twitter** → 实时抱怨、切换宣告、求推荐（🌐 海外/全球）
+- **小红书** → 避坑帖、推荐帖评论区反对意见（🇨🇳 国内/全球）
+- **App Store** → 两步法：iTunes API 查 App ID → Jina 读评论页；提取 1–2 星与功能缺失抱怨（🌐🇨🇳 通用，按区域选 us/cn）
+- **Google Play** → 两步法：搜索页提取 `id=com.xxx` 包名 → Jina/curl 读详情页评论；提取 1–2 星与功能缺失抱怨（🌐 海外/全球）
+- **GitHub** → `gh search issues` 搜痛点/功能请求；`gh search repos` 找开源竞品；对已知竞品仓库读 Issues/Discussions（技术向 idea 必须执行）
+- **Hacker News** → 搜 `Ask HN: What do you use for X`、竞品 Show HN 评论区质疑（🌐 海外技术向）
+- **YouTube** → 用 Jina Reader 抓取相关视频评论区，提取痛点与需求（🌐 海外/全球）
+- **哔哩哔哩** → 搜索相关视频评论区，提取中文用户真实声音（🇨🇳 国内/全球）
 
-**2c. 构建结构化用户声音表**（≥ 15 条高+中可信度；四种情绪类型各≥ 2 条；≥ 1 条来自 App Store 或 Google Play；开发者工具类 idea 需含 ≥ 1 条 GitHub 来源）：
+**⏱️ 时效性要求**：所有证据**优先采集最近 6 个月**内的内容；超过 6 个月的内容降低权重（可引用但需注明时间，且不计入主力证据）；超过 1 年的内容仅在无其他证据时备用。
 
-| 平台 | 原始引用（附可访问 URL） | 情绪类型 | 可信度 | 关联假设维度 |
-|------|----------------------|---------|-------|------------|
+**2c. 构建结构化用户声音表**（≥ **100** 条高+中可信度；四种情绪类型各≥ 10 条；每个启用平台至少提供 **5 条**；开发者工具类 idea 需含 ≥ 5 条 GitHub 来源）：
+
+| 平台 | 原始引用（附可访问 URL） | 情绪类型 | 可信度 | 时间 | 关联假设维度 |
+|------|----------------------|---------|-------|------|------------|
+
+> 若单次搜索凑不够 100 条，应扩大搜索词范围、增加搜索次数，而不是降低要求。若最终仍不足 100 条，在报告中明确标注「证据不足：共 X 条，建议补充调研」。
 
 **2d. 结论摘要**（四个维度全部填写，不得省略任何一项）：
 - **验证了假设的**：哪些证据支持了哪个字段（引用条数和平台）
 - **挑战了假设的**：哪些证据与假设不符（**不得省略**）
 - **未覆盖的**：哪些假设维度没找到证据，标注「证据不足」
 - **意外发现**：原假设没有考虑到的需求信号
+
+**2e. 用户反馈留档**（Step 2 完成后立即保存）：
+
+> 字段定义、枚举值、分析命令 → `references/feedback-schema.md`
+
+保存两个文件至 `~/Downloads/idea-validator/<idea-slug>/`：
+
+**① `user-feedback.jsonl`**（每条声音一行，追加写入）：
+```bash
+# 每条记录格式（字段说明见 feedback-schema.md）
+{"id":"reddit-0001","idea_slug":"<slug>","idea_name":"<name>","session_date":"YYYY-MM-DD","source_platform":"reddit","source_url":"<url>","source_type":"comment","source_region":"global","content":"<原文>","language":"en","search_query":"<搜索词>","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"YYYY-MM-DD","is_recent":true,"competitors_mentioned":["<竞品>"],"engagement":{"upvotes":89,"comments":14,"views":null}}
+```
+若文件已存在（历史调研），直接追加；不要覆盖。
+
+**② `feedback-meta.json`**（调研元信息，每次覆盖写入）：
+```json
+{
+  "idea_slug": "<slug>",
+  "idea_name": "<name>",
+  "sessions": [{
+    "session_date": "YYYY-MM-DD",
+    "target_region": "global",
+    "enabled_platforms": ["reddit","twitter","..."],
+    "skipped_platforms": [{"platform":"xiaohongshu","reason":"目标用户为海外用户"}],
+    "total_entries": 103,
+    "high_credibility": 58,
+    "medium_credibility": 45,
+    "entries_recent_6m": 91
+  }]
+}
+```
 
 ---
 
@@ -202,10 +256,16 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 
 **4b. 输出单文件 HTML 报告**：读取 `assets/report-template.html`，按 `references/html-report.md` 的说明逐步替换全部占位符，不要从零写 HTML：
 - Tab 1 总览：Action Badge + 5 维雷达图 + 总分 + 机会点 + 风险 + MVP 路径
-- Tab 2 用户声音：结论摘要 + 可筛选声音表 + 平台覆盖统计
+- Tab 2 用户声音：结论摘要 + 可筛选声音表（含时间列、平台覆盖统计）
 - Tab 3 竞品分析：定位矩阵（SVG）+ 竞品数据表 + 有效空白说明
 - Tab 4 评估详情：每维度证据列表 + 得分理由 + 不足警告
 - Tab 5 Lean Canvas：九格 Canvas，无证据格子标注「待验证」
+
+**保存路径**：`~/Downloads/idea-validator/<idea-slug>/report.html`
+
+- `<idea-slug>` 从 idea 名称生成（英文小写 + 连字符，如 `ai-writing-tool`）
+- 若目录不存在则自动创建：`mkdir -p ~/Downloads/idea-validator/<idea-slug>/`
+- 若该目录已存在 `user-feedback.jsonl`（历史调研留档），读取其 `session_date` 列表，在报告 Tab 2 中注明「已有 X 次历史调研，本次新增 Y 条」
 
 ---
 
@@ -226,6 +286,10 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 - 不得跳过 Step 1 的用户确认节点
 - 不得输出 Markdown 格式的最终报告（必须是 HTML）
 - 不得在 Step 2–3 中途停下来询问用户
+- 不得对明显面向海外用户的 idea 执行小红书/哔哩哔哩搜索（无效数据污染结论）
+- 不得对明显面向国内用户的 idea 执行 Reddit/HN/Google Play 搜索（同上）
+- 不得以「证据不够」为由跳过任何**启用平台**；证据不足应扩大搜索词后重试
+- 不得引用超过 1 年的内容作为主力证据（时效性失效）
 
 ---
 
@@ -234,10 +298,13 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 - [ ] Agent-Reach 状态已检查，降级平台已标注
 - [ ] Step 0 红灯记录已传递到 D5 评分
 - [ ] Lean Hypothesis 六个字段全部填写，验证信号含可量化指标
-- [ ] 7 平台均已执行搜索；Google Play、GitHub 未跳过
-- [ ] 用户声音表：高可信度条目全部附可访问 URL
+- [ ] **用户画像区域已判断**，启用/跳过平台已在摘要中列出并说明原因
+- [ ] 所有启用平台均已执行搜索；每个启用平台至少 5 条证据
+- [ ] **时效性**：证据以最近 6 个月内为主；超期内容已标注时间并降低权重
+- [ ] 用户声音表：≥ 100 条高+中可信度；高可信度条目全部附可访问 URL；含时间列
+- [ ] **user-feedback.jsonl 和 feedback-meta.json 已保存**至 `~/Downloads/idea-validator/<idea-slug>/`（jsonl 追加写入，不覆盖历史数据）
 - [ ] 2d 结论四个维度全部填写，包括「挑战了假设的」
 - [ ] 竞品 3–6 个；空白区结论有双条件验证
 - [ ] 每个评分维度先列证据再给分，证据不足维度已封顶并标注
-- [ ] HTML 报告包含全部 5 个 Tab，离线可打开
+- [ ] **HTML 报告已保存**至 `~/Downloads/idea-validator/<idea-slug>/report.html`，包含全部 5 个 Tab，离线可打开
 - [ ] MVP 路径每步包含可量化成功信号
