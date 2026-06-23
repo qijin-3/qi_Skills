@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{IDEA_TITLE}} · Idea Validator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+SC:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    /* ============================================================
+       Idea Validator Report · Swiss International Style
+       Based on Guizang visual system
+       ============================================================ */
+
+    /* ---------- 1. Design tokens ---------- */
+    :root {
+      --paper:     #fafaf8;
+      --ink:       #0a0a0a;
+      --grey-1:    #f0f0ee;
+      --grey-2:    #d4d4d2;
+      --grey-3:    #8a8a88;
+      --grey-4:    #555553;
+
+      /* Action badge colours — mutually exclusive */
+      --build:     #002FA7;
+      --build-on:  #ffffff;
+      --fast:      #0066CC;
+      --fast-on:   #ffffff;
+      --pivot:     #FF6B35;
+      --pivot-on:  #ffffff;
+      --grave:     #1a1a1a;
+      --grave-on:  #ffffff;
+
+      /* Warning accent */
+      --warn:      #FF6B35;
+
+      --sans:  "Inter", "Helvetica Neue", "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+      --zh:    "Noto Sans SC", -apple-system, "PingFang SC", "Inter", sans-serif;
+      --mono:  "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+    }
+
+    /* ---------- 2. Reset ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: #1a1a1a;
+      font-family: var(--sans);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      padding: 40px 24px 80px;
+    }
+    figure { margin: 0; }
+    p { margin: 0; }
+    h1, h2, h3 { margin: 0; font-weight: inherit; }
+    table { border-collapse: collapse; width: 100%; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+    /* ---------- 3. Report shell ---------- */
+    .report-shell {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--paper);
+    }
+
+    /* ---------- 4. Header ---------- */
+    .report-header {
+      padding: 48px 56px 40px;
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .report-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin-bottom: 20px;
+    }
+    .report-title {
+      font-family: var(--sans);
+      font-size: 48px;
+      font-weight: 200;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+      color: var(--ink);
+      margin-bottom: 12px;
+    }
+    .report-hypothesis {
+      font-family: var(--zh);
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.7;
+      color: var(--grey-4);
+      margin-bottom: 28px;
+      max-width: 640px;
+    }
+
+    /* ---------- 5. Action badge ---------- */
+    .action-badge {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 20px;
+      border-radius: 0;
+    }
+    .action-badge.build  { background: var(--build);  color: var(--build-on); }
+    .action-badge.fast   { background: var(--fast);   color: var(--fast-on); }
+    .action-badge.pivot  { background: var(--pivot);  color: var(--pivot-on); }
+    .action-badge.grave  { background: var(--grave);  color: var(--grave-on); }
+
+    .badge-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .badge-score {
+      font-family: var(--sans);
+      font-size: 24px;
+      font-weight: 200;
+      letter-spacing: -.01em;
+    }
+
+    /* ---------- 6. Tab navigation ---------- */
+    .tab-nav {
+      display: flex;
+      border-bottom: 1px solid var(--grey-2);
+      padding: 0 56px;
+      gap: 0;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 16px 20px;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--grey-3);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -1px;
+      white-space: nowrap;
+      transition: color .15s, border-color .15s;
+      border-radius: 0;
+    }
+    .tab-btn:hover { color: var(--grey-4); }
+    .tab-btn.active {
+      color: var(--ink);
+      border-bottom-color: var(--ink);
+    }
+
+    /* ---------- 7. Tab panels ---------- */
+    .tab-panel { display: none; padding: 48px 56px; }
+    .tab-panel.active { display: block; }
+
+    /* ---------- 8. Section typography ---------- */
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin-bottom: 4px;
+    }
+    .section-title {
+      font-family: var(--sans);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 20px;
+    }
+    .body-text {
+      font-family: var(--zh);
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.8;
+      color: var(--grey-4);
+    }
+
+    /* ---------- 9. Hairline divider ---------- */
+    .hr {
+      height: 1px;
+      background: var(--grey-2);
+      border: 0;
+      margin: 36px 0;
+    }
+    .hr-short {
+      height: 3px;
+      background: var(--ink);
+      border: 0;
+      width: 40px;
+      margin-bottom: 24px;
+    }
+
+    /* ---------- 10. Score bars (Tab 1 & 4) ---------- */
+    .score-overview {
+      display: flex;
+      gap: 48px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .total-score-block {
+      flex-shrink: 0;
+    }
+    .total-score-num {
+      font-family: var(--sans);
+      font-size: 88px;
+      font-weight: 200;
+      line-height: 1;
+      letter-spacing: -.04em;
+      color: var(--ink);
+    }
+    .total-score-denom {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--grey-3);
+      letter-spacing: .08em;
+      margin-top: 4px;
+    }
+    .score-bars {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-top: 12px;
+    }
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .score-dim {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      width: 170px;
+      flex-shrink: 0;
+    }
+    .score-track {
+      flex: 1;
+      height: 2px;
+      background: var(--grey-2);
+    }
+    .score-fill {
+      height: 100%;
+      background: var(--ink);
+    }
+    .score-val {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink);
+      width: 42px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ---------- 11. Insight blocks (Tab 1) ---------- */
+    .insight-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--grey-2);
+      margin-bottom: 36px;
+    }
+    .insight-cell {
+      background: var(--paper);
+      padding: 24px;
+    }
+    .insight-cell-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin-bottom: 10px;
+    }
+    .insight-cell-text {
+      font-family: var(--zh);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.75;
+      color: var(--ink);
+    }
+
+    /* ---------- 12. MVP steps (Tab 1) ---------- */
+    .mvp-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .mvp-step {
+      display: flex;
+      gap: 24px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .mvp-step:last-child { border-bottom: none; }
+    .mvp-step-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .10em;
+      color: var(--grey-3);
+      width: 24px;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+    .mvp-step-body {}
+    .mvp-step-action {
+      font-family: var(--zh);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .mvp-step-signal {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--grey-3);
+    }
+
+    /* ---------- 13. Next action block (Tab 1) ---------- */
+    .next-action {
+      background: var(--ink);
+      color: var(--paper);
+      padding: 24px 28px;
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .next-action-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      flex-shrink: 0;
+      width: 100px;
+      padding-top: 2px;
+    }
+    .next-action-text {
+      font-family: var(--zh);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.7;
+    }
+
+    /* ---------- 14. Voice table (Tab 2) ---------- */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border: 1px solid var(--grey-2);
+      color: var(--grey-3);
+      border-radius: 0;
+      transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--ink); color: var(--ink); }
+    .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+    .voice-table { width: 100%; }
+    .voice-table thead tr {
+      background: var(--grey-1);
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .voice-table thead th {
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      text-align: left;
+    }
+    .voice-table tbody tr {
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .voice-table tbody tr:last-child { border-bottom: none; }
+    .voice-table tbody tr[data-hidden="true"] { display: none; }
+    .voice-table td {
+      padding: 12px;
+      font-family: var(--zh);
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--grey-4);
+      vertical-align: top;
+      line-height: 1.65;
+    }
+    .voice-table td:first-child {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      color: var(--grey-3);
+      white-space: nowrap;
+    }
+
+    .trust-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      padding: 2px 6px;
+      border-radius: 0;
+    }
+    .trust-high { background: var(--ink); color: var(--paper); }
+    .trust-mid  { background: var(--grey-2); color: var(--ink); }
+    .trust-low  { border: 1px solid var(--grey-2); color: var(--grey-3); }
+
+    .emotion-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+    }
+
+    /* ---------- 15. Platform coverage (Tab 2) ---------- */
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--grey-2);
+      margin-top: 32px;
+    }
+    .platform-cell {
+      background: var(--paper);
+      padding: 16px 20px;
+    }
+    .platform-name {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .platform-count {
+      font-family: var(--sans);
+      font-size: 22px;
+      font-weight: 200;
+      color: var(--ink);
+    }
+    .platform-status {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--grey-3);
+      margin-top: 4px;
+    }
+    .platform-degraded .platform-name { color: var(--grey-3); }
+
+    /* ---------- 16. Competitor matrix SVG (Tab 3) ---------- */
+    .matrix-wrap {
+      border: 1px solid var(--grey-2);
+      padding: 32px;
+      margin-bottom: 16px;
+    }
+    .matrix-caption {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--grey-3);
+      margin-top: 12px;
+      letter-spacing: .04em;
+    }
+
+    /* ---------- 17. Competitor table (Tab 3) ---------- */
+    .competitor-table thead th { width: auto; }
+    .competitor-table .comp-name {
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .comp-complaints { padding: 0; }
+    .comp-complaint-item {
+      font-family: var(--zh);
+      font-size: 12px;
+      color: var(--grey-4);
+      padding: 4px 12px;
+      border-bottom: 1px solid var(--grey-1);
+      line-height: 1.6;
+    }
+    .comp-complaint-item:last-child { border-bottom: none; }
+
+    /* ---------- 18. Blank-space callout (Tab 3) ---------- */
+    .blank-callout {
+      border: 1px solid var(--grey-2);
+      padding: 24px 28px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .blank-callout-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      flex-shrink: 0;
+      width: 120px;
+      padding-top: 2px;
+    }
+    .blank-callout-body { font-family: var(--zh); font-size: 14px; line-height: 1.75; }
+
+    /* ---------- 19. Scoring detail (Tab 4) ---------- */
+    .dim-block {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .dim-block:last-child { border-bottom: none; }
+    .dim-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .dim-name {
+      font-family: var(--sans);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--ink);
+    }
+    .dim-score {
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 200;
+      color: var(--ink);
+    }
+    .dim-score-max {
+      font-size: 13px;
+      color: var(--grey-3);
+    }
+    .dim-track {
+      height: 2px;
+      background: var(--grey-2);
+      margin-bottom: 20px;
+    }
+    .dim-fill { height: 100%; background: var(--ink); }
+    .dim-evidence-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .dim-evidence-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      background: var(--grey-1);
+    }
+    .dim-evidence-src {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      flex-shrink: 0;
+      width: 72px;
+      padding-top: 2px;
+    }
+    .dim-evidence-text {
+      font-family: var(--zh);
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--grey-4);
+    }
+    .dim-reason {
+      font-family: var(--zh);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.75;
+      color: var(--ink);
+      padding: 14px 0 0;
+      border-top: 1px solid var(--grey-2);
+    }
+
+    /* Evidence warning */
+    .evidence-warning {
+      background: var(--grey-1);
+      border-left: 3px solid var(--warn);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+    }
+    .evidence-warning-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      color: var(--warn);
+      flex-shrink: 0;
+    }
+    .evidence-warning-text {
+      font-family: var(--zh);
+      font-size: 13px;
+      color: var(--grey-4);
+      line-height: 1.6;
+    }
+
+    /* ---------- 20. Lean Canvas (Tab 5) ---------- */
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 1px;
+      background: var(--grey-2);
+    }
+    .canvas-cell {
+      background: var(--paper);
+      padding: 20px;
+      min-height: 140px;
+    }
+    .canvas-cell.unverified { background: var(--grey-1); }
+    .canvas-cell-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin-bottom: 10px;
+    }
+    .canvas-cell-body {
+      font-family: var(--zh);
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.7;
+      color: var(--ink);
+    }
+    .canvas-cell.unverified .canvas-cell-body {
+      color: var(--grey-3);
+      font-style: italic;
+    }
+    /* Grid placement for standard 9-block Lean Canvas */
+    .canvas-problem      { grid-column: 1; grid-row: 1 / span 2; }
+    .canvas-solution     { grid-column: 2; grid-row: 1; }
+    .canvas-uvp          { grid-column: 3; grid-row: 1 / span 2; }
+    .canvas-advantage    { grid-column: 4; grid-row: 1; }
+    .canvas-segments     { grid-column: 5; grid-row: 1 / span 2; }
+    .canvas-metrics      { grid-column: 2; grid-row: 2; }
+    .canvas-channels     { grid-column: 4; grid-row: 2; }
+    .canvas-cost         { grid-column: 1 / span 2; grid-row: 3; }
+    .canvas-revenue      { grid-column: 3 / span 3; grid-row: 3; }
+
+    /* ---------- 21. Responsive ---------- */
+    @media (max-width: 768px) {
+      body { padding: 16px 0 60px; }
+      .report-header { padding: 32px 24px 28px; }
+      .report-title { font-size: 32px; }
+      .tab-nav { padding: 0 24px; }
+      .tab-panel { padding: 32px 24px; }
+      .score-overview { flex-direction: column; gap: 24px; }
+      .total-score-num { font-size: 64px; }
+      .insight-grid { grid-template-columns: 1fr; }
+      .platform-grid { grid-template-columns: repeat(2, 1fr); }
+      .canvas-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="report-shell">
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header class="report-header">
+    <p class="report-meta">IDEA VALIDATOR · {{GENERATED_DATE}}</p>
+    <h1 class="report-title">{{IDEA_TITLE}}</h1>
+    <p class="report-hypothesis">{{HYPOTHESIS_ONE_LINER}}</p>
+    <!-- action class: build | fast | pivot | grave -->
+    <div class="action-badge {{ACTION_CLASS}}">
+      <span class="badge-label">{{ACTION_LABEL}}</span>
+      <span class="badge-score">{{TOTAL_SCORE}} / 100</span>
+    </div>
+  </header>
+
+  <!-- ── Tab nav ──────────────────────────────────────────── -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="tab-overview">总览</button>
+    <button class="tab-btn" data-tab="tab-voices">用户声音</button>
+    <button class="tab-btn" data-tab="tab-competitors">竞品分析</button>
+    <button class="tab-btn" data-tab="tab-scoring">评估详情</button>
+    <button class="tab-btn" data-tab="tab-canvas">Lean Canvas</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB 1 · 总览
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-overview" class="tab-panel active">
+
+    <!-- Score overview -->
+    <div class="section-label">综合评分</div>
+    <div class="score-overview">
+      <div class="total-score-block">
+        <div class="total-score-num">{{TOTAL_SCORE}}</div>
+        <div class="total-score-denom">/ 100 TOTAL</div>
+      </div>
+      <div class="score-bars">
+        <!-- width = (score / max) * 100% -->
+        <div class="score-row">
+          <span class="score-dim">D1 痛点锐度</span>
+          <div class="score-track"><div class="score-fill" style="width:{{D1_PCT}}%"></div></div>
+          <span class="score-val">{{D1}} / 20</span>
+        </div>
+        <div class="score-row">
+          <span class="score-dim">D2 利基可触达性</span>
+          <div class="score-track"><div class="score-fill" style="width:{{D2_PCT}}%"></div></div>
+          <span class="score-val">{{D2}} / 20</span>
+        </div>
+        <div class="score-row">
+          <span class="score-dim">D3 竞争空白</span>
+          <div class="score-track"><div class="score-fill" style="width:{{D3_PCT}}%"></div></div>
+          <span class="score-val">{{D3}} / 20</span>
+        </div>
+        <div class="score-row">
+          <span class="score-dim">D4 付费意愿信号</span>
+          <div class="score-track"><div class="score-fill" style="width:{{D4_PCT}}%"></div></div>
+          <span class="score-val">{{D4}} / 20</span>
+        </div>
+        <div class="score-row">
+          <span class="score-dim">D5 MVP 可验证性</span>
+          <div class="score-track"><div class="score-fill" style="width:{{D5_PCT}}%"></div></div>
+          <span class="score-val">{{D5}} / 20</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="hr">
+
+    <!-- Opportunity & Risk -->
+    <div class="insight-grid">
+      <div class="insight-cell">
+        <div class="insight-cell-label">最大机会点</div>
+        <div class="insight-cell-text">{{BIGGEST_OPPORTUNITY}}</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-cell-label">最大风险</div>
+        <div class="insight-cell-text">{{BIGGEST_RISK}}</div>
+      </div>
+    </div>
+
+    <hr class="hr">
+
+    <!-- MVP path -->
+    <div class="section-label">MVP 验证路径</div>
+    <div class="section-title">3 步走</div>
+    <div class="mvp-steps">
+      <div class="mvp-step">
+        <span class="mvp-step-num">01</span>
+        <div class="mvp-step-body">
+          <div class="mvp-step-action">{{MVP_STEP1_ACTION}}</div>
+          <div class="mvp-step-signal">成功信号：{{MVP_STEP1_SIGNAL}}</div>
+        </div>
+      </div>
+      <div class="mvp-step">
+        <span class="mvp-step-num">02</span>
+        <div class="mvp-step-body">
+          <div class="mvp-step-action">{{MVP_STEP2_ACTION}}</div>
+          <div class="mvp-step-signal">成功信号：{{MVP_STEP2_SIGNAL}}</div>
+        </div>
+      </div>
+      <div class="mvp-step">
+        <span class="mvp-step-num">03</span>
+        <div class="mvp-step-body">
+          <div class="mvp-step-action">{{MVP_STEP3_ACTION}}</div>
+          <div class="mvp-step-signal">成功信号：{{MVP_STEP3_SIGNAL}}</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="hr">
+
+    <!-- Next action -->
+    <div class="next-action">
+      <span class="next-action-label">本周行动</span>
+      <span class="next-action-text">{{NEXT_ACTION_TEXT}}（预计：{{NEXT_ACTION_TIME}}）</span>
+    </div>
+
+  </div><!-- /tab-overview -->
+
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB 2 · 用户声音
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-voices" class="tab-panel">
+
+    <!-- Summary blocks -->
+    <div class="section-label">结论摘要</div>
+    <div class="insight-grid" style="margin-bottom:36px;">
+      <div class="insight-cell">
+        <div class="insight-cell-label">验证了假设的</div>
+        <div class="insight-cell-text">{{VOICE_VERIFIED}}</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-cell-label">挑战了假设的</div>
+        <div class="insight-cell-text">{{VOICE_CHALLENGED}}</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-cell-label">未覆盖的</div>
+        <div class="insight-cell-text">{{VOICE_GAPS}}</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-cell-label">意外发现</div>
+        <div class="insight-cell-text">{{VOICE_SURPRISES}}</div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-row">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="pain">抱怨</button>
+      <button class="filter-btn" data-filter="workaround">妥协</button>
+      <button class="filter-btn" data-filter="wish">期望</button>
+      <button class="filter-btn" data-filter="pay">付费意愿</button>
+    </div>
+
+    <!-- Voice table -->
+    <table class="voice-table">
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>原始引用</th>
+          <th>情绪</th>
+          <th>可信度</th>
+          <th>关联维度</th>
+        </tr>
+      </thead>
+      <tbody id="voice-tbody">
+        <!--
+          每行示例（复制此块，填充内容，修改 data-emotion 用于筛选）：
+          data-emotion 取值：pain | workaround | wish | pay
+
+          <tr data-emotion="pain">
+            <td>Reddit</td>
+            <td>
+              "I've been using [竞品] for 2 years but every time I need to export
+              it crashes. I'm done." —
+              <a href="https://..." style="color:var(--grey-3);font-size:11px;">r/productivitytools</a>
+            </td>
+            <td><span class="emotion-tag">抱怨</span></td>
+            <td><span class="trust-badge trust-high">高</span></td>
+            <td>核心痛点</td>
+          </tr>
+        -->
+
+        <!-- {{VOICE_ROWS}} — 将上方注释替换为实际行 -->
+
+      </tbody>
+    </table>
+
+    <!-- Platform coverage -->
+    <hr class="hr">
+    <div class="section-label">平台覆盖</div>
+    <div class="platform-grid">
+      <!-- 正常平台示例 -->
+      <div class="platform-cell">
+        <div class="platform-name">Reddit</div>
+        <div class="platform-count">{{REDDIT_COUNT}}</div>
+        <div class="platform-status">条有效声音</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">X / Twitter</div>
+        <div class="platform-count">{{TWITTER_COUNT}}</div>
+        <div class="platform-status">条有效声音</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">小红书</div>
+        <div class="platform-count">{{XHS_COUNT}}</div>
+        <div class="platform-status">条有效声音</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">App Store</div>
+        <div class="platform-count">{{APPSTORE_COUNT}}</div>
+        <div class="platform-status">条竞品评论</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">Google Play</div>
+        <div class="platform-count">{{GPLAY_COUNT}}</div>
+        <div class="platform-status">条竞品评论</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">GitHub</div>
+        <div class="platform-count">{{GITHUB_COUNT}}</div>
+        <div class="platform-status">条 Issues/讨论</div>
+      </div>
+      <!-- 降级平台示例（class="platform-cell platform-degraded"） -->
+      <div class="platform-cell">
+        <div class="platform-name">Hacker News</div>
+        <div class="platform-count">{{HN_COUNT}}</div>
+        <div class="platform-status">条有效声音</div>
+      </div>
+      <!--
+        降级平台写法：
+        <div class="platform-cell platform-degraded">
+          <div class="platform-name">小红书</div>
+          <div class="platform-count">3</div>
+          <div class="platform-status">⚠ Exa 替代，可信度降低</div>
+        </div>
+      -->
+    </div>
+
+  </div><!-- /tab-voices -->
+
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB 3 · 竞品分析
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-competitors" class="tab-panel">
+
+    <!-- Positioning matrix -->
+    <div class="section-label">竞品定位矩阵</div>
+    <div class="matrix-wrap">
+      <!--
+        SVG 矩阵规范：
+        - 视框 600×400，轴线颜色 var(--grey-2)
+        - 竞品圆点：r=6, fill="var(--ink)"，旁标产品名（mono 11px）
+        - idea 落点：r=9, fill="none", stroke="var(--ink)", stroke-width="2"
+          旁标「← Your idea」
+        - 坐标轴：x 轴底部，y 轴左侧，两端贴标签
+      -->
+      <svg viewBox="0 0 600 400" width="100%" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+        <!-- 轴线 -->
+        <line x1="40" y1="200" x2="580" y2="200" stroke="#d4d4d2" stroke-width="1"/>
+        <line x1="300" y1="20"  x2="300" y2="380" stroke="#d4d4d2" stroke-width="1"/>
+
+        <!-- X 轴标签（左右两端） -->
+        <text x="44"  y="216" font-family="IBM Plex Mono,monospace" font-size="11" fill="#8a8a88">←  {{AXIS_X_LEFT}}</text>
+        <text x="580" y="216" font-family="IBM Plex Mono,monospace" font-size="11" fill="#8a8a88" text-anchor="end">{{AXIS_X_RIGHT}}  →</text>
+        <!-- Y 轴标签（上下两端） -->
+        <text x="304" y="18"  font-family="IBM Plex Mono,monospace" font-size="11" fill="#8a8a88">↑  {{AXIS_Y_TOP}}</text>
+        <text x="304" y="392" font-family="IBM Plex Mono,monospace" font-size="11" fill="#8a8a88">↓  {{AXIS_Y_BOTTOM}}</text>
+
+        <!--
+          竞品落点示例（替换 cx/cy 和名称）：
+          <circle cx="180" cy="130" r="6" fill="#0a0a0a"/>
+          <text x="190" y="127" font-family="IBM Plex Mono,monospace" font-size="11" fill="#555553">竞品A</text>
+
+          idea 落点：
+          <circle cx="420" cy="90" r="9" fill="none" stroke="#0a0a0a" stroke-width="2"/>
+          <text x="433" y="87" font-family="IBM Plex Mono,monospace" font-size="11" fill="#0a0a0a">← Your idea</text>
+        -->
+
+        <!-- {{MATRIX_DOTS}} — 将此注释替换为实际竞品圆点和 idea 落点 -->
+
+      </svg>
+      <p class="matrix-caption">坐标轴说明：{{MATRIX_AXIS_REASON}}</p>
+    </div>
+
+    <!-- Competitor table -->
+    <hr class="hr">
+    <div class="section-label">竞品数据</div>
+    <table class="voice-table competitor-table">
+      <thead>
+        <tr>
+          <th>产品</th>
+          <th>定价</th>
+          <th>核心定位</th>
+          <th>目标用户</th>
+          <th>高频抱怨（Top 3）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--
+          每行示例：
+          <tr>
+            <td class="comp-name">竞品名</td>
+            <td style="white-space:nowrap">$9 / 月<br><span style="font-size:11px;color:var(--grey-3)">Freemium</span></td>
+            <td>核心定位一句话</td>
+            <td>个人 / 小团队</td>
+            <td class="comp-complaints">
+              <div class="comp-complaint-item">「导出功能经常崩溃」</div>
+              <div class="comp-complaint-item">「价格贵，功能没多少」</div>
+              <div class="comp-complaint-item">「客服不回复」</div>
+            </td>
+          </tr>
+        -->
+
+        <!-- {{COMPETITOR_ROWS}} — 将此注释替换为实际竞品行 -->
+
+      </tbody>
+    </table>
+
+    <!-- Blank space callout -->
+    <hr class="hr">
+    <div class="blank-callout">
+      <span class="blank-callout-label">有效空白</span>
+      <div class="blank-callout-body">
+        {{BLANK_SPACE_TEXT}}
+        <!--
+          无空白时写：「未识别到有效空白。[原因：...]」
+          有空白时写：「[象限描述]。矩阵中无成熟竞品覆盖此象限；
+          Step 2 中有 X 条用户声音支持这一方向（来源：[平台]）。」
+        -->
+      </div>
+    </div>
+
+  </div><!-- /tab-competitors -->
+
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB 4 · 评估详情
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-scoring" class="tab-panel">
+
+    <!-- D1 -->
+    <div class="dim-block">
+      <div class="dim-header">
+        <span class="dim-name">D1 · 痛点锐度</span>
+        <span class="dim-score">{{D1}}<span class="dim-score-max"> / 20</span></span>
+      </div>
+      <div class="dim-track"><div class="dim-fill" style="width:{{D1_PCT}}%"></div></div>
+
+      <!-- 证据不足时显示此块，否则删除 -->
+      <!-- <div class="evidence-warning">
+        <span class="evidence-warning-label">⚠ 证据不足</span>
+        <span class="evidence-warning-text">独立来源 &lt; 3 条，分数自动封顶 60%。建议补充：[方向]</span>
+      </div> -->
+
+      <div class="dim-evidence-list">
+        <!--
+          每条证据示例：
+          <div class="dim-evidence-item">
+            <span class="dim-evidence-src">Reddit</span>
+            <span class="dim-evidence-text">
+              「I've been using [竞品] for 2 years...」— 高可信度，直接引用
+            </span>
+          </div>
+        -->
+        <!-- {{D1_EVIDENCE}} -->
+      </div>
+      <div class="dim-reason">{{D1_REASON}}</div>
+    </div>
+
+    <!-- D2 -->
+    <div class="dim-block">
+      <div class="dim-header">
+        <span class="dim-name">D2 · 利基可触达性</span>
+        <span class="dim-score">{{D2}}<span class="dim-score-max"> / 20</span></span>
+      </div>
+      <div class="dim-track"><div class="dim-fill" style="width:{{D2_PCT}}%"></div></div>
+      <div class="dim-evidence-list"><!-- {{D2_EVIDENCE}} --></div>
+      <div class="dim-reason">{{D2_REASON}}</div>
+    </div>
+
+    <!-- D3 -->
+    <div class="dim-block">
+      <div class="dim-header">
+        <span class="dim-name">D3 · 竞争空白</span>
+        <span class="dim-score">{{D3}}<span class="dim-score-max"> / 20</span></span>
+      </div>
+      <div class="dim-track"><div class="dim-fill" style="width:{{D3_PCT}}%"></div></div>
+      <div class="dim-evidence-list"><!-- {{D3_EVIDENCE}} --></div>
+      <div class="dim-reason">{{D3_REASON}}</div>
+    </div>
+
+    <!-- D4 -->
+    <div class="dim-block">
+      <div class="dim-header">
+        <span class="dim-name">D4 · 付费意愿信号</span>
+        <span class="dim-score">{{D4}}<span class="dim-score-max"> / 20</span></span>
+      </div>
+      <div class="dim-track"><div class="dim-fill" style="width:{{D4_PCT}}%"></div></div>
+      <div class="dim-evidence-list"><!-- {{D4_EVIDENCE}} --></div>
+      <div class="dim-reason">{{D4_REASON}}</div>
+    </div>
+
+    <!-- D5 -->
+    <div class="dim-block">
+      <div class="dim-header">
+        <span class="dim-name">D5 · MVP 可验证性</span>
+        <span class="dim-score">{{D5}}<span class="dim-score-max"> / 20</span></span>
+      </div>
+      <div class="dim-track"><div class="dim-fill" style="width:{{D5_PCT}}%"></div></div>
+      <div class="dim-evidence-list"><!-- {{D5_EVIDENCE}} --></div>
+      <div class="dim-reason">{{D5_REASON}}</div>
+    </div>
+
+  </div><!-- /tab-scoring -->
+
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB 5 · Lean Canvas
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-canvas" class="tab-panel">
+    <div class="section-label" style="margin-bottom:20px;">Lean Canvas · 基于验证数据自动填充</div>
+
+    <div class="canvas-grid">
+
+      <!-- 问题 -->
+      <div class="canvas-cell canvas-problem">
+        <div class="canvas-cell-label">Problem</div>
+        <div class="canvas-cell-body">{{CANVAS_PROBLEM}}</div>
+      </div>
+
+      <!-- 解决方案 -->
+      <div class="canvas-cell canvas-solution">
+        <div class="canvas-cell-label">Solution</div>
+        <div class="canvas-cell-body">{{CANVAS_SOLUTION}}</div>
+      </div>
+
+      <!-- 独特价值主张 -->
+      <div class="canvas-cell canvas-uvp">
+        <div class="canvas-cell-label">Unique Value Proposition</div>
+        <div class="canvas-cell-body" style="font-size:16px;font-weight:500;line-height:1.5;">{{CANVAS_UVP}}</div>
+      </div>
+
+      <!-- 竞争优势 -->
+      <!-- 若无证据，添加 class="canvas-cell canvas-advantage unverified" -->
+      <div class="canvas-cell canvas-advantage">
+        <div class="canvas-cell-label">Unfair Advantage</div>
+        <div class="canvas-cell-body">{{CANVAS_ADVANTAGE}}</div>
+      </div>
+
+      <!-- 目标用户 -->
+      <div class="canvas-cell canvas-segments">
+        <div class="canvas-cell-label">Customer Segments</div>
+        <div class="canvas-cell-body">{{CANVAS_SEGMENTS}}</div>
+      </div>
+
+      <!-- 关键指标 -->
+      <div class="canvas-cell canvas-metrics">
+        <div class="canvas-cell-label">Key Metrics</div>
+        <div class="canvas-cell-body">{{CANVAS_METRICS}}</div>
+      </div>
+
+      <!-- 渠道 -->
+      <div class="canvas-cell canvas-channels">
+        <div class="canvas-cell-label">Channels</div>
+        <div class="canvas-cell-body">{{CANVAS_CHANNELS}}</div>
+      </div>
+
+      <!-- 成本结构 -->
+      <div class="canvas-cell canvas-cost">
+        <div class="canvas-cell-label">Cost Structure</div>
+        <div class="canvas-cell-body">{{CANVAS_COST}}</div>
+      </div>
+
+      <!-- 收入来源 -->
+      <div class="canvas-cell canvas-revenue">
+        <div class="canvas-cell-label">Revenue Streams</div>
+        <div class="canvas-cell-body">{{CANVAS_REVENUE}}</div>
+      </div>
+
+    </div><!-- /canvas-grid -->
+    <p style="margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--grey-3);letter-spacing:.08em;">
+      灰色格子 = 待验证（当前证据不足以填充）
+    </p>
+  </div><!-- /tab-canvas -->
+
+</div><!-- /report-shell -->
+
+<script>
+  /* ── Tab switching ── */
+  const tabBtns   = document.querySelectorAll('.tab-btn');
+  const tabPanels = document.querySelectorAll('.tab-panel');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ── Voice filter ── */
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      document.querySelectorAll('#voice-tbody tr').forEach(row => {
+        row.dataset.hidden = (f !== 'all' && row.dataset.emotion !== f) ? 'true' : 'false';
+      });
+    });
+  });
+</script>
+</body>
+</html>

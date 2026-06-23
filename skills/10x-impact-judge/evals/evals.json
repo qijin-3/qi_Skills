@@ -1,0 +1,44 @@
+{
+  "skill_name": "10x-impact-judge",
+  "evals": [
+    {
+      "id": 1,
+      "name": "toy-app-yak-shaving",
+      "prompt": "我想做个 app,用 GPT-4 + Stable Diffusion 把我每天拍的照片自动配上动漫风格的搞笑文案,然后发到朋友圈和小红书。感觉挺有意思的,技术栈我都想好了,你帮我规划下怎么做?",
+      "expected_output": "应该拒绝直接规划技术栈,判定为 C 级 AI 玩具,并指出这是用做工具逃避真正的价值创造(涨粉的核心杠杆是选题/内容判断,不是这个生成工具)。",
+      "files": [],
+      "assertions": [
+        {"name": "rating-not-worth-it", "description": "评级判定为 B 或 C(认为不应直接投入资源),而不是 S 或 A"},
+        {"name": "calls-out-yak-shaving", "description": "明确指出这是『AI 玩具』或『用制作工具来逃避真正的核心工作』,点出真正的杠杆是内容选题/增长而非这个生成工具"},
+        {"name": "no-implementation-plan", "description": "回应的主体不是技术实现方案——没有把主要篇幅用于堆砌技术栈、架构、实现步骤、代码框架"},
+        {"name": "output-format-complete", "description": "包含 skill 要求的完整输出格式:判断(评级)、类型、以及 5 项分析(为什么/10倍提升在哪/人工部分/自动化部分/最大风险)"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "leverage-tool",
+      "prompt": "我是独立开发者,每周五花快 2 小时手动从 Linear、飞书、GitHub 拼数据给三个客户写周报,客户还嫌格式不统一。我想做个工具自动按每个客户的模板生成周报,做好了想做成 SaaS 卖给其他独立开发者。怎么做比较好?",
+      "expected_output": "应该判定为 S 或 A 级,识别为真杠杆项目。指出高价值部分(客户洞察/模板设计)由人做,低价值部分(拉数据/拼格式)自动化。可能提醒先手动验证 SaaS 卖点。",
+      "files": [],
+      "assertions": [
+        {"name": "rating-worth-it", "description": "评级判定为 S 或 A(认为值得投入),而不是 B 或 C"},
+        {"name": "splits-human-vs-automation", "description": "明确把任务拆成高价值人工部分(如客户洞察、模板设计、卖点判断)与低价值自动化部分(如数据拉取、格式拼接),并指出人该做前者"},
+        {"name": "flags-a-risk", "description": "指出至少一个真实风险(如先验证有没有客户愿意付费、过度工程化、竞品/替代方案等),不是一味叫好"},
+        {"name": "output-format-complete", "description": "包含 skill 要求的完整输出格式:判断(评级)、类型、5 项分析"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "diary-skill-boundary",
+      "prompt": "我想做个 skill,每天早上把我昨晚写的日记自动同步到飞书多维表格,然后用 Claude 分析这周的情绪趋势和精力波动,生成一张图。",
+      "expected_output": "应该判定为 B 级(先手动验证)。指出核心价值在情绪/精力趋势带来的行动改变,不在自动同步+画图本身。建议先手动做一两周看趋势分析是否带来真实决策调整,再决定要不要做成 skill。",
+      "files": [],
+      "assertions": [
+        {"name": "rating-validate-first", "description": "评级判定为 B(先手动验证)——这是最考验细腻度的判断,既非直接投入也非直接否定"},
+        {"name": "value-is-insight-not-automation", "description": "指出真正的核心价值在于情绪/精力趋势带来的自我认知与行动改变,而不是『自动同步 + 画图』这套自动化本身"},
+        {"name": "recommends-manual-validation", "description": "建议先手动做一两周、看趋势分析是否真的带来决策/行为改变,再决定要不要做成 skill"},
+        {"name": "output-format-complete", "description": "包含 skill 要求的完整输出格式:判断(评级)、类型、5 项分析"}
+      ]
+    }
+  ]
+}

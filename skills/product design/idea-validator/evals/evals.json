@@ -1,0 +1,56 @@
+{
+  "skill_name": "idea-validator",
+  "evals": [
+    {
+      "id": 1,
+      "name": "indie-invoice-tool",
+      "prompt": "帮我验证这个产品想法：面向独立开发者/自由职业者的轻量发票+合同管理工具，能自动从 Linear/GitHub 拉工时生成发票，支持 Stripe 收款，定价 $9/月。\n\n【模拟用户回答，无需再问我，直接按以下答案推进全流程】\nStep 0：跳过预筛，直接进入 Step 1。\nStep 1 JTBD 回答：\n- 触发时刻：每月月底要给 3-5 个海外客户开发票，经常拖延因为要从 Linear 和 GitHub 手动汇总工时\n- 现有方案：用 Google Sheets 模板 + 手动填，偶尔用 Wave（免费但功能弱）\n- 不满：Wave 不能连 Linear；FreshBooks 太贵($30+)；手动汇总每次 2 小时\n- 付费参照：现在用 Wave 免费，但愿意付 $10-15/月 如果能省掉那 2 小时\nStep 1 假设确认：确认你构建的 Lean Hypothesis，无需等我回复，假设合理就直接锁定进入 Step 2。\n\n请完整执行 Step 0-4，最终输出单文件 HTML 报告到 outputs 目录。",
+      "expected_output": "完整执行 idea-validator 四步流程，产出含 5 个 Tab 的 HTML 报告，含用户声音表(≥15条)、竞品矩阵、5维评分和 Action 建议。",
+      "files": [],
+      "assertions": [
+        {"name": "html-report-exists", "description": "outputs 目录中存在单文件 HTML 报告（.html），可离线打开"},
+        {"name": "five-tabs", "description": "HTML 报告包含全部 5 个 Tab：总览、用户声音、竞品分析、评估详情、Lean Canvas"},
+        {"name": "lean-hypothesis", "description": "Lean Hypothesis 六个字段完整填写"},
+        {"name": "user-voice-table", "description": "用户声音表 ≥15 条结构化条目，含 URL 或可信度标注"},
+        {"name": "five-d-scores", "description": "D1-D5 五维评分 + Action 建议（BUILD/FAST VALIDATE/PIVOT/GRAVEYARD）"},
+        {"name": "competitor-matrix", "description": "≥3 个竞品 + 定位矩阵或空白区分析"},
+        {"name": "challenging-evidence", "description": "结论含「挑战了假设的」维度"},
+        {"name": "step-flow", "description": "遵循 Step 0-4 流程标记"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "async-meeting-notes",
+      "prompt": "这个方向值得做吗？我想做一个给远程/async 团队的会议录音→结构化待办工具，核心差异是自动识别「谁承诺做什么、截止日期」并同步到 Linear，不是泛泛的 transcript。\n\n【模拟用户回答】\nStep 0 预筛回答：A 有 5 年 PM 经验+Linear API 熟悉；B 类似产品 Otter/Fireflies 很多但「承诺追踪」细分少；C 成功后主要做产品迭代和客户访谈，喜欢；D 竞争多但我有 PM 网络可冷启动\nStep 1 JTBD：\n- 触发：每周 4-5 个 Zoom 会后，PM 要花 30min 整理 action items 发到 Slack\n- 现有：Otter.ai + 手动 copy 到 Linear\n- 不满：Otter 摘要太泛，不提取 owner/deadline\n- 切换阻力：团队已付 Otter 年费\n- 付费：团队 Otter $20/user/mo，愿为「承诺追踪」多付 $5-10/user\n假设确认：直接锁定你构建的假设，进入调研。\n\n完整跑完验证流程，HTML 报告保存到 outputs/。",
+      "expected_output": "识别为工具/服务类 idea，完成多平台用户声音挖掘和竞品解构，输出含 BUILD/FAST VALIDATE/PIVOT 等 Action 的 HTML 报告。",
+      "files": [],
+      "assertions": [
+        {"name": "html-report-exists", "description": "outputs 目录中存在单文件 HTML 报告"},
+        {"name": "five-tabs", "description": "HTML 含全部 5 个 Tab"},
+        {"name": "lean-hypothesis", "description": "Lean Hypothesis 六个字段完整"},
+        {"name": "user-voice-table", "description": "用户声音表 ≥15 条，多种情绪类型"},
+        {"name": "five-d-scores", "description": "五维评分 + Action 建议"},
+        {"name": "competitor-otter", "description": "竞品含 Otter/Fireflies 或同类及空白判断"},
+        {"name": "four-dimensions-summary", "description": "2d 四个维度均有内容含挑战假设"},
+        {"name": "step-flow", "description": "Step 0-4 完整执行"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "ai-resume-builder",
+      "prompt": "我有个想法：用 GPT 帮求职者一键生成「针对每个 JD 定制」的简历和 cover letter，收 $19/月订阅。帮我做市场调研看看可不可行。\n\n【模拟用户回答】\nStep 0：不跳过。A 护城河：无特别优势，会调 API；B 商业模式：Rezi/Teal/Jobscan 已有；C 创始人适配：成功后每天调 prompt 和回工单，不太喜欢；D 竞争：非常多，第一次创业\nStep 1：\n- 触发：投 50 份简历只收到 2 个面试，怀疑简历没针对 JD 优化\n- 现有：Canva 模板 + ChatGPT 手动改\n- 不满：每次改简历 20 分钟，ChatGPT 输出太 generic\n- 付费：试过 Jobscan $50/月 觉得贵\n假设确认：锁定假设后继续。\n\n这是 eval 测试，请模拟完整流程到 HTML 报告（即使结论可能是 GRAVEYARD 也要完整输出）。",
+      "expected_output": "应识别高竞争+弱护城河危险信号，D5 可能扣分，但仍完整输出 HTML 报告含挑战假设的证据和竞品分析。",
+      "files": [],
+      "assertions": [
+        {"name": "html-report-exists", "description": "outputs 目录中存在 HTML 报告"},
+        {"name": "five-tabs", "description": "HTML 含全部 5 个 Tab"},
+        {"name": "step0-prescreen", "description": "Step 0 危险信号预筛结果被记录"},
+        {"name": "lean-hypothesis", "description": "Lean Hypothesis 完整，验证信号可量化"},
+        {"name": "user-voice-table", "description": "用户声音表 ≥15 条"},
+        {"name": "realistic-score", "description": "评分反映高竞争/弱护城河（总分≤79 或 D5 有扣分）"},
+        {"name": "competitor-resume", "description": "竞品含 Rezi/Teal/Jobscan 或同类"},
+        {"name": "challenging-evidence", "description": "含挑战假设及意外发现维度"}
+      ]
+    }
+  ]
+}
