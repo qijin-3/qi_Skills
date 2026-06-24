@@ -10,7 +10,9 @@ sync:
   - deep-research
   - idea-agile-assessment
   - idea-validator
+  - brainstorm
 unsync:
   - meeting
   - install-travel-journal
   - travel-journal
+  - guizang-social-card-skill

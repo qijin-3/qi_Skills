@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="[[THEME]]">
+<head>
+  <meta charset="utf-8">
+  <title>[[CONCEPT_NAME]] · 灵感卡片</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    /* 灵感卡片模板 · 视觉体系参考 guizang-social-card Editorial Magazine */
+    :root, [data-theme="ink-classic"] {
+      --paper: #f3f0e8; --paper-2: #ebe6da; --ink: #0a0a0b; --muted: #68625a;
+      --line: rgba(10,10,11,.22); --accent: #111111; --accent-soft: #d8d2c6;
+      --ink-rgb: 10,10,11; --paper-rgb: 243,240,232; --accent-rgb: 17,17,17;
+    }
+    [data-theme="indigo-porcelain"] {
+      --paper: #f2f4f5; --paper-2: #e5ebef; --ink: #0a1f3d; --muted: #5f6d78;
+      --line: rgba(10,31,61,.20); --accent: #315d93; --accent-soft: #d7e1ec;
+      --ink-rgb: 10,31,61; --paper-rgb: 242,244,245; --accent-rgb: 49,93,147;
+    }
+    [data-theme="forest-ink"] {
+      --paper: #f5f1e8; --paper-2: #e8dfcf; --ink: #16251b; --muted: #5d665d;
+      --line: rgba(22,37,27,.22); --accent: #2e6b4f; --accent-soft: #d4dfd2;
+      --ink-rgb: 22,37,27; --paper-rgb: 245,241,232; --accent-rgb: 46,107,79;
+    }
+    [data-theme="kraft-paper"] {
+      --paper: #eedfc7; --paper-2: #dfc9a8; --ink: #2a1e13; --muted: #755f49;
+      --line: rgba(42,30,19,.24); --accent: #9b5a2e; --accent-soft: #d5b58f;
+      --ink-rgb: 42,30,19; --paper-rgb: 238,223,199; --accent-rgb: 155,90,46;
+    }
+    [data-theme="midnight-ink"] {
+      --paper: #0e0d0c; --paper-2: #1a1714; --ink: #ece2cf; --muted: #9a8c75;
+      --line: rgba(236,226,207,.22); --accent: #d4a04a; --accent-soft: #3a2a14;
+      --ink-rgb: 236,226,207; --paper-rgb: 14,13,12; --accent-rgb: 212,160,74;
+    }
+    [data-theme="dune"] {
+      --paper: #f0e6d2; --paper-2: #ded0b7; --ink: #1f1a14; --muted: #6f6557;
+      --line: rgba(31,26,20,.22); --accent: #8f7650; --accent-soft: #d4c2a4;
+      --ink-rgb: 31,26,20; --paper-rgb: 240,230,210; --accent-rgb: 143,118,80;
+    }
+    :root {
+      --serif-zh: "Noto Serif SC", "Songti SC", serif;
+      --serif-en: "Playfair Display", serif;
+      --sans-zh: "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: #1a1a1a;
+      font-family: var(--sans-zh);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      padding: 48px 24px 80px;
+    }
+    .sheet { max-width: 920px; margin: 0 auto; }
+    .card {
+      background: var(--paper);
+      color: var(--ink);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    .grain {
+      position: absolute; inset: 0; pointer-events: none; z-index: 1;
+      opacity: .32; mix-blend-mode: multiply;
+      background-image: radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px);
+      background-size: 3px 3px;
+    }
+    [data-theme="midnight-ink"] .grain {
+      opacity: .22; mix-blend-mode: screen;
+      background-image: radial-gradient(rgba(255,244,214,.08) 1px, transparent 1px);
+    }
+    .content { position: relative; z-index: 2; padding: 56px 64px 48px; }
+    .kicker {
+      font-family: var(--mono); font-size: 12px; letter-spacing: .22em;
+      text-transform: uppercase; color: rgba(var(--ink-rgb), .55); margin: 0 0 12px;
+    }
+    .issue-row {
+      display: flex; align-items: center; gap: 12px;
+      font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 40px;
+    }
+    .issue-row .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .title {
+      font-family: var(--serif-zh); font-weight: 500; font-size: clamp(36px, 6vw, 52px);
+      line-height: 1.12; letter-spacing: .03em; margin: 0 0 8px;
+    }
+    .subtitle {
+      font-family: var(--serif-en); font-style: italic; font-size: 18px;
+      color: var(--muted); margin: 0 0 24px;
+    }
+    .one-liner {
+      font-family: var(--serif-zh); font-size: 20px; line-height: 1.55;
+      color: rgba(var(--ink-rgb), .82); margin: 0 0 32px; padding-bottom: 32px;
+      border-bottom: 1px solid var(--line);
+    }
+    .meta-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px 32px;
+      margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line);
+    }
+    .meta-item .label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+    }
+    .meta-item .value {
+      font-family: var(--serif-zh); font-size: 15px; line-height: 1.5;
+    }
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--accent); margin: 0 0 12px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-title::after {
+      content: ''; flex: 1; height: 1px; background: var(--line);
+    }
+    .section-body {
+      font-family: var(--serif-zh); font-size: 17px; line-height: 1.65;
+      color: rgba(var(--ink-rgb), .88); margin: 0;
+    }
+    .section-body.lead { font-size: 19px; line-height: 1.55; }
+    .metaphor {
+      border-left: 3px solid var(--accent); padding: 16px 24px;
+      background: var(--paper-2); font-style: italic;
+    }
+    .hooks { list-style: none; padding: 0; margin: 0; }
+    .hooks li {
+      padding: 14px 0; border-bottom: 1px solid var(--line);
+      font-family: var(--serif-zh); font-size: 17px; line-height: 1.5;
+    }
+    .hooks li:last-child { border-bottom: 0; }
+    .hooks li::before {
+      content: '「'; color: var(--accent); font-weight: 500;
+    }
+    .hooks li::after { content: '」'; color: var(--accent); font-weight: 500; }
+    .names {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;
+    }
+    .name-tag {
+      font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
+      padding: 6px 14px; background: var(--paper-2); border: 1px solid var(--line);
+    }
+    .name-tag.primary { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+    pre.vibe {
+      font-family: var(--mono); font-size: 12px; line-height: 1.6;
+      background: var(--paper-2); border: 1px solid var(--line);
+      padding: 20px 24px; margin: 0; overflow-x: auto; white-space: pre-wrap;
+      color: rgba(var(--ink-rgb), .9);
+    }
+    .issue-strip {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 64px; border-top: 1px solid var(--line);
+      font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted); background: var(--paper-2);
+    }
+    @media (max-width: 640px) {
+      .content { padding: 32px 28px; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .issue-strip { padding: 16px 28px; flex-direction: column; gap: 8px; text-align: center; }
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .card { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <article class="card">
+      <div class="grain"></div>
+      <div class="content">
+        <p class="kicker">Brainstorm · 灵感卡片</p>
+        <div class="issue-row">
+          <span>[[DATE]]</span><span class="dot"></span><span>头脑风暴</span>
+        </div>
+
+        <h1 class="title">[[CONCEPT_NAME]]</h1>
+        <p class="subtitle">[[CONCEPT_NAME_EN]]</p>
+        <p class="one-liner">[[ONE_LINER]]</p>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="label">情绪内核</div>
+            <div class="value">[[EMOTION_KERNEL]]</div>
+          </div>
+          <div class="meta-item">
+            <div class="label">思维方法</div>
+            <div class="value">[[THINKING_METHOD]]</div>
+          </div>
+          <div class="meta-item">
+            <div class="label">感知形态</div>
+            <div class="value">[[AXIS_FORM]]</div>
+          </div>
+          <div class="meta-item">
+            <div class="label">传播动力</div>
+            <div class="value">[[AXIS_POWER]]</div>
+          </div>
+        </div>
+
+        <section class="section">
+          <h2 class="section-title">候选产品名</h2>
+          <div class="names">[[NAME_TAGS]]</div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">核心情绪时刻</h2>
+          <p class="section-body lead">[[EMOTION_MOMENT]]</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">交互隐喻</h2>
+          <p class="section-body metaphor">[[INTERACTION_METAPHOR]]</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">视觉方向</h2>
+          <p class="section-body">[[VISUAL_DIRECTION]]</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">传播钩子</h2>
+          <ul class="hooks">[[HOOK_ITEMS]]</ul>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Vibe Coding 提示词</h2>
+          <pre class="vibe">[[VIBE_CODING_PROMPT]]</pre>
+        </section>
+      </div>
+      <footer class="issue-strip">
+        <span>头脑风暴 · brainstorm skill</span>
+        <span>[[CONCEPT_SLUG]].html</span>
+      </footer>
+    </article>
+  </main>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "识别为漂移模式：发散以自由漂移 + 概念错位为主",
+      "passed": false,
+      "evidence": "无漂移模式识别，按反直觉点列表发散"
+    },
+    {
+      "text": "明确没有直接套用案例库里的 8 个现成案例",
+      "passed": true,
+      "evidence": "刻意绕开日记/树洞/匿名社交，方向较新颖"
+    },
+    {
+      "text": "每个方向标注了思维方法 + 双轴定位",
+      "passed": false,
+      "evidence": "无思维方法/双轴标注"
+    },
+    {
+      "text": "至少有 2 个方向用了自由漂移",
+      "passed": false,
+      "evidence": "未标注自由漂移方法"
+    },
+    {
+      "text": "保留了『不好意思被看见』的克制气质",
+      "passed": true,
+      "evidence": "强调去身份化/不可追溯，气质克制"
+    },
+    {
+      "text": "方向确实有新意/意外感，而不是常见的 emo 日记/树洞 app",
+      "passed": true,
+      "evidence": "消化情绪/单向邮筒/声音形状等方向较野"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 3,
+    "total": 6,
+    "pass_rate": 0.5
+  }
+}

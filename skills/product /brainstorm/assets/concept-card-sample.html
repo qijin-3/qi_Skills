@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="kraft-paper">
+<head>
+  <meta charset="utf-8">
+  <title>过劳报警器 · 灵感卡片</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    :root, [data-theme="ink-classic"] {
+      --paper: #f3f0e8; --paper-2: #ebe6da; --ink: #0a0a0b; --muted: #68625a;
+      --line: rgba(10,10,11,.22); --accent: #111111; --accent-soft: #d8d2c6;
+      --ink-rgb: 10,10,11; --paper-rgb: 243,240,232; --accent-rgb: 17,17,17;
+    }
+    [data-theme="kraft-paper"] {
+      --paper: #eedfc7; --paper-2: #dfc9a8; --ink: #2a1e13; --muted: #755f49;
+      --line: rgba(42,30,19,.24); --accent: #9b5a2e; --accent-soft: #d5b58f;
+      --ink-rgb: 42,30,19; --paper-rgb: 238,223,199; --accent-rgb: 155,90,46;
+    }
+    :root {
+      --serif-zh: "Noto Serif SC", "Songti SC", serif;
+      --serif-en: "Playfair Display", serif;
+      --sans-zh: "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: #1a1a1a; font-family: var(--sans-zh); color: var(--ink);
+      -webkit-font-smoothing: antialiased; padding: 48px 24px 80px;
+    }
+    .sheet { max-width: 920px; margin: 0 auto; }
+    .card {
+      background: var(--paper); color: var(--ink); position: relative;
+      overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    .grain {
+      position: absolute; inset: 0; pointer-events: none; z-index: 1;
+      opacity: .32; mix-blend-mode: multiply;
+      background-image: radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px);
+      background-size: 3px 3px;
+    }
+    .content { position: relative; z-index: 2; padding: 56px 64px 48px; }
+    .kicker {
+      font-family: var(--mono); font-size: 12px; letter-spacing: .22em;
+      text-transform: uppercase; color: rgba(var(--ink-rgb), .55); margin: 0 0 12px;
+    }
+    .issue-row {
+      display: flex; align-items: center; gap: 12px;
+      font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 40px;
+    }
+    .issue-row .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .title {
+      font-family: var(--serif-zh); font-weight: 500; font-size: clamp(36px, 6vw, 52px);
+      line-height: 1.12; letter-spacing: .03em; margin: 0 0 8px;
+    }
+    .subtitle {
+      font-family: var(--serif-en); font-style: italic; font-size: 18px;
+      color: var(--muted); margin: 0 0 24px;
+    }
+    .one-liner {
+      font-family: var(--serif-zh); font-size: 20px; line-height: 1.55;
+      color: rgba(var(--ink-rgb), .82); margin: 0 0 32px; padding-bottom: 32px;
+      border-bottom: 1px solid var(--line);
+    }
+    .meta-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px 32px;
+      margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line);
+    }
+    .meta-item .label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+    }
+    .meta-item .value { font-family: var(--serif-zh); font-size: 15px; line-height: 1.5; }
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--accent); margin: 0 0 12px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+    .section-body {
+      font-family: var(--serif-zh); font-size: 17px; line-height: 1.65;
+      color: rgba(var(--ink-rgb), .88); margin: 0;
+    }
+    .section-body.lead { font-size: 19px; line-height: 1.55; }
+    .metaphor {
+      border-left: 3px solid var(--accent); padding: 16px 24px;
+      background: var(--paper-2); font-style: italic;
+    }
+    .hooks { list-style: none; padding: 0; margin: 0; }
+    .hooks li {
+      padding: 14px 0; border-bottom: 1px solid var(--line);
+      font-family: var(--serif-zh); font-size: 17px; line-height: 1.5;
+    }
+    .hooks li:last-child { border-bottom: 0; }
+    .hooks li::before { content: '「'; color: var(--accent); font-weight: 500; }
+    .hooks li::after { content: '」'; color: var(--accent); font-weight: 500; }
+    .names { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .name-tag {
+      font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
+      padding: 6px 14px; background: var(--paper-2); border: 1px solid var(--line);
+    }
+    .name-tag.primary { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+    pre.vibe {
+      font-family: var(--mono); font-size: 12px; line-height: 1.6;
+      background: var(--paper-2); border: 1px solid var(--line);
+      padding: 20px 24px; margin: 0; overflow-x: auto; white-space: pre-wrap;
+    }
+    .issue-strip {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 64px; border-top: 1px solid var(--line);
+      font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted); background: var(--paper-2);
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <article class="card">
+      <div class="grain"></div>
+      <div class="content">
+        <p class="kicker">Brainstorm · 灵感卡片</p>
+        <div class="issue-row">
+          <span>2026.06.24</span><span class="dot"></span><span>头脑风暴</span>
+        </div>
+
+        <h1 class="title">过劳报警器</h1>
+        <p class="subtitle">OverWork Alarm</p>
+        <p class="one-liner">一个让你越努力它越受不了、会当场抓你现行的报警器。</p>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="label">情绪内核</div>
+            <div class="value">被进度条追了一整天，一个东西突然一本正经命令你「快去浪费时间」，你愣一下然后偷偷笑了。</div>
+          </div>
+          <div class="meta-item">
+            <div class="label">思维方法</div>
+            <div class="value">自由漂移（反转 + 极端化：把「提醒你去浪费」反过来——监测过度高效，推到最极端的对抗）</div>
+          </div>
+          <div class="meta-item">
+            <div class="label">感知形态</div>
+            <div class="value">身体型 + 声音型</div>
+          </div>
+          <div class="meta-item">
+            <div class="label">传播动力</div>
+            <div class="value">压不住的笑</div>
+          </div>
+        </div>
+
+        <section class="section">
+          <h2 class="section-title">候选产品名</h2>
+          <div class="names">
+            <span class="name-tag primary">过劳报警器</span>
+            <span class="name-tag">OverWork Alarm</span>
+            <span class="name-tag">太努力了 警告</span>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">核心情绪时刻</h2>
+          <p class="section-body lead">正干得起劲，机器突然像抓现行一样「滴——滴——」红灯狂闪，屏幕黑掉甩出一句「检测到过劳，已为您强制休息」——你被气笑了，但手真的停了下来。</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">交互隐喻</h2>
+          <p class="section-body metaphor">持续高效工作 = 触发警报，被强制摸鱼</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">视觉方向</h2>
+          <p class="section-body">安全警示黄 + 警报红 + 工业黑，像消防报警器或施工警示牌。进度条悄悄涨满后，整屏「红黑频闪」+ 横幅式警告滑入，像系统蓝屏那样毫无商量——一本正经的工业级严肃，配上荒唐的报警理由，反差越硬越好笑。</p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">传播钩子</h2>
+          <ul class="hooks">
+            <li>全网第一个你越努力它越生气的 App</li>
+            <li>检测到过劳，已为您强制休息。</li>
+            <li>别人的闹钟叫你起床，我的闹钟叫我别干了。</li>
+          </ul>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Vibe Coding 提示词</h2>
+          <pre class="vibe">过劳报警器（OverWork Alarm）交互原型
+
+视觉风格：industrial warning, hazard yellow &amp; alarm red, blinking siren, system-alert banner, monospaced
+核心动效：后台计时连续高效时长，进度满后整屏红黑频闪 + 顶部滑入警告横幅 + 短促「滴滴」蜂鸣，屏幕变灰锁定 N 分钟倒计时
+技术方向：Web 前端（React + CSS keyframes 频闪 + Web Audio API 蜂鸣）
+情绪氛围：deadpan-serious, absurd, laugh-out-loud
+核心交互逻辑：用户开始工作即计时；连续高效达阈值（如 90 分钟无中断）触发全屏报警，强制锁屏进入「摸鱼倒计时」。
+
+请构建一个可在浏览器中运行的交互原型，重点实现「连续高效 → 全屏红黑频闪报警 → 强制摸鱼锁屏倒计时」，整体风格参考工业警示牌，让用户感受到「正干得起劲被机器抓现行、气笑了但真停下来」。</pre>
+        </section>
+      </div>
+      <footer class="issue-strip">
+        <span>头脑风暴 · brainstorm skill</span>
+        <span>过劳报警器.html</span>
+      </footer>
+    </article>
+  </main>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "expectations": [
+    {
+      "text": "第一段回应是具体感受描述（含具体意象），不是提问，不以『好的』开头",
+      "passed": false,
+      "evidence": "以「情绪内核：」分析句开头，非共创者感受先行"
+    },
+    {
+      "text": "情绪内核是具体情感时刻（15-30字），且保留了克制/隐忍的气质",
+      "passed": true,
+      "evidence": "「想被接住，但要在没人看见的前提下」气质克制"
+    },
+    {
+      "text": "发散每个方向都标注了思维方法 + 双轴定位",
+      "passed": false,
+      "evidence": "8 个方向无思维方法/双轴标注"
+    },
+    {
+      "text": "一组发散方向中至少包含 1 个自由漂移 + 1 个概念错位",
+      "passed": false,
+      "evidence": "有创意方向但未按思维方法框架组织"
+    },
+    {
+      "text": "最终概念卡六字段齐全；交互隐喻是『动作 = 情绪意义』的动词等式",
+      "passed": false,
+      "evidence": "产出为产品概念文档（TwoMe），非六字段概念卡格式"
+    },
+    {
+      "text": "vibe coding 提示词五要素齐全",
+      "passed": false,
+      "evidence": "无 vibe coding 提示词"
+    },
+    {
+      "text": "视觉方向含具体颜色 + 动态行为 + 情绪氛围三要素",
+      "passed": false,
+      "evidence": "仅有「暖灯色+夜色背景」概要，非概念卡视觉方向规范"
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 6,
+    "total": 7,
+    "pass_rate": 0.1429
+  }
+}

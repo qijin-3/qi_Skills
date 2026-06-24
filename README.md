@@ -39,11 +39,14 @@ ln -s ~/qi_Skills/skills/<skill-name> <skill-name>
 
 ```
 skills/
+├── design/
+│   └── guizang-social-card-skill-main/  — Generate Guizang-style social card image…
 ├── meeting/  — 自动整理会议相关文件
-├── product design/
+├── product /
 │   ├── 10x-impact-judge/ [已同步]  — 10倍影响力判断器
 │   ├── ai-design-reviewer/ [已同步]  — AI 功能设计评审工具
 │   ├── ai-user-research/ [已同步]  — AI-powered user research analysis techniques…
+│   ├── brainstorm/ [已同步]  — 头脑风暴 · 传播型想法共创
 │   ├── deep-research/ [已同步]  — 深度调研方法论（8步法）
 │   ├── idea-agile-assessment/ [已同步]  — 想法敏捷评估
 │   └── idea-validator/ [已同步]  — Idea 快速验证工具
@@ -52,22 +55,29 @@ skills/
     └── travel-journal/  — 游记生成器
 ```
 
+### Design
+
+`skills/design/`
+
+- **[guizang-social-card-skill](./skills/design/guizang-social-card-skill-main/SKILL.md)** — Generate Guizang-style social card image…
+
 ### Meeting
 
 `skills/meeting/`
 
 - **[meeting](./skills/meeting/SKILL.md)** — 自动整理会议相关文件
 
-### Product Design
+### Product 
 
-`skills/product design/`
+`skills/product /`
 
-- **[10x-impact-judge](./skills/product design/10x-impact-judge/SKILL.md)** `[已同步]` — 10倍影响力判断器
-- **[ai-design-reviewer](./skills/product design/ai-design-reviewer/SKILL.md)** `[已同步]` — AI 功能设计评审工具
-- **[ai-user-research](./skills/product design/ai-user-research/SKILL.md)** `[已同步]` — AI-powered user research analysis techniques…
-- **[deep-research](./skills/product design/deep-research/SKILL.md)** `[已同步]` — 深度调研方法论（8步法）
-- **[idea-agile-assessment](./skills/product design/idea-agile-assessment/SKILL.md)** `[已同步]` — 想法敏捷评估
-- **[idea-validator](./skills/product design/idea-validator/SKILL.md)** `[已同步]` — Idea 快速验证工具
+- **[10x-impact-judge](./skills/product /10x-impact-judge/SKILL.md)** `[已同步]` — 10倍影响力判断器
+- **[ai-design-reviewer](./skills/product /ai-design-reviewer/SKILL.md)** `[已同步]` — AI 功能设计评审工具
+- **[ai-user-research](./skills/product /ai-user-research/SKILL.md)** `[已同步]` — AI-powered user research analysis techniques…
+- **[brainstorm](./skills/product /brainstorm/SKILL.md)** `[已同步]` — 头脑风暴 · 传播型想法共创
+- **[deep-research](./skills/product /deep-research/SKILL.md)** `[已同步]` — 深度调研方法论（8步法）
+- **[idea-agile-assessment](./skills/product /idea-agile-assessment/SKILL.md)** `[已同步]` — 想法敏捷评估
+- **[idea-validator](./skills/product /idea-validator/SKILL.md)** `[已同步]` — Idea 快速验证工具
 
 ### Travel Journal
 
