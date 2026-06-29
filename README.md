@@ -42,7 +42,17 @@ skills/
 ├── design/
 │   └── guizang-social-card-skill-main/  — Generate Guizang-style social card image…
 ├── meeting/  — 自动整理会议相关文件
-├── product /
+├── personal_management/
+│   ├── annual-review/  — 北极星管理与年度复盘的统一入口
+│   ├── daily-briefing/  — 每日早报调度
+│   ├── diary-capture/  — 日记碎片捕获入口
+│   ├── evening-review/  — 每日晚报收尾
+│   ├── monthly-plan/  — 月度目标规划
+│   ├── monthly-review/  — 月度复盘
+│   ├── quick-task/  — 飞书任务捕获入口
+│   ├── weekly-plan/  — 下周计划安排
+│   └── weekly-review/  — 周复盘
+├── product/
 │   ├── 10x-impact-judge/ [已同步]  — 10倍影响力判断器
 │   ├── ai-design-reviewer/ [已同步]  — AI 功能设计评审工具
 │   ├── ai-user-research/ [已同步]  — AI-powered user research analysis techniques…
@@ -67,17 +77,31 @@ skills/
 
 - **[meeting](./skills/meeting/SKILL.md)** — 自动整理会议相关文件
 
-### Product 
+### Personal Management
 
-`skills/product /`
+`skills/personal_management/`
 
-- **[10x-impact-judge](./skills/product /10x-impact-judge/SKILL.md)** `[已同步]` — 10倍影响力判断器
-- **[ai-design-reviewer](./skills/product /ai-design-reviewer/SKILL.md)** `[已同步]` — AI 功能设计评审工具
-- **[ai-user-research](./skills/product /ai-user-research/SKILL.md)** `[已同步]` — AI-powered user research analysis techniques…
-- **[brainstorm](./skills/product /brainstorm/SKILL.md)** `[已同步]` — 头脑风暴 · 传播型想法共创
-- **[deep-research](./skills/product /deep-research/SKILL.md)** `[已同步]` — 深度调研方法论（8步法）
-- **[idea-agile-assessment](./skills/product /idea-agile-assessment/SKILL.md)** `[已同步]` — 想法敏捷评估
-- **[idea-validator](./skills/product /idea-validator/SKILL.md)** `[已同步]` — Idea 快速验证工具
+- **[annual-review](./skills/personal_management/annual-review/SKILL.md)** — 北极星管理与年度复盘的统一入口
+- **[daily-briefing](./skills/personal_management/daily-briefing/SKILL.md)** — 每日早报调度
+- **[diary-capture](./skills/personal_management/diary-capture/SKILL.md)** — 日记碎片捕获入口
+- **[evening-review](./skills/personal_management/evening-review/SKILL.md)** — 每日晚报收尾
+- **[monthly-plan](./skills/personal_management/monthly-plan/SKILL.md)** — 月度目标规划
+- **[monthly-review](./skills/personal_management/monthly-review/SKILL.md)** — 月度复盘
+- **[quick-task](./skills/personal_management/quick-task/SKILL.md)** — 飞书任务捕获入口
+- **[weekly-plan](./skills/personal_management/weekly-plan/SKILL.md)** — 下周计划安排
+- **[weekly-review](./skills/personal_management/weekly-review/SKILL.md)** — 周复盘
+
+### Product
+
+`skills/product/`
+
+- **[10x-impact-judge](./skills/product/10x-impact-judge/SKILL.md)** `[已同步]` — 10倍影响力判断器
+- **[ai-design-reviewer](./skills/product/ai-design-reviewer/SKILL.md)** `[已同步]` — AI 功能设计评审工具
+- **[ai-user-research](./skills/product/ai-user-research/SKILL.md)** `[已同步]` — AI-powered user research analysis techniques…
+- **[brainstorm](./skills/product/brainstorm/SKILL.md)** `[已同步]` — 头脑风暴 · 传播型想法共创
+- **[deep-research](./skills/product/deep-research/SKILL.md)** `[已同步]` — 深度调研方法论（8步法）
+- **[idea-agile-assessment](./skills/product/idea-agile-assessment/SKILL.md)** `[已同步]` — 想法敏捷评估
+- **[idea-validator](./skills/product/idea-validator/SKILL.md)** `[已同步]` — Idea 快速验证工具
 
 ### Travel Journal
 
