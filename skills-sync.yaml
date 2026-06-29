@@ -28,7 +28,5 @@ unsync:
   - interview-coach
   - ali-deploy-guide-generator
   - ecs-server-manager
-  - webapp-testing
   - product-namer
-  - tool-update-checker
   - wechat-doubler

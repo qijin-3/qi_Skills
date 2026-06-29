@@ -46,8 +46,7 @@ skills/
 │   └── guizang-social-card-skill-main/  — Generate Guizang-style social card image…
 ├── dev/
 │   ├── ali-deploy-guide-generator/  — 根据项目技术栈生成阿里云 ECS 部署方案与 GitHub 自动化部署配置
-│   ├── ecs-server-manager/  — 阿里云 ECS 服务器运维管理工具
-│   └── webapp-testing/  — Toolkit for interacting with and…
+│   └── ecs-server-manager/  — 阿里云 ECS 服务器运维管理工具
 ├── meeting/  — 自动整理会议相关文件
 ├── personal_os/
 │   ├── annual-review/  — 北极星管理与年度复盘的统一入口
@@ -68,7 +67,6 @@ skills/
 │   ├── idea-validator/ [已同步]  — Idea 快速验证工具
 │   └── product-namer/  — 产品命名专家
 ├── tools/
-│   ├── tool-update-checker/  — 检查 Claude Code 工具链（CLI 软件、插件、agent skills）是否有新版…
 │   └── wechat-doubler/  — macOS 微信双开工具
 └── travel_journal/
     ├── install-travel-journal/  — Travel Journal 安装引导
@@ -94,7 +92,6 @@ skills/
 
 - **[ali-deploy-guide-generator](./skills/dev/ali-deploy-guide-generator/SKILL.md)** — 根据项目技术栈生成阿里云 ECS 部署方案与 GitHub 自动化部署配置
 - **[ecs-server-manager](./skills/dev/ecs-server-manager/SKILL.md)** — 阿里云 ECS 服务器运维管理工具
-- **[webapp-testing](./skills/dev/webapp-testing/SKILL.md)** — Toolkit for interacting with and…
 
 ### Meeting
 
@@ -132,7 +129,6 @@ skills/
 
 `skills/tools/`
 
-- **[tool-update-checker](./skills/tools/tool-update-checker/SKILL.md)** — 检查 Claude Code 工具链（CLI 软件、插件、agent skills）是否有新版…
 - **[wechat-doubler](./skills/tools/wechat-doubler/SKILL.md)** — macOS 微信双开工具
 
 ### Travel Journal
