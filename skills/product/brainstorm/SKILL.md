@@ -2,7 +2,7 @@
 name: brainstorm
 description: >
   头脑风暴 · 传播型想法共创 —— 帮你把一个模糊的灵感，挖出它的情绪内核，发散成多个有传播力的交互原型概念，
-  最终产出可直接驱动 vibe coding 的 HTML 灵感卡片（保存到 Ideas/Brainstorm 文件夹）。它不只是生成 idea，更是一个思维陪练：每个方向都会显式告诉你
+  最终产出可直接驱动 vibe coding 的 HTML 灵感卡片（保存到 Ideas/💥 Brainstorm 文件夹）。它不只是生成 idea，更是一个思维陪练：每个方向都会显式告诉你
   「用了什么思维方法」（形态映射 / 概念错位 / 触发反推 / 自由漂移 / 案例锚定），帮你训练「怎么看一个 idea」。
   当用户说「头脑风暴」「帮我发散这个想法」「我有个灵感」「这个能传播吗」「做一个有感觉的产品」「换个角度想想」
   「帮我训练思维」「这个 idea 怎么才能火」，或者抛出一个还很模糊的产品/内容/玩法点子时触发。
@@ -174,7 +174,7 @@ description: >
 5. **Write** 到固定目录（先 `mkdir -p`）：
 
 ```
-/Users/jin/SynologyDrive/Working/存档/Ideas/Brainstorm/<概念名>.html
+/Users/jin/SynologyDrive/Working/Ideas/💥 Brainstorm/<概念名>.html
 ```
 
 文件名按**选定主产品名**命名（中文可直接用；英文用小写连字符）。用户选了 2 个方向 → 各写一张 HTML。
@@ -242,5 +242,5 @@ description: >
 - [ ] 概念卡六字段齐全；产品名给 2–3 候选；vibe coding 提示词五要素完整
 - [ ] 传播钩子给 2–3 候选，符合「1000 人点赞」标准
 - [ ] **已基于 `assets/concept-card-template.html` 生成 HTML，无残留 `[[` 占位符**
-- [ ] **HTML 已保存到 `/Users/jin/SynologyDrive/Working/存档/Ideas/Brainstorm/<概念名>.html`**
+- [ ] **HTML 已保存到 `/Users/jin/SynologyDrive/Working/Ideas/💥 Brainstorm/<概念名>.html`**
 - [ ] 若执行了搜索/验证：调用了 agent-reach，未越界做市场调研

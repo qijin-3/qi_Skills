@@ -10,7 +10,7 @@ description: >
 
 独立开发者视角的产品化 idea 验证流程。全程自动推进，用户只在 3 个节点参与：Step 0 预筛问题回答（可选）、Step 1 JTBD 回答、Step 1 假设确认。
 
-**输出文件统一存放至** `~/Downloads/idea-validator/<idea-slug>/`：
+**输出文件统一存放至** `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`：
 - `report.html`：可视化 HTML 报告
 - `user-feedback.jsonl`：用户反馈数据（JSONL，可跨次调研追加复用）
 - `feedback-meta.json`：调研元信息（区域/平台/统计）
@@ -168,8 +168,13 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 
 **2c. 构建结构化用户声音表**（≥ **100** 条高+中可信度；四种情绪类型各≥ 10 条；每个启用平台至少提供 **5 条**；开发者工具类 idea 需含 ≥ 5 条 GitHub 来源）：
 
-| 平台 | 原始引用（附可访问 URL） | 情绪类型 | 可信度 | 时间 | 关联假设维度 |
-|------|----------------------|---------|-------|------|------------|
+| 平台 | 原始引用（附可访问 URL） | 中文翻译 | 情绪类型 | 可信度 | 时间 | 关联假设维度 |
+|------|----------------------|---------|---------|-------|------|------------|
+
+**翻译规则**：每条声音必须同时保存原文和中文译文。
+- `content`：保留原始语言原文，不改写
+- `content_zh`：`language` 为 `zh` 时与 `content` 相同；`en` / `other` 时填写准确中文翻译
+- HTML 报告声音表：原文与 `content_zh` 分行展示（见 `references/html-report.md`）
 
 > 若单次搜索凑不够 100 条，应扩大搜索词范围、增加搜索次数，而不是降低要求。若最终仍不足 100 条，在报告中明确标注「证据不足：共 X 条，建议补充调研」。
 
@@ -183,12 +188,12 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 
 > 字段定义、枚举值、分析命令 → `references/feedback-schema.md`
 
-保存两个文件至 `~/Downloads/idea-validator/<idea-slug>/`：
+保存两个文件至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`：
 
 **① `user-feedback.jsonl`**（每条声音一行，追加写入）：
 ```bash
 # 每条记录格式（字段说明见 feedback-schema.md）
-{"id":"reddit-0001","idea_slug":"<slug>","idea_name":"<name>","session_date":"YYYY-MM-DD","source_platform":"reddit","source_url":"<url>","source_type":"comment","source_region":"global","content":"<原文>","language":"en","search_query":"<搜索词>","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"YYYY-MM-DD","is_recent":true,"competitors_mentioned":["<竞品>"],"engagement":{"upvotes":89,"comments":14,"views":null}}
+{"id":"reddit-0001","idea_slug":"<slug>","idea_name":"<name>","session_date":"YYYY-MM-DD","source_platform":"reddit","source_url":"<url>","source_type":"comment","source_region":"global","content":"<原文>","content_zh":"<中文翻译>","language":"en","search_query":"<搜索词>","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"YYYY-MM-DD","is_recent":true,"competitors_mentioned":["<竞品>"],"engagement":{"upvotes":89,"comments":14,"views":null}}
 ```
 若文件已存在（历史调研），直接追加；不要覆盖。
 
@@ -261,10 +266,10 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 - Tab 4 评估详情：每维度证据列表 + 得分理由 + 不足警告
 - Tab 5 Lean Canvas：九格 Canvas，无证据格子标注「待验证」
 
-**保存路径**：`~/Downloads/idea-validator/<idea-slug>/report.html`
+**保存路径**：`/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/report.html`
 
 - `<idea-slug>` 从 idea 名称生成（英文小写 + 连字符，如 `ai-writing-tool`）
-- 若目录不存在则自动创建：`mkdir -p ~/Downloads/idea-validator/<idea-slug>/`
+- 若目录不存在则自动创建：`mkdir -p "/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>"`
 - 若该目录已存在 `user-feedback.jsonl`（历史调研留档），读取其 `session_date` 列表，在报告 Tab 2 中注明「已有 X 次历史调研，本次新增 Y 条」
 
 ---
@@ -301,10 +306,10 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 - [ ] **用户画像区域已判断**，启用/跳过平台已在摘要中列出并说明原因
 - [ ] 所有启用平台均已执行搜索；每个启用平台至少 5 条证据
 - [ ] **时效性**：证据以最近 6 个月内为主；超期内容已标注时间并降低权重
-- [ ] 用户声音表：≥ 100 条高+中可信度；高可信度条目全部附可访问 URL；含时间列
-- [ ] **user-feedback.jsonl 和 feedback-meta.json 已保存**至 `~/Downloads/idea-validator/<idea-slug>/`（jsonl 追加写入，不覆盖历史数据）
+- [ ] 用户声音表：≥ 100 条高+中可信度；高可信度条目全部附可访问 URL；含时间列；每条含 `content` + `content_zh`
+- [ ] **user-feedback.jsonl 和 feedback-meta.json 已保存**至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`（jsonl 追加写入，不覆盖历史数据；每条记录含 `content_zh`）
 - [ ] 2d 结论四个维度全部填写，包括「挑战了假设的」
 - [ ] 竞品 3–6 个；空白区结论有双条件验证
 - [ ] 每个评分维度先列证据再给分，证据不足维度已封顶并标注
-- [ ] **HTML 报告已保存**至 `~/Downloads/idea-validator/<idea-slug>/report.html`，包含全部 5 个 Tab，离线可打开
+- [ ] **HTML 报告已保存**至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/report.html`，包含全部 5 个 Tab，离线可打开；平台覆盖含 YouTube / 哔哩哔哩计数；声音表含原文 + 中文翻译
 - [ ] MVP 路径每步包含可量化成功信号

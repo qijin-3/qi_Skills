@@ -9,7 +9,7 @@
 - **分析友好**：`jq`、pandas、Excel Power Query、DuckDB 均原生支持
 - **增量复用**：多次调研的数据可累积在同一文件，按 `session_date` 区分批次
 
-文件路径：`~/Downloads/idea-validator/<idea-slug>/user-feedback.jsonl`
+文件路径：`/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/user-feedback.jsonl`
 
 ---
 
@@ -38,6 +38,7 @@
 | 字段名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | `content` | string | ✅ | 原始引用文本（保留原文，不改写）|
+| `content_zh` | string | ✅ | 中文翻译。`language` 为 `zh` 时与 `content` 相同；`en` / `other` 时填写准确中文译文 |
 | `language` | string | ✅ | 内容语言：`zh` \| `en` \| `other` |
 | `search_query` | string | ✅ | 触发找到该条内容的搜索词，用于追溯和复用 |
 
@@ -71,11 +72,12 @@
 ## 完整模板示例
 
 ```jsonl
-{"id":"reddit-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"reddit","source_url":"https://www.reddit.com/r/writing/comments/abc123/comment/xyz","source_type":"comment","source_region":"global","content":"I've been using Notion AI for drafts but it keeps hallucinating facts. I had to spend 30 minutes fact-checking a 500-word blog post. This defeats the entire purpose.","language":"en","search_query":"notion AI writing frustrating","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"2026-05-18","is_recent":true,"competitors_mentioned":["Notion AI"],"engagement":{"upvotes":89,"comments":14,"views":null}}
-{"id":"xiaohongshu-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"xiaohongshu","source_url":null,"source_type":"comment","source_region":"cn","content":"用了三个月的某 AI 写作工具，最大的问题是风格太统一，写出来的东西都有 AI 味，被编辑打回来好几次","language":"zh","search_query":"AI写作工具 踩雷","sentiment_type":"pain","credibility":"medium","hypothesis_dimension":"pain_point","published_at":"2026-04","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":203,"comments":null,"views":null}}
-{"id":"app_store-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"app_store","source_url":"https://apps.apple.com/us/app/id123456789","source_type":"review","source_region":"global","content":"1 star. The app deleted my 3000-word draft because it crashed mid-sync. No backup. Switching to something else immediately.","language":"en","search_query":"app store ai writing 1 star review","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"2026-06-01","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":null,"comments":null,"views":null}}
-{"id":"youtube-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"youtube","source_url":"https://www.youtube.com/watch?v=abc&lc=xyz","source_type":"video_comment","source_region":"global","content":"I wish there was an AI tool that could match my existing writing style instead of generating generic corporate speak. Does anyone know if this exists?","language":"en","search_query":"youtube best ai writing tool 2026","sentiment_type":"wish","credibility":"medium","hypothesis_dimension":"differentiation","published_at":"2026-05","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":47,"comments":null,"views":null}}
-{"id":"github-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"github","source_url":"https://github.com/writingai/app/issues/234","source_type":"issue","source_region":"global","content":"Feature request: support for custom style guides. I've been pasting the same 500-word style doc at the start of every session for months. This is ridiculous.","language":"en","search_query":"gh search issues ai writing style guide","sentiment_type":"wish","credibility":"high","hypothesis_dimension":"differentiation","published_at":"2026-03-22","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":null,"comments":12,"views":null}}
+{"id":"reddit-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"reddit","source_url":"https://www.reddit.com/r/writing/comments/abc123/comment/xyz","source_type":"comment","source_region":"global","content":"I've been using Notion AI for drafts but it keeps hallucinating facts. I had to spend 30 minutes fact-checking a 500-word blog post. This defeats the entire purpose.","content_zh":"我用 Notion AI 写草稿，但它老是编造事实。一篇 500 字的博文，我花了 30 分钟核对事实。这完全失去了意义。","language":"en","search_query":"notion AI writing frustrating","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"2026-05-18","is_recent":true,"competitors_mentioned":["Notion AI"],"engagement":{"upvotes":89,"comments":14,"views":null}}
+{"id":"xiaohongshu-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"xiaohongshu","source_url":null,"source_type":"comment","source_region":"cn","content":"用了三个月的某 AI 写作工具，最大的问题是风格太统一，写出来的东西都有 AI 味，被编辑打回来好几次","content_zh":"用了三个月的某 AI 写作工具，最大的问题是风格太统一，写出来的东西都有 AI 味，被编辑打回来好几次","language":"zh","search_query":"AI写作工具 踩雷","sentiment_type":"pain","credibility":"medium","hypothesis_dimension":"pain_point","published_at":"2026-04","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":203,"comments":null,"views":null}}
+{"id":"app_store-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"app_store","source_url":"https://apps.apple.com/us/app/id123456789","source_type":"review","source_region":"global","content":"1 star. The app deleted my 3000-word draft because it crashed mid-sync. No backup. Switching to something else immediately.","content_zh":"一星。同步中途崩溃，App 删掉了我的 3000 字草稿，没有备份。马上换别的了。","language":"en","search_query":"app store ai writing 1 star review","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"2026-06-01","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":null,"comments":null,"views":null}}
+{"id":"youtube-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"youtube","source_url":"https://www.youtube.com/watch?v=abc&lc=xyz","source_type":"video_comment","source_region":"global","content":"I wish there was an AI tool that could match my existing writing style instead of generating generic corporate speak. Does anyone know if this exists?","content_zh":"希望有 AI 工具能匹配我现有的写作风格，而不是生成千篇一律的企业腔。有人知道有这种产品吗？","language":"en","search_query":"youtube best ai writing tool 2026","sentiment_type":"wish","credibility":"medium","hypothesis_dimension":"differentiation","published_at":"2026-05","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":47,"comments":null,"views":null}}
+{"id":"bilibili-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"bilibili","source_url":"https://www.bilibili.com/video/BVxxx","source_type":"video_comment","source_region":"cn","content":"这个工具写公众号文章还行，但标题党味太重，发出去阅读量反而下降了","content_zh":"这个工具写公众号文章还行，但标题党味太重，发出去阅读量反而下降了","language":"zh","search_query":"AI写作工具 踩坑","sentiment_type":"pain","credibility":"medium","hypothesis_dimension":"pain_point","published_at":"2026-05","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":128,"comments":null,"views":null}}
+{"id":"github-0001","idea_slug":"ai-writing-tool","idea_name":"AI 写作助手","session_date":"2026-06-23","source_platform":"github","source_url":"https://github.com/writingai/app/issues/234","source_type":"issue","source_region":"global","content":"Feature request: support for custom style guides. I've been pasting the same 500-word style doc at the start of every session for months. This is ridiculous.","content_zh":"功能请求：支持自定义风格指南。好几个月了，每次会话开头我都要粘贴同一份 500 字的风格文档。太离谱了。","language":"en","search_query":"gh search issues ai writing style guide","sentiment_type":"wish","credibility":"high","hypothesis_dimension":"differentiation","published_at":"2026-03-22","is_recent":true,"competitors_mentioned":[],"engagement":{"upvotes":null,"comments":12,"views":null}}
 ```
 
 ---
@@ -85,13 +87,13 @@
 ### 追加新条目
 ```bash
 # 追加一条新记录（每次调研结束后自动执行）
-echo '{"id":"reddit-0042",...}' >> ~/Downloads/idea-validator/ai-writing-tool/user-feedback.jsonl
+echo '{"id":"reddit-0042",...}' >> "/Users/jin/SynologyDrive/Working/Ideas/ai-writing-tool/user-feedback.jsonl"
 ```
 
 ### 用 jq 分析
 
 ```bash
-FILE=~/Downloads/idea-validator/ai-writing-tool/user-feedback.jsonl
+FILE="/Users/jin/SynologyDrive/Working/Ideas/ai-writing-tool/user-feedback.jsonl"
 
 # 统计各平台条数
 jq -s 'group_by(.source_platform) | map({platform: .[0].source_platform, count: length})' $FILE
@@ -106,7 +108,7 @@ jq -s 'group_by(.sentiment_type) | map({type: .[0].sentiment_type, count: length
 jq 'select(.competitors_mentioned | contains(["Notion"]))' $FILE
 
 # 导出为 CSV（需要 jq 1.6+）
-jq -r '[.id, .source_platform, .sentiment_type, .credibility, .published_at, .content] | @csv' $FILE
+jq -r '[.id, .source_platform, .sentiment_type, .credibility, .published_at, .content, .content_zh] | @csv' $FILE
 ```
 
 ### 用 Python/pandas 分析
@@ -115,7 +117,7 @@ jq -r '[.id, .source_platform, .sentiment_type, .credibility, .published_at, .co
 import pandas as pd
 
 df = pd.read_json(
-    "~/Downloads/idea-validator/ai-writing-tool/user-feedback.jsonl",
+    "/Users/jin/SynologyDrive/Working/Ideas/ai-writing-tool/user-feedback.jsonl",
     lines=True
 )
 

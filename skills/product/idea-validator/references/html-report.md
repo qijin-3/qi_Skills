@@ -63,7 +63,9 @@
 <tr data-emotion="pain">  <!-- pain | workaround | wish | pay -->
   <td>Reddit</td>
   <td>
-    「原始引用原话」—
+    <div class="voice-original">「原始引用原话」—</div>
+    <span class="voice-translation-label">中文</span>
+    <div class="voice-translation">中文翻译内容</div>
     <a href="https://..." style="color:var(--grey-3);font-size:11px;">来源链接</a>
   </td>
   <td><span class="emotion-tag">抱怨</span></td>
@@ -72,8 +74,13 @@
 </tr>
 ```
 
-**平台覆盖**：替换 `{{REDDIT_COUNT}}` 等各平台计数（含 `{{GITHUB_COUNT}}`、`{{GPLAY_COUNT}}`）。
-降级平台在对应 `.platform-cell` 上添加 class `platform-degraded`，status 写「⚠ Exa 替代，可信度降低」。
+- 原文来自 `content`；中文来自 `content_zh`
+- `language` 为 `zh` 时，原文与中文相同，仍分两行展示（原文行可省略「中文」标签，只保留一行）
+
+**平台覆盖**：替换全部 9 个平台计数占位符：
+`{{REDDIT_COUNT}}` `{{TWITTER_COUNT}}` `{{XHS_COUNT}}` `{{APPSTORE_COUNT}}` `{{GPLAY_COUNT}}` `{{GITHUB_COUNT}}` `{{HN_COUNT}}` `{{YOUTUBE_COUNT}}` `{{BILIBILI_COUNT}}`
+
+未启用的平台填 `0`；降级平台在对应 `.platform-cell` 上添加 class `platform-degraded`，status 写「⚠ Exa 替代，可信度降低」或「未启用」。
 
 ### 6. 填入 Tab 3 · 竞品分析
 
@@ -128,6 +135,8 @@
 - [ ] 所有 `{{...}}` 占位符已全部替换（无遗漏）
 - [ ] 5 个 Tab 均有内容
 - [ ] Tab 2 中「挑战了假设的」格子不为空
+- [ ] Tab 2 声音表每行含原文 + `content_zh` 中文翻译
+- [ ] Tab 2 平台覆盖 9 个占位符均已替换（含 `{{YOUTUBE_COUNT}}`、`{{BILIBILI_COUNT}}`）
 - [ ] 证据不足的维度已显示 `.evidence-warning` 块
 - [ ] 降级平台已标注
 - [ ] CSS / JS 全部内联，无外部依赖，离线可打开

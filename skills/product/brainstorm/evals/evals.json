@@ -10,7 +10,7 @@
     {
       "id": 2,
       "prompt": "想做个东西，关于「一个人在异乡，过年时不想让家里担心，假装自己过得很好」这种感觉。不知道能做成什么产品，帮我发散发散，最好能给我一张能直接拿去做原型的概念卡。",
-      "expected_output": "Phase 1 给出沉/克制气质的具体情绪内核并确认；发散方向双轴齐全、思维方法标注清楚；用户选方向后基于 concept-card-template.html 生成 HTML 灵感卡片，保存到 Ideas/Brainstorm/<概念名>.html，六字段齐全（含 2-3 产品名候选、vibe coding 五要素、2-3 传播钩子）。",
+      "expected_output": "Phase 1 给出沉/克制气质的具体情绪内核并确认；发散方向双轴齐全、思维方法标注清楚；用户选方向后基于 concept-card-template.html 生成 HTML 灵感卡片，保存到 Ideas/💥 Brainstorm/<概念名>.html，六字段齐全（含 2-3 产品名候选、vibe coding 五要素、2-3 传播钩子）。",
       "files": []
     },
     {

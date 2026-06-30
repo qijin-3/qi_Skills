@@ -414,6 +414,25 @@
       color: var(--grey-3);
       white-space: nowrap;
     }
+    .voice-original {
+      color: var(--grey-4);
+      margin-bottom: 6px;
+    }
+    .voice-translation {
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .voice-translation-label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin-bottom: 4px;
+    }
 
     .trust-badge {
       display: inline-block;
@@ -846,7 +865,7 @@
       <thead>
         <tr>
           <th>平台</th>
-          <th>原始引用</th>
+          <th>原始引用 / 中文翻译</th>
           <th>情绪</th>
           <th>可信度</th>
           <th>关联维度</th>
@@ -860,8 +879,9 @@
           <tr data-emotion="pain">
             <td>Reddit</td>
             <td>
-              "I've been using [竞品] for 2 years but every time I need to export
-              it crashes. I'm done." —
+              <div class="voice-original">"I've been using [竞品] for 2 years but every time I need to export it crashes. I'm done." —</div>
+              <span class="voice-translation-label">中文</span>
+              <div class="voice-translation">「我用 [竞品] 两年了，但每次导出都会崩溃。我受够了。」</div>
               <a href="https://..." style="color:var(--grey-3);font-size:11px;">r/productivitytools</a>
             </td>
             <td><span class="emotion-tag">抱怨</span></td>
@@ -915,6 +935,16 @@
         <div class="platform-name">Hacker News</div>
         <div class="platform-count">{{HN_COUNT}}</div>
         <div class="platform-status">条有效声音</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">YouTube</div>
+        <div class="platform-count">{{YOUTUBE_COUNT}}</div>
+        <div class="platform-status">条视频评论</div>
+      </div>
+      <div class="platform-cell">
+        <div class="platform-name">哔哩哔哩</div>
+        <div class="platform-count">{{BILIBILI_COUNT}}</div>
+        <div class="platform-status">条视频评论</div>
       </div>
       <!--
         降级平台写法：
