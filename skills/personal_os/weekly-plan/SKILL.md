@@ -1,6 +1,6 @@
 ---
 name: weekly-plan
-version: 1.0.0
+version: 1.1.0
 description: >
   下周计划安排。用户说"安排下周"、"做下周计划"、"周计划"时触发；通常在 weekly-review 完成后运行。
   时间核验 → 任务分组调度 → 提议各月度目标本周主线 → 写入 TABLE_WEEKLY + weekly-review.md 计划节。
@@ -11,28 +11,47 @@ description: >
 
 时间核验 → 任务分组调度 → 提议下周各目标主线 → 写入 TABLE_WEEKLY。
 
-## 开始前
+---
 
-1. 解析 `PERSONAL_OS_ROOT`：按顺序检查 `$PERSONAL_OS_ROOT` → `~/Personal_OS` → `~/SynologyDrive/Sync/OS/Personal_OS` → `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`，首个同时存在 `references/path-resolution.md` 与 `references/config.md` 的目录即为根目录
-2. Read `{PERSONAL_OS_ROOT}/references/config.md`，取所有变量
-3. Read `{PERSONAL_OS_ROOT}/content/north-star.md`，取三支柱名称
-4. Read `{PERSONAL_OS_ROOT}/content/about-me.md`（仅「工作风格与偏好」「时间管理」两节，用于负荷判断）
-4. 可选：读取本月 `weekly-review.md` 最新节，获取上周行为信号和动量预警输入
+> **【文件路径说明】**
+> - **技能参考文件**（`[技能参考]`）：与本 SKILL.md **同级**的 `references/` 目录，路径为 `weekly-plan/references/xxx.md`。包括 `task-triage.md`、`lark-commands.md`、`weekly-review-template.md`。
+> - **Personal OS 数据文件**：`{PERSONAL_OS_ROOT}/content/` 下。
+> - **绝对不能混淆**：`task-triage.md` 是技能参考文件，**不在** `{PERSONAL_OS_ROOT}/references/` 中。
+
+---
+
+## 开始前（必须全部完成，不可跳过）
+
+**Step 0a：解析根目录**
+按顺序检查，首个同时存在 `references/path-resolution.md` 与 `references/system.json` 的目录即为 `PERSONAL_OS_ROOT`：
+1. 环境变量 `$PERSONAL_OS_ROOT`
+2. `~/Personal_OS`
+3. `~/SynologyDrive/Sync/OS/Personal_OS`
+4. `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`
+
+**Step 0b：加载系统变量**（必须执行）
+Read `{PERSONAL_OS_ROOT}/references/config.md`，找到「调什么命令（加载系统变量）」部分，执行 `eval "$(python3 ...)"` 命令。
+
+**Step 0c：读基础文件**
+- Read `{PERSONAL_OS_ROOT}/content/north-star.md`，取三支柱名称
+- Read `{PERSONAL_OS_ROOT}/content/about-me.md`（仅「工作风格与偏好」「时间管理」两节，用于负荷判断）
+- 可选：读取本月 `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/weekly-review.md` 最新节，获取上周行为信号和动量预警输入
+
+**Step 0d：读飞书 CLI 命令语法**
+Read `[技能参考]/lark-commands.md`。
 
 计算：本周 `{YYYY}-W{nn}`，本月 `{YYYY}-{MM}`。
-
-飞书 CLI 命令 → Read `references/lark-commands.md`。
 
 ---
 
 ## 工作流概览
 
-| Step | 动作 | 详情 |
-|------|------|------|
-| 1 | 时间核验 | 本文 §Step 1（不可跳过） |
-| 2 | 任务分组调度 | `references/task-triage.md` |
-| 3 | 提议下周各目标主线 | 本文 §Step 3 |
-| 4 | 确认并写入 | 本文 §Step 4 + `references/lark-commands.md` |
+| Step | 动作 | 能否跳过 |
+|------|------|--------|
+| 1 | 时间核验 | **不可跳过** |
+| 2 | 任务分组调度 | 不可跳过（自动执行） |
+| 3 | 提议下周各目标主线 | 不可跳过 |
+| 4 | 确认并写入 | 不可跳过 |
 
 ---
 
@@ -46,9 +65,9 @@ description: >
 
 ---
 
-### Step 2：任务分组调度（自动执行，无需确认）
+### Step 2：任务分组调度（自动执行，无需用户确认）
 
-Read `references/task-triage.md`，执行周视角双向任务调度：
+Read `[技能参考]/task-triage.md`（**注意：此文件在技能 references/ 目录，不在 PERSONAL_OS_ROOT/references/ 下**），执行周视角双向任务调度：
 
 - 拉取 MY_TODAY / MY_WEEK / MY_MONTH / MY_UNPLANNED / MY_WATCH 各分组
 - 基于本周主线方向移动任务
@@ -61,7 +80,7 @@ Read `references/task-triage.md`，执行周视角双向任务调度：
 
 ### Step 3：提议下周各目标主线
 
-读 TABLE_MONTHLY 本月所有进行中目标，结合 weekly-review 行为信号和动量预警，逐条提议本周具体行动（1 句话）。
+读 `$TABLE_MONTHLY` 本月所有进行中目标，结合 weekly-review 行为信号和动量预警，逐条提议本周具体行动（1 句话）。
 
 优先顺序：
 1. weekly-review 动量预警的目标（最高优先）
@@ -89,18 +108,18 @@ Read `references/task-triage.md`，执行周视角双向任务调度：
 
 用户确认后：
 
-**4a. TABLE_WEEKLY 写入**（命令见 `references/lark-commands.md`）
+**4a. TABLE_WEEKLY 写入**（命令见 `[技能参考]/lark-commands.md`）
 - 为每个本周有具体行动的月度目标，分别创建一条 TABLE_WEEKLY 记录
 - 每条记录关联对应月度目标的 record_id
 - 本周无行动的月度目标不建记录
 
-**4b. 追加 weekly-review.md 计划节**（路径和模板见 `references/weekly-review-template.md`）
+**4b. 追加 weekly-review.md 计划节**（路径和模板见 `[技能参考]/weekly-review-template.md`）
 
 ---
 
 ## 注意事项
 
-- 时间核验不可跳过
+- **时间核验不可跳过**
 - MY_WATCH 限制：只能从 MY_TODAY / MY_WEEK / MY_MONTH 移入
 - 大方向（月目标）不在本技能调整；若用户提出 → 告知等到月初 `monthly-plan`
 - 若本月 weekly-review.md 不存在，创建时检查 `content/{YYYY}/{MM}/` 目录是否存在

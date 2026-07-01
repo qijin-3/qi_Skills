@@ -1,6 +1,6 @@
 ---
 name: evening-review
-version: 2.0.0
+version: 2.1.0
 description: >
   每日晚报收尾。用户说"发一下晚报"、"晚报"时触发；调度系统定时调用。
   读取今日完成任务 → 完成率预警 → 处理未完成项 → 判断主线 → 拼装日记
@@ -10,14 +10,25 @@ description: >
 
 # Evening Review
 
-## 开始前
+## 【文件路径说明】
 
-1. 解析 `PERSONAL_OS_ROOT`：按顺序检查 `$PERSONAL_OS_ROOT` → `~/Personal_OS` → `~/SynologyDrive/Sync/OS/Personal_OS` → `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`，首个同时存在 `references/path-resolution.md` 与 `references/config.md` 的目录即为根目录
-2. Read `{PERSONAL_OS_ROOT}/references/config.md`，取：
-- `FEISHU_BASE_TOKEN`、`TABLE_LOGS`、`TABLE_WEEKLY`
-- `MY_TODAY`、`MY_WEEK`、`MY_WATCH`
-- `FIELD_LOG_COMPLETION_RATE`、`FIELD_LOG_MAINLINE`、`FIELD_LOG_NOTE`、`FIELD_LOG_DIARY_PATH`
-- `USER_OPEN_ID`、`PATH_DIARY`、`PATH_DIARY_PENDING`
+> - **技能参考文件**（`[技能参考]`）：与本 SKILL.md **同级**的 `references/` 目录下，路径为 `evening-review/references/xxx.md`。包括 `lark-commands.md`、`diary-assembly.md`。
+> - **Personal OS 数据文件**：`{PERSONAL_OS_ROOT}/content/` 或 `{PERSONAL_OS_ROOT}/state/` 下。
+> - **绝对不能混淆**：`diary-assembly.md` 是技能参考文件，**不在** `{PERSONAL_OS_ROOT}/references/` 中。
+
+---
+
+## 开始前（必须全部完成，不可跳过）
+
+**Step 0a：解析根目录**
+按顺序检查，首个同时存在 `references/path-resolution.md` 与 `references/system.json` 的目录即为 `PERSONAL_OS_ROOT`：
+1. 环境变量 `$PERSONAL_OS_ROOT`
+2. `~/Personal_OS`
+3. `~/SynologyDrive/Sync/OS/Personal_OS`
+4. `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`
+
+**Step 0b：加载系统变量**（必须执行，后续所有飞书命令依赖此步）
+Read `{PERSONAL_OS_ROOT}/references/config.md`，找到「调什么命令（加载系统变量）」部分，执行 `eval "$(python3 ...)"` 命令。
 
 今日日期：`YYYY-MM-DD`。
 
@@ -25,7 +36,7 @@ description: >
 
 ## 工作流
 
-飞书 CLI 命令语法 → Read `references/lark-commands.md`（Step 4 处理未完成前必读）。
+飞书 CLI 命令语法 → Read `[技能参考]/lark-commands.md`（Step 4 处理未完成前必读）。
 
 ### Step 1：获取今日完成任务
 
@@ -35,13 +46,13 @@ description: >
 
 ### Step 2：读今日计划 + 计算完成率
 
-从 `TABLE_LOGS` 查今日记录，取「今日计划」字段（早报写入的任务标题列表）。
+从 `$TABLE_LOGS` 查今日记录，取「今日计划」字段（早报写入的任务标题列表）。
 
 **完成率** = 今日完成中属于今日计划的条数 / 今日计划总数（0–1 小数）
 
 ### Step 3：连续低完成率检查
 
-查 TABLE_LOGS 最近 2 天的 `今日任务完成度`（FIELD_LOG_COMPLETION_RATE）：
+查 TABLE_LOGS 最近 2 天的 `今日任务完成度`：
 
 - 连续 ≥2 天 < 0.33 → 触发预警，然后继续执行（不阻塞）：
 
@@ -62,11 +73,11 @@ description: >
    - 同一任务连续 ≥2 天在 MY_TODAY 且未完成 → 移到 MY_WEEK
    - 只未完成 1 天 → 留在 MY_TODAY（明天早报再判断）
 
-命令见 `references/lark-commands.md`。
+命令见 `[技能参考]/lark-commands.md`。
 
 ### Step 5：判断主线推进情况
 
-读 TABLE_WEEKLY（周期=本周 `YYYY-Wnn`，状态=进行中），与今日完成任务关联判断：
+读 `$TABLE_WEEKLY`（周期=本周 `YYYY-Wnn`，状态=进行中），与今日完成任务关联判断：
 
 | 判断 | 结果 |
 |------|------|
@@ -78,7 +89,7 @@ description: >
 
 ### Step 6：拼装今日日记
 
-Read `references/diary-assembly.md`，按其步骤执行日记拼装。
+Read `[技能参考]/diary-assembly.md`（**注意：此文件在技能 references/ 目录，不在 PERSONAL_OS_ROOT/references/ 下**），按其步骤执行日记拼装。
 
 拼装完成后 diary-assembly 会更新 `TABLE_LOGS.日记路径` 并清空 pending。若拼装失败，继续晚报，在输出中注明"日记拼装失败，请手动检查"。
 
@@ -94,11 +105,11 @@ Read `references/diary-assembly.md`，按其步骤执行日记拼装。
 | 说明 | 主线依据一句话 |
 | 日记路径 | Step 6 写入的路径（若失败留空） |
 
-命令见 `references/lark-commands.md`。
+命令见 `[技能参考]/lark-commands.md`。
 
 ### Step 8：行为分析 + 更新快照
 
-读取今日快照（`state/daily_snapshot_{YYYY-MM-DD}.json`）的 `am` 字段，与当前飞书分组状态对比，识别用户的真实行为，写入 `behaviors` 和 `patterns`。
+读取今日快照（`{PERSONAL_OS_ROOT}/state/daily_snapshot_{YYYY-MM-DD}.json`）的 `am` 字段，与当前飞书分组状态对比，识别用户的真实行为，写入 `behaviors` 和 `patterns`。
 
 **行为识别规则：**
 
@@ -110,24 +121,7 @@ Read `references/diary-assembly.md`，按其步骤执行日记拼装。
 | `user_added` | 晚间在 MY_TODAY，但不在 am.MY_TODAY（用户白天主动加入） | `user_added:{guid}` |
 | `stale` | 今日和昨日快照 am.MY_TODAY 都有该任务，且今日未完成，连续 N 天 | `stale:{guid}:{N}` |
 
-将识别结果写入今日快照：
-
-```json
-{
-  "behaviors": [
-    {"type": "user_removed", "guid": "...", "summary": "..."},
-    {"type": "stale",        "guid": "...", "summary": "...", "days": 2},
-    {"type": "completed_ai", "guid": "...", "summary": "..."}
-  ],
-  "patterns": [
-    "user_removed:guid1",
-    "stale:guid2:2",
-    "completed_ai:guid3"
-  ]
-}
-```
-
-这些 patterns 会被周复盘/月复盘读取，用于分析抗拒感、偏好和自驱行为。
+将识别结果写入今日快照的 `behaviors` 和 `patterns` 字段。
 
 ### Step 9：追加每日观察到 about-me-updates.md
 
@@ -158,4 +152,4 @@ Step 9 失败不阻塞晚报，在输出中注明即可。
 
 - 完成任务数据源只用 `completed_at`，不读分组状态
 - 未完成任务评论不追问原因（只记录），避免打扰
-- 日记拼装逻辑见 `references/diary-assembly.md`
+- 日记拼装逻辑见 `[技能参考]/diary-assembly.md`

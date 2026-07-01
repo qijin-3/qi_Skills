@@ -1,6 +1,6 @@
 # Daily Briefing · 飞书 CLI 参考
 
-执行前解析 `PERSONAL_OS_ROOT`（探测顺序见 `{PERSONAL_OS_ROOT}/references/path-resolution.md`；父技能已解析则复用），再 Read `{PERSONAL_OS_ROOT}/references/config.md` 取变量。工作目录：`{PERSONAL_OS_ROOT}/`。
+**执行任何命令前必须先加载变量**：运行 `{PERSONAL_OS_ROOT}/references/config.md` 中「调什么命令（加载系统变量）」部分的 `eval "$(python3 ...)"` 命令，之后直接使用 `$FEISHU_BASE_TOKEN`、`$TABLE_LOGS` 等环境变量，**禁止手工从文件中抄值**。工作目录：`{PERSONAL_OS_ROOT}/`。
 
 ## 读分组任务
 
@@ -17,16 +17,16 @@ lark-cli task sections tasks --as user \
 ```bash
 # 读本月月度目标
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_MONTHLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_MONTHLY" \
   --keyword "<YYYY-MM>" --search-field "周期" \
   --filter-json '{"logic":"and","conditions":[["状态","==","进行中"]]}' \
   --format json --limit 10
 
 # 读本周周目标
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_WEEKLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_WEEKLY" \
   --keyword "<YYYY-Wnn>" --search-field "周期" \
   --filter-json '{"logic":"and","conditions":[["状态","==","进行中"]]}' \
   --format json --limit 10
@@ -55,8 +55,8 @@ lark-cli task +comment --as user \
 
 ```bash
 lark-cli base +record-upsert --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
   --json '{"日期": <YYYY-MM-DD 的 Unix 毫秒时间戳>, "今日计划": "<任务1\n任务2\n任务3>"}'
 ```
 
@@ -64,8 +64,8 @@ lark-cli base +record-upsert --as user \
 
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
   --keyword "<YYYY-MM-DD>" --search-field "日期" \
   --format json --limit 1
 ```

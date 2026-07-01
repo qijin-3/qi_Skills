@@ -53,10 +53,9 @@
 | 运动完成率_% | fldzzUbABD | number | |
 | 身体状态 | fldrXJHXCqw | multi-select | |
 | 当日情境 | fldQvOuUnI | multi-select | |
-| 训练主题 | fldrLiCowJ | text | |
 | 训练强度 | fldxHHJtEc | select | |
 
-> 已删除字段（2026-07-01）：RPE、精力评分、计划版本、日总结、安全标记、当月文档链接。相关内容迁移至本地 `daily-log.md`。
+> 已删除字段（2026-07-01）：RPE、精力评分、计划版本、日总结、安全标记、当月文档链接、**训练主题**。计划主题与时段见本地 `state/current-week.json`；相关内容迁移至本地 `daily-log.md`。
 
 ## 写入规范
 

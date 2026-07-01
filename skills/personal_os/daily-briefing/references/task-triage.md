@@ -1,7 +1,11 @@
 # Daily Briefing · 任务分组调度（日视角）
 
+> **本文件是 daily-briefing 技能的专属参考文件，位于 `daily-briefing/references/` 目录下，不在 `PERSONAL_OS_ROOT/references/` 中。**
+>
 > 在偏差扫描后、挑选今天要做之前执行。
 > 调度完成后直接告知结果，**不需要用户确认**。
+>
+> 执行前确保已运行变量加载命令（见 `config.md`），使 `$MY_TODAY`、`$MY_WEEK` 等变量可用。
 
 ## 分组定义
 
@@ -27,8 +31,9 @@
 仅读取 MY_TODAY、MY_WEEK、MY_MONTH（必要时参考 MY_WATCH 是否有误放任务）。
 
 ```bash
+# 使用已加载的环境变量
 lark-cli task sections tasks --as user \
-  --section-guid "<分组 GUID>" \
+  --section-guid "$MY_TODAY" \
   --format json --page-all
 ```
 
@@ -60,10 +65,11 @@ lark-cli task sections tasks --as user \
 ## 执行移动
 
 ```bash
+# 替换 $MY_WEEK 为目标分组变量（$MY_TODAY / $MY_WEEK / $MY_MONTH / $MY_WATCH）
 lark-cli task +tasklist-task-add --as user \
   --tasklist-id "my_tasks" \
   --task-id "<task_guid>" \
-  --section-guid "<目标分组 GUID>"
+  --section-guid "$MY_WEEK"
 ```
 
 

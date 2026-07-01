@@ -1,6 +1,6 @@
 ---
 name: weekly-review
-version: 1.0.0
+version: 1.1.0
 description: >
   周复盘。用户说"做一下周复盘"、"本周总结"、"复盘"时触发；周日晚由调度系统调用。
   收集上周客观数据 → 动量检测 → 上周目标打分 → 行为信号分析 → 写入 weekly-review.md。
@@ -11,14 +11,32 @@ description: >
 
 上周数据 → 动量检测 → 打分 → 行为信号分析 → 写入 weekly-review.md。
 
-## 开始前
+---
 
-1. 解析 `PERSONAL_OS_ROOT`：按顺序检查 `$PERSONAL_OS_ROOT` → `~/Personal_OS` → `~/SynologyDrive/Sync/OS/Personal_OS` → `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`，首个同时存在 `references/path-resolution.md` 与 `references/config.md` 的目录即为根目录
-2. Read `{PERSONAL_OS_ROOT}/references/config.md`，取所有变量
-3. Read `{PERSONAL_OS_ROOT}/content/north-star.md`，取三个战略支柱名称
-4. Read `{PERSONAL_OS_ROOT}/content/about-me.md`（仅「工作风格与偏好」「时间管理」两节）
+> **【文件路径说明】**
+> - **技能参考文件**（`[技能参考]`）：与本 SKILL.md **同级**的 `references/` 目录，路径为 `weekly-review/references/xxx.md`。包括 `lark-commands.md`、`weekly-review-template.md`。
+> - **Personal OS 数据文件**：`{PERSONAL_OS_ROOT}/content/` 或 `{PERSONAL_OS_ROOT}/state/` 下。
 
-飞书 CLI 命令 → Read `references/lark-commands.md`（Step 1 数据拉取前必读）
+---
+
+## 开始前（必须全部完成，不可跳过）
+
+**Step 0a：解析根目录**
+按顺序检查，首个同时存在 `references/path-resolution.md` 与 `references/system.json` 的目录即为 `PERSONAL_OS_ROOT`：
+1. 环境变量 `$PERSONAL_OS_ROOT`
+2. `~/Personal_OS`
+3. `~/SynologyDrive/Sync/OS/Personal_OS`
+4. `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`
+
+**Step 0b：加载系统变量**（必须执行）
+Read `{PERSONAL_OS_ROOT}/references/config.md`，找到「调什么命令（加载系统变量）」部分，执行 `eval "$(python3 ...)"` 命令。
+
+**Step 0c：读基础文件**
+- Read `{PERSONAL_OS_ROOT}/content/north-star.md`，取三个战略支柱名称
+- Read `{PERSONAL_OS_ROOT}/content/about-me.md`（仅「工作风格与偏好」「时间管理」两节）
+
+**Step 0d：读飞书 CLI 命令语法**
+Read `[技能参考]/lark-commands.md`（Step 1 数据拉取前必读）。
 
 计算周期：
 - 上周：`{YYYY}-W{nn-1}`（上周一 00:00 ~ 上周日 23:59，UTC+8）
@@ -29,15 +47,15 @@ description: >
 
 ## 工作流概览
 
-| Step | 动作 | 详情 |
-|------|------|------|
-| 1 | 收集上周客观数据 | 本文 §Step 1 |
-| 2 | 发上周复盘摘要 | 本文 §Step 2 |
-| 2.5 | 动量检测 | 本文 §Step 2.5（不可跳过） |
-| 3 | 等待用户回应 | 本文 §Step 3 |
-| 4 | 上周目标打分 | 本文 §Step 4 + `references/lark-commands.md` |
-| 5 | 行为信号分析 | 本文 §Step 5（新） |
-| 6 | 写入 weekly-review.md | `references/weekly-review-template.md` |
+| Step | 动作 | 能否跳过 |
+|------|------|--------|
+| 1 | 收集上周客观数据 | 不可跳过 |
+| 2 | 发上周复盘摘要 | 不可跳过 |
+| 2.5 | 动量检测 | **不可跳过，即使用户催促** |
+| 3 | 等待用户回应 | 可选 |
+| 4 | 上周目标打分 | 不可跳过 |
+| 5 | 行为信号分析 | 无快照数据时可跳过 |
+| 6 | 写入 weekly-review.md | 不可跳过 |
 
 ---
 
@@ -46,9 +64,9 @@ description: >
 | 子步 | 数据源 | 提取内容 |
 |------|--------|---------|
 | 1a | 飞书任务（只用「我负责的」接口）| 上周完成总数 + 清单分布 |
-| 1b | TABLE_LOGS 上周记录 | `今日任务完成度` 均值、`主线推进情况` 天数 |
+| 1b | `$TABLE_LOGS` 上周记录 | `今日任务完成度` 均值、`主线推进情况` 天数 |
 | 1c | north-star.md × 1a 清单分布 | 各支柱推进状态（推进/未推进） |
-| 1d | TABLE_WEEKLY（周期=上周） | 上周所有周目标记录 |
+| 1d | `$TABLE_WEEKLY`（周期=上周） | 上周所有周目标记录 |
 | 1e | `state/daily_snapshot_{date}.json`（上周每日） | `behaviors` + `patterns` 全量汇总（供 Step 5 用）|
 
 > **禁止**：`lark-cli task +search`（易超时）；只用 `+get-my-tasks` / `sections tasks`。
@@ -70,9 +88,9 @@ description: >
 
 ---
 
-### Step 2.5：动量检测（不可跳过）
+### Step 2.5：动量检测（不可跳过，即使用户说「直接到下周吧」）
 
-即使用户说"直接到下周吧"，也快速过一遍：读 TABLE_MONTHLY 本月进行中目标，对比 TABLE_LOGS 最近 2 周 `主线推进情况`：
+读 `$TABLE_MONTHLY` 本月进行中目标，对比 `$TABLE_LOGS` 最近 2 周 `主线推进情况`：
 
 ```
 ⚠️ 动量预警：本月目标「{目标}」已连续 {N} 天没有推进。
@@ -99,7 +117,7 @@ description: >
 确认？（或输入你的分数）
 ```
 
-用户确认后更新 TABLE_WEEKLY（命令见 `references/lark-commands.md`）：
+用户确认后更新 `$TABLE_WEEKLY`（命令见 `[技能参考]/lark-commands.md`）：
 - `完成度`：分数 ÷ 100
 - `状态`：≥0.8 → 已达成；<0.8 → 已调整
 
@@ -109,7 +127,7 @@ description: >
 
 ### Step 5：行为信号分析
 
-读取上周每日快照（`state/daily_snapshot_{YYYY-MM-DD}.json`，上周一到上周日共 7 个），汇总 `behaviors` 和 `patterns`，按任务聚合：
+读取上周每日快照（`{PERSONAL_OS_ROOT}/state/daily_snapshot_{YYYY-MM-DD}.json`，上周一到上周日共 7 个），汇总 `behaviors` 和 `patterns`，按任务聚合：
 
 | 信号类型 | 判断条件 | 含义 |
 |---------|---------|------|
@@ -117,26 +135,17 @@ description: >
 | 🟢 自驱 | 某任务有 `user_added` 且当日 completed | 你真正想做的事 |
 | 📊 AI 配合率 | `completed_ai` / (`completed_ai` + `user_removed`) | 你对 AI 安排的接受程度 |
 
-将行为信号追加到 `content/{YYYY}/{MM}/about-me-updates.md` 末尾：
-
-```markdown
-### {YYYY-MM-DD}（W{nn-1}）周行为信号
-
-- 🔴 回避：「{任务名}」（{信号描述，如"被移出 2 次"/"停滞 3 天"}）
-- 🟢 自驱：「{任务名}」→ 自加并完成
-- 📊 AI 安排完成 {n} 条 / 被移出 {m} 条（配合率 {X}%）
-```
+将行为信号追加到 `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/about-me-updates.md` 末尾。
 
 若上周无快照数据 → 跳过，注明"无快照数据"。
-若所有信号为空（无回避、无自驱） → 写「本周无显著行为信号」。
 
 ---
 
-### Step 6：写入 weekly-review.md
+### Step 6：写入 weekly-review.md（不可跳过）
 
 路径：`{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/weekly-review.md`（不存在则先创建）
 
-模板 → Read `references/weekly-review-template.md`
+模板 → Read `[技能参考]/weekly-review-template.md`（**注意：此文件在技能 references/ 目录，不在 PERSONAL_OS_ROOT/references/ 下**）
 
 在文件标题后**插入**新节（最新周在最上方），包含 Steps 1–5 所有数据。
 
@@ -145,6 +154,6 @@ description: >
 ## 注意事项
 
 - 任务读取只用「我负责的」接口，禁止 `+search`
-- 动量检测不可跳过，即使用户催促也必须过一遍
+- **动量检测不可跳过**，即使用户催促也必须过一遍
 - 月目标调整不在本技能处理，告知等到月初运行 `monthly-plan`
 - 行为信号分析无数据时跳过，不报错

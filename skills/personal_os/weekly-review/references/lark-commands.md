@@ -1,25 +1,24 @@
-# Weekly Goal · 飞书 CLI 参考
+# Weekly Review · 飞书 CLI 参考
 
-执行前解析 `PERSONAL_OS_ROOT`（探测顺序见 `{PERSONAL_OS_ROOT}/references/path-resolution.md`；父技能已解析则复用），再 Read `{PERSONAL_OS_ROOT}/references/config.md` 取变量。工作目录：`{PERSONAL_OS_ROOT}/`。
+**执行任何命令前必须先加载变量**：运行 `{PERSONAL_OS_ROOT}/references/config.md` 中「调什么命令（加载系统变量）」部分的 `eval "$(python3 ...)"` 命令，之后直接使用 `$FEISHU_BASE_TOKEN`、`$TABLE_WEEKLY` 等环境变量，**禁止手工从文件中抄值**。工作目录：`{PERSONAL_OS_ROOT}/`。
 
 ## 读上周完成任务
 
 ```bash
-lark-cli task +task-list --as user \
-  --completed true \
-  --complete-time-from "<上周一 00:00 Unix 毫秒>" \
-  --complete-time-to "<上周日 23:59 Unix 毫秒>" \
-  --format json
+lark-cli task +get-my-tasks --as user \
+  --complete=true \
+  --format json \
+  --page-all
 ```
 
-汇总：完成条数、清单分布（Writing/Growing/Projects/Routine/Idea）。
+返回后本地按 `completed_at` 筛出落在上周区间的任务。汇总：完成条数、清单分布（Writing/Growing/Projects/Routine/Idea）。
 
 ## 读日志表（上周完成率 + 主线推进）
 
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
   --filter '{"conjunction":"and","conditions":[
     {"field_name":"日期","operator":"isAfter","value":["ExactDate","<上周一>"]},
     {"field_name":"日期","operator":"isBefore","value":["ExactDate","<本周一>"]}
@@ -33,8 +32,8 @@ lark-cli base +record-search --as user \
 
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_MONTHLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_MONTHLY" \
   --keyword "<YYYY-MM>" --search-field "周期" \
   --filter-json '{"logic":"and","conditions":[["状态","==","进行中"]]}' \
   --format json --limit 10
@@ -44,27 +43,8 @@ lark-cli base +record-search --as user \
 
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_WEEKLY>" \
-  --keyword "<YYYY-Wnn-1>" --search-field "周期" \
-  --format json --limit 5
-```
-
-## 读上周/本月目标（动量检测用）
-
-```bash
-# 读本月进行中月度目标
-lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_MONTHLY>" \
-  --keyword "<YYYY-MM>" --search-field "周期" \
-  --filter-json '{"logic":"and","conditions":[["状态","==","进行中"]]}' \
-  --format json --limit 10
-
-# 读上周周目标
-lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_WEEKLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_WEEKLY" \
   --keyword "<YYYY-Wnn-1>" --search-field "周期" \
   --format json --limit 5
 ```
@@ -73,8 +53,8 @@ lark-cli base +record-search --as user \
 
 ```bash
 lark-cli base +record-upsert --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_WEEKLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_WEEKLY" \
   --record-id "<上周目标 record_id>" \
   --json '{"完成度": <0-1 小数>,"状态": "<已达成/已调整>"}'
 ```
@@ -89,8 +69,8 @@ lark-cli base +record-upsert --as user \
 第一步：查询本月月度目标 record_id（取所有进行中的条目）：
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_MONTHLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_MONTHLY" \
   --keyword "<YYYY-MM>" --search-field "周期" \
   --format json --limit 10
 ```
@@ -98,8 +78,8 @@ lark-cli base +record-search --as user \
 第二步：为每个本周有行动的月度目标，分别写入一条周目标：
 ```bash
 lark-cli base +record-upsert --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_WEEKLY>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_WEEKLY" \
   --json '{
     "主线":"<本周针对该目标的具体行动，一句话>",
     "周期":"<YYYY-Wnn>",
@@ -110,4 +90,3 @@ lark-cli base +record-upsert --as user \
 ```
 
 若某月度目标本周无具体行动（如时机未到），不建记录。
-

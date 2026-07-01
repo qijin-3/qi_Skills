@@ -1,6 +1,6 @@
 # Evening Review · 飞书 CLI 参考
 
-执行前解析 `PERSONAL_OS_ROOT`（探测顺序见 `{PERSONAL_OS_ROOT}/references/path-resolution.md`；父技能已解析则复用），再 Read `{PERSONAL_OS_ROOT}/references/config.md` 取变量。工作目录：`{PERSONAL_OS_ROOT}/`。
+**执行任何命令前必须先加载变量**：运行 `{PERSONAL_OS_ROOT}/references/config.md` 中「调什么命令（加载系统变量）」部分的 `eval "$(python3 ...)"` 命令，之后直接使用 `$FEISHU_BASE_TOKEN`、`$TABLE_LOGS` 等环境变量，**禁止手工从文件中抄值**。工作目录：`{PERSONAL_OS_ROOT}/`。
 
 ## 读今日完成任务
 
@@ -19,9 +19,9 @@ lark-cli task +task-list --as user \
 ## 读当日分组任务（未完成项）
 
 ```bash
-lark-cli task +section-task-list --as user \
-  --section-guid "<MY_TODAY>" \
-  --format json
+lark-cli task sections tasks --as user \
+  --section-guid "$MY_TODAY" \
+  --format json --page-all
 ```
 
 从结果中过滤掉已完成的（`completed_at` 不为空），得到未完成任务列表。
@@ -30,8 +30,8 @@ lark-cli task +section-task-list --as user \
 
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
   --filter '{"conjunction":"and","conditions":[
     {"field_name":"日期","operator":"is","value":["ExactDate","<YYYY-MM-DD>"]}
   ]}' \
@@ -42,8 +42,8 @@ lark-cli base +record-search --as user \
 
 ```bash
 lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
   --filter '{"conjunction":"and","conditions":[
     {"field_name":"日期","operator":"isAfter","value":["ExactDate","<前天日期>"]},
     {"field_name":"日期","operator":"isBefore","value":["ExactDate","<明天日期>"]}
@@ -68,24 +68,24 @@ lark-cli task +comment --as user \
 lark-cli task +tasklist-task-add --as user \
   --tasklist-id "my_tasks" \
   --task-id "<guid>" \
-  --section-guid "<MY_WEEK>" \
+  --section-guid "$MY_WEEK" \
   --format json
 ```
 
 ## 更新日志表（晚报核心写入）
 
 ```bash
-lark-cli base +record-update --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
+lark-cli base +record-upsert --as user \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
   --record-id "<今日 record_id>" \
-  --json '{"fields":{
+  --json '{
     "今日完成任务": "<完成任务1\n完成任务2>",
     "今日任务完成度": <0-1小数，如0.67>,
     "主线推进情况": "<推进 / 部分推进 / 未推进>",
     "说明": "<主线推进依据一句话>",
     "日记路径": "content/<YYYY>/<MM>/diary.md"
-  }}'
+  }'
 ```
 
 字段说明：
@@ -93,4 +93,3 @@ lark-cli base +record-update --as user \
 - `主线推进情况`（FIELD_LOG_MAINLINE）：单选，来自主线判断
 - `说明`（FIELD_LOG_NOTE）：文本，一句依据
 - `日记路径`（FIELD_LOG_DIARY_PATH）：diary-assembler 写入后读取
-

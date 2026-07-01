@@ -1,7 +1,11 @@
-# Weekly Goal · 任务分组调度（周视角）
+# Weekly Plan · 任务分组调度（周视角）
 
+> **本文件是 weekly-plan 技能的专属参考文件，位于 `weekly-plan/references/` 目录下，不在 `PERSONAL_OS_ROOT/references/` 中。**
+>
 > 在下周主线确认后执行。
 > 调度完成后直接告知结果，**不需要用户确认**。
+>
+> 执行前确保已运行变量加载命令（见 `config.md`），使 `$MY_TODAY`、`$MY_WEEK` 等变量可用。
 
 ## 分组定义
 
@@ -25,8 +29,21 @@
 ## 读取所有分组
 
 ```bash
+# 分别对每个分组执行，使用已加载的环境变量
 lark-cli task sections tasks --as user \
-  --section-guid "<分组 GUID>" \
+  --section-guid "$MY_TODAY" \
+  --format json --page-all
+
+lark-cli task sections tasks --as user \
+  --section-guid "$MY_WEEK" \
+  --format json --page-all
+
+lark-cli task sections tasks --as user \
+  --section-guid "$MY_MONTH" \
+  --format json --page-all
+
+lark-cli task sections tasks --as user \
+  --section-guid "$MY_WATCH" \
   --format json --page-all
 ```
 
@@ -50,10 +67,11 @@ lark-cli task sections tasks --as user \
 ## 执行移动
 
 ```bash
+# 替换 $MY_WEEK 为目标分组变量（$MY_TODAY / $MY_WEEK / $MY_MONTH / $MY_WATCH）
 lark-cli task +tasklist-task-add --as user \
   --tasklist-id "my_tasks" \
   --task-id "<task_guid>" \
-  --section-guid "<目标分组 GUID>"
+  --section-guid "$MY_WEEK"
 ```
 
 

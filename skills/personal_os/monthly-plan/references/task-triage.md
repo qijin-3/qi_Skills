@@ -1,7 +1,11 @@
-# Monthly Goal · 任务分组调度（月度视角）
+# Monthly Plan · 任务分组调度（月度视角）
 
+> **本文件是 monthly-plan 技能的专属参考文件，位于 `monthly-plan/references/` 目录下，不在 `PERSONAL_OS_ROOT/references/` 中。**
+>
 > 在守门四关通过、月度目标确认后执行。
 > 调度完成后直接告知结果，**不需要用户确认**。
+>
+> 执行前确保已运行变量加载命令（见 `config.md`），使 `$MY_TODAY`、`$MY_MONTH` 等变量可用。
 
 ## 分组定义
 
@@ -25,12 +29,13 @@
 ## 读取所有分组
 
 ```bash
-lark-cli task sections tasks --as user \
-  --section-guid "<分组 GUID>" \
-  --format json --page-all
+# 使用已加载的环境变量，对每个分组各执行一次
+lark-cli task sections tasks --as user --section-guid "$MY_TODAY" --format json --page-all
+lark-cli task sections tasks --as user --section-guid "$MY_WEEK" --format json --page-all
+lark-cli task sections tasks --as user --section-guid "$MY_MONTH" --format json --page-all
+lark-cli task sections tasks --as user --section-guid "$MY_UNPLANNED" --format json --page-all
+lark-cli task sections tasks --as user --section-guid "$MY_WATCH" --format json --page-all
 ```
-
-对 MY_TODAY、MY_WEEK、MY_MONTH、MY_UNPLANNED、MY_WATCH 各执行一次。
 
 ## 判断逻辑
 
@@ -53,10 +58,11 @@ lark-cli task sections tasks --as user \
 ## 执行移动
 
 ```bash
+# 替换 $MY_MONTH 为目标分组变量（$MY_MONTH / $MY_WATCH 等）
 lark-cli task +tasklist-task-add --as user \
   --tasklist-id "my_tasks" \
   --task-id "<task_guid>" \
-  --section-guid "<目标分组 GUID>"
+  --section-guid "$MY_MONTH"
 ```
 
 

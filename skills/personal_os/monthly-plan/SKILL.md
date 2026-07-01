@@ -1,6 +1,6 @@
 ---
 name: monthly-plan
-version: 1.0.0
+version: 1.1.0
 description: >
   月度目标规划。用户说"做月度计划"、"开始X月计划"时触发；每月 1 号由调度系统调用。
   守门四关共创本月目标 → 拆周主线 → 任务分组调度 → 写 monthly-plan.md + 目标表。
@@ -13,17 +13,36 @@ description: >
 
 守门四关共创本月目标 → 拆周主线 → 写文件与 Base。
 
-## 开始前
+---
 
-1. 解析 `PERSONAL_OS_ROOT`：按顺序检查 `$PERSONAL_OS_ROOT` → `~/Personal_OS` → `~/SynologyDrive/Sync/OS/Personal_OS` → `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`，首个同时存在 `references/path-resolution.md` 与 `references/config.md` 的目录即为根目录
-2. Read `{PERSONAL_OS_ROOT}/references/config.md`，取所有变量
-3. Read `{PERSONAL_OS_ROOT}/content/north-star.md`，取三支柱名称 + 衡量标准（守门关卡 4 必须用到）
-4. Read `{PERSONAL_OS_ROOT}/content/about-me.md`，重点关注：
-   - 「需要注意的特点/缺陷」：已知时间陷阱（关卡 2 校准参数）
-   - 「时间管理」：实际作息与理想作息差距（估算可用深度时间）
-5. 可选：读取上月 `content/{YYYY}/{MM-1}/about-me-updates.md` 末尾「月度行为总结」，作为守门参考输入
+> **【文件路径说明】**
+> - **技能参考文件**（`[技能参考]`）：与本 SKILL.md **同级**的 `references/` 目录，路径为 `monthly-plan/references/xxx.md`。包括 `task-triage.md`、`lark-commands.md`、`output-templates.md`、`monthly-plan-template.md`。
+> - **Personal OS 数据文件**：`{PERSONAL_OS_ROOT}/content/` 下。
+> - **绝对不能混淆**：`task-triage.md` 是技能参考文件，**不在** `{PERSONAL_OS_ROOT}/references/` 中。
 
-飞书 CLI 命令 → Read `references/lark-commands.md`（Step 6c 写入前必读）
+---
+
+## 开始前（必须全部完成，不可跳过）
+
+**Step 0a：解析根目录**
+按顺序检查，首个同时存在 `references/path-resolution.md` 与 `references/system.json` 的目录即为 `PERSONAL_OS_ROOT`：
+1. 环境变量 `$PERSONAL_OS_ROOT`
+2. `~/Personal_OS`
+3. `~/SynologyDrive/Sync/OS/Personal_OS`
+4. `~/SynologyDrive/SynologyDrive/Sync/OS/Personal_OS`
+
+**Step 0b：加载系统变量**（必须执行）
+Read `{PERSONAL_OS_ROOT}/references/config.md`，找到「调什么命令（加载系统变量）」部分，执行 `eval "$(python3 ...)"` 命令。
+
+**Step 0c：读基础文件**
+- Read `{PERSONAL_OS_ROOT}/content/north-star.md`，取三支柱名称 + 衡量标准（守门关卡 4 必须用到）
+- Read `{PERSONAL_OS_ROOT}/content/about-me.md`，重点关注：
+  - 「需要注意的特点/缺陷」：已知时间陷阱（关卡 2 校准参数）
+  - 「时间管理」：实际作息与理想作息差距（估算可用深度时间）
+- 可选：读取上月 `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM-1}/about-me-updates.md` 末尾「月度行为总结」，作为守门参考输入
+
+**Step 0d：读飞书 CLI 命令语法**
+Read `[技能参考]/lark-commands.md`（Step 6c 写入前必读）。
 
 计算：本月 `{YYYY}-{MM}`，上月 `{YYYY}-{MM-1}`（跨年处理 12→1）。
 
@@ -31,14 +50,14 @@ description: >
 
 ## 工作流概览
 
-| Step | 动作 | 详情 |
-|------|------|------|
-| 1 | 收集上月数据摘要 | 本文 §Step 1（若已跑 monthly-review 可略） |
-| 2 | 守门前置问题 | 本文 §Step 2（不可跳过） |
-| 3 | 守门四关共创本月目标 | 本文 §Step 3（核心，不可跳过） |
-| 4 | 拆周主线 | `references/output-templates.md` §Step 5 |
-| 5 | 任务分组调度 | `references/task-triage.md` |
-| 6 | 确认并写入 | 本文 §Step 6 + `references/lark-commands.md` |
+| Step | 动作 | 能否跳过 |
+|------|------|--------|
+| 1 | 收集上月数据摘要 | 已跑 monthly-review 可略 |
+| 2 | 守门前置问题 | **不可跳过** |
+| 3 | 守门四关共创本月目标 | **不可跳过** |
+| 4 | 拆周主线 | 不可跳过 |
+| 5 | 任务分组调度 | 不可跳过（自动执行） |
+| 6 | 确认并写入 | 不可跳过 |
 
 ---
 
@@ -47,8 +66,8 @@ description: >
 若本次已运行过 `monthly-review`，直接使用其输出，跳过 API 拉取，只确认上月完成率和行为摘要两项数据已在上下文中。
 
 若未运行 `monthly-review`：
-- 从 TABLE_MONTHLY 取上月目标完成度（命令见 `references/lark-commands.md`）
-- 读上月 `about-me-updates.md`（若存在），取「月度行为总结」节作为守门参考
+- 从 `$TABLE_MONTHLY` 取上月目标完成度（命令见 `[技能参考]/lark-commands.md`）
+- 读上月 `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM-1}/about-me-updates.md`（若存在），取「月度行为总结」节作为守门参考
 
 ---
 
@@ -151,7 +170,7 @@ description: >
 
 ### Step 4：拆周主线
 
-按确认的月目标提议周主线（模板见 `references/output-templates.md` · Step 5）：
+按确认的月目标提议周主线（模板见 `[技能参考]/output-templates.md` · Step 5）：
 
 - 每周 1 条主线，对应 1 个月目标
 - 进度最慢的支柱对应目标优先排到 W1/W2
@@ -159,15 +178,17 @@ description: >
 
 ---
 
-### Step 5：任务分组调度（守门通过后、写入前执行）
+### Step 5：任务分组调度（守门通过后、写入前执行，自动完成，无需用户确认）
 
-Read `references/task-triage.md`，执行月度视角双向任务调度（自动完成，无需确认）。
+Read `[技能参考]/task-triage.md`（**注意：此文件在技能 references/ 目录，不在 PERSONAL_OS_ROOT/references/ 下**），执行月度视角双向任务调度。
 
 ---
 
 ### Step 6：确认并写入
 
-**6a. 写 monthly-plan.md**（模板见 `references/monthly-plan-template.md`）
+**6a. 写 monthly-plan.md**（模板见 `[技能参考]/monthly-plan-template.md`）
+
+路径：`{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/monthly-plan.md`
 
 必须包含以下章节：
 ```markdown
@@ -184,15 +205,15 @@ Read `references/task-triage.md`，执行月度视角双向任务调度（自动
 ```
 
 **6b. 初始化本月子文档**（若不存在则创建，仅写标题行）：
-- `weekly-review.md` → `# {YYYY}-{MM} 周复盘`
-- `diary.md` → `# {YYYY}-{MM} 日记`
-- `about-me-updates.md` → `# {YYYY}-{MM} 关于我 · 更新记录`
+- `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/weekly-review.md` → `# {YYYY}-{MM} 周复盘`
+- `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/diary.md` → `# {YYYY}-{MM} 日记`
+- `{PERSONAL_OS_ROOT}/content/{YYYY}/{MM}/about-me-updates.md` → `# {YYYY}-{MM} 关于我 · 更新记录`
 
 > About Me 内容更新由 `monthly-review` 负责，本技能只初始化空文件，不写入任何观察内容。
 
-**6c. 写目标表**（命令见 `references/lark-commands.md`）
+**6c. 写目标表**（命令见 `[技能参考]/lark-commands.md`）
 
-每条月目标写入 TABLE_MONTHLY，**必须关联北极星支柱记录**（两步写法：先查支柱 record_id，再写入月目标）。
+每条月目标写入 `$TABLE_MONTHLY`，**必须关联北极星支柱记录**（两步写法：先查支柱 record_id，再写入月目标）。
 
 同时为 W1 写入 TABLE_WEEKLY 初始记录（关联对应月目标 record_id）。
 
@@ -202,5 +223,5 @@ Read `references/task-triage.md`，执行月度视角双向任务调度（自动
 
 - 守门四关**不可跳过**，即使用户说「直接写吧」→「守门是为了保护你不超载，需要 5 分钟，快点过」
 - 用户要调整北极星/年度方向 → 「北极星建议在年度回顾时讨论，本次先锁定月目标」
-- 超过 30 分钟无回应 → 保存草案到 `state/monthly_draft_{YYYY-MM}.json`，等用户继续
+- 超过 30 分钟无回应 → 保存草案到 `{PERSONAL_OS_ROOT}/state/monthly_draft_{YYYY-MM}.json`，等用户继续
 - 飞书任务 API 失败 → 用本地周复盘/日记补全，注明数据来源，不阻塞流程
