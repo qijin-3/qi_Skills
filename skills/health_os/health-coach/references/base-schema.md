@@ -33,7 +33,7 @@
 | 体脂率_% | fldbzUPjNO | number | |
 | 起床时间 | fld0MR0Dmy | datetime | |
 | 就寝时间 | fldH2AU7qB | datetime | |
-| 睡眠时长_小时 | fldzXicZPV | number | 脚本计算 |
+| 睡眠时长_小时 | fldzXicZPV | number | 公式，只读 |
 | 早餐 | fld4Yz49jb | text | |
 | 早餐_卡路里 | fldYcZcyv1 | number | |
 | 午餐 | flda7roZPY | text | |
@@ -42,20 +42,22 @@
 | 晚餐_卡路里 | fldpBqXOLu | number | |
 | 加餐 | fldrjuGgOv | text | |
 | 加餐_卡路里 | fldnlGy1G2 | number | |
-| 全日卡路里_kcal | fldXUi4fi1 | number | |
-| 饮食合规度 | fld7kFiqCj | select | |
-| 饮食备注 | fldwqLBDMT | text | |
+| 全日卡路里_kcal | fldXUi4fi1 | number | 公式，只读 |
+| 饮食合规度 | fld7kFiqCj | select | 晚间补填 |
+| 备注 | fldwqLBDMT | text | coach 从用户口述提取；多次追加合并 |
 | 运动_1 | fldW8aOVWo | text | |
 | 运动_2 | fldozJpkA3 | text | |
 | 运动_3 | fldDH2Jjsc | text | |
-| 运动类型 | fldJECMVxs | multi-select | |
-| 运动时长_分钟 | fldvqMo57q | number | |
-| 运动完成率_% | fldzzUbABD | number | |
+| 运动类型 | fldJECMVxs | multi-select | 晚间可补填 |
+| 运动时长_分钟 | fldvqMo57q | number | 晚间可补填 |
+| 运动完成率_% | fldzzUbABD | number | 晚间补填 |
 | 身体状态 | fldrXJHXCqw | multi-select | |
 | 当日情境 | fldQvOuUnI | multi-select | |
-| 训练强度 | fldxHHJtEc | select | |
+| 训练强度 | fldxHHJtEc | select | **当日运动强度总结**（无/轻度/中等/较高）；晚间补填 |
 
-> 已删除字段（2026-07-01）：RPE、精力评分、计划版本、日总结、安全标记、当月文档链接、**训练主题**。计划主题与时段见本地 `state/current-week.json`；相关内容迁移至本地 `daily-log.md`。
+> **已删除字段**：RPE、精力评分、计划版本、日总结、安全标记、当月文档链接、**训练主题**。
+> 周计划主题与时段见本地 `state/current-week.json`；日总结见 `daily-log.md`。
+> **Base 写入时机**：用户只口述 → health-coach 写入；晚间收口仅补空。用户不手填任何字段。
 
 ## 写入规范
 
