@@ -59,33 +59,7 @@
 - 不一致 → **回滚**（恢复 diary.md 原内容），不清空 pending，报错："日记写入校验失败，pending 保留，请人工检查。"
 - 一致 → 继续
 
-### 6. 更新日志表日记路径
-
-向 `TABLE_LOGS` 中今日记录的 `日记路径`（FIELD_LOG_DIARY_PATH）字段写入：
-
-```
-content/{YYYY}/{MM}/diary.md
-```
-
-若今日日志记录不存在（早报未运行）→ 跳过，由 Mode A Step 7 统一写入。
-
-```bash
-# 查今日记录
-lark-cli base +record-search --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
-  --keyword "<YYYY-MM-DD>" --search-field "日期" \
-  --format json --limit 1
-
-# 若存在，更新字段
-lark-cli base +record-upsert --as user \
-  --base-token "<FEISHU_BASE_TOKEN>" \
-  --table-id "<TABLE_LOGS>" \
-  --record-id "<record_id>" \
-  --json '{"日记路径": "content/<YYYY>/<MM>/diary.md"}'
-```
-
-### 7. 清空 pending
+### 6. 清空 pending
 
 将 `diary_pending_{YYYY-MM-DD}.json` 写为空数组 `[]`。  
 同时更新 `state/diary_session.json`：设 `diary_mode: false`。

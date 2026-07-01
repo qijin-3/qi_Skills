@@ -51,7 +51,25 @@ lark-cli task +comment --as user \
   --format json
 ```
 
-## 创建日志记录
+## 查询今日日志记录（写日志前必须先查）
+
+```bash
+lark-cli base +record-search --as user \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
+  --filter '{"conjunction":"and","conditions":[
+    {"field_name":"日期","operator":"is","value":["ExactDate","<YYYY-MM-DD>"]}
+  ]}' \
+  --format json
+```
+
+**硬规则**：每天只允许一条日志记录。早报负责创建当日记录；若已存在则只更新，禁止新建第二条。
+
+## 写日志表（upsert）
+
+先执行上方查询，再按结果选择命令：
+
+**0 条** → 创建（不带 `--record-id`）：
 
 ```bash
 lark-cli base +record-upsert --as user \
@@ -60,14 +78,14 @@ lark-cli base +record-upsert --as user \
   --json '{"日期": <YYYY-MM-DD 的 Unix 毫秒时间戳>, "今日计划": "<任务1\n任务2\n任务3>"}'
 ```
 
-## 查询日志记录（是否已存在）
+**1 条** → 更新（必须带 `--record-id`，只写 `今日计划`）：
 
 ```bash
-lark-cli base +record-search --as user \
+lark-cli base +record-upsert --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
   --table-id "$TABLE_LOGS" \
-  --keyword "<YYYY-MM-DD>" --search-field "日期" \
-  --format json --limit 1
+  --record-id "<record_id>" \
+  --json '{"今日计划": "<任务1\n任务2\n任务3>"}'
 ```
 
-若已存在则 `+record-upsert --record-id <id>`，不存在则直接 `+record-upsert`（不带 record-id）。
+**多条** → 优先选已有 `今日计划` 的那条；若都没有则选最早创建的。用其 `record_id` 更新 `今日计划`，并在输出中警告「今日日志表存在重复记录，请手动合并」。

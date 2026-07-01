@@ -26,7 +26,7 @@ lark-cli task sections tasks --as user \
 
 从结果中过滤掉已完成的（`completed_at` 不为空），得到未完成任务列表。
 
-## 读今日日志记录
+## 读今日日志记录（Step 2 / Step 7 共用）
 
 ```bash
 lark-cli base +record-search --as user \
@@ -37,6 +37,8 @@ lark-cli base +record-search --as user \
   ]}' \
   --format json
 ```
+
+**硬规则**：晚报只更新早报创建的当日记录，禁止新建第二条。若查询到多条，优先选有 `今日计划` 的那条。
 
 ## 读最近2天日志（连续低完成率检查）
 
@@ -74,6 +76,10 @@ lark-cli task +tasklist-task-add --as user \
 
 ## 更新日志表（晚报核心写入）
 
+先执行「读今日日志记录」查询，再按结果选择：
+
+**1 条（正常）** → 带 `record_id` 更新晚报字段，**禁止**不带 `record_id` 的 upsert：
+
 ```bash
 lark-cli base +record-upsert --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
@@ -83,13 +89,28 @@ lark-cli base +record-upsert --as user \
     "今日完成任务": "<完成任务1\n完成任务2>",
     "今日任务完成度": <0-1小数，如0.67>,
     "主线推进情况": "<推进 / 部分推进 / 未推进>",
-    "说明": "<主线推进依据一句话>",
-    "日记路径": "content/<YYYY>/<MM>/diary.md"
+    "说明": "<主线推进依据一句话>"
   }'
 ```
+
+**0 条（早报未运行）** → 创建当日唯一记录，同时写入日期与晚报字段：
+
+```bash
+lark-cli base +record-upsert --as user \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
+  --json '{
+    "日期": <YYYY-MM-DD 的 Unix 毫秒时间戳>,
+    "今日完成任务": "<完成任务1\n完成任务2>",
+    "今日任务完成度": <0-1小数，如0.67>,
+    "主线推进情况": "<推进 / 部分推进 / 未推进>",
+    "说明": "<主线推进依据一句话>"
+  }'
+```
+
+**多条** → 选有 `今日计划` 的那条（或最早一条）更新，警告用户合并重复记录。
 
 字段说明：
 - `今日任务完成度`（FIELD_LOG_COMPLETION_RATE）：完成数 / 计划数，0–1 小数
 - `主线推进情况`（FIELD_LOG_MAINLINE）：单选，来自主线判断
 - `说明`（FIELD_LOG_NOTE）：文本，一句依据
-- `日记路径`（FIELD_LOG_DIARY_PATH）：diary-assembler 写入后读取
