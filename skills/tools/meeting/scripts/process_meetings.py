@@ -13,6 +13,16 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional, Set
 
+# 技能根目录（scripts/ 的上一级）
+SKILL_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_CONFIG_PATH = SKILL_DIR / 'config.json'
+EXAMPLE_CONFIG_PATH = SKILL_DIR / 'config.example.json'
+
+
+def get_default_config_path() -> Path:
+    """返回默认配置文件路径（技能目录下的 config.json）。"""
+    return DEFAULT_CONFIG_PATH
+
 
 class MeetingFileProcessor:
     """会议文件处理器"""
@@ -368,17 +378,27 @@ class MeetingFileProcessor:
             return False
 
 
-def create_default_config():
-    """创建默认配置文件"""
-    config_path = Path('~/.claude/skills/meeting/config.json').expanduser()
+def create_default_config() -> Optional[Path]:
+    """从 config.example.json 复制或写入默认配置到技能目录的 config.json。"""
+    config_path = get_default_config_path()
+    if config_path.exists():
+        print(f"⚠️  配置文件已存在: {config_path}")
+        return config_path
+
+    if EXAMPLE_CONFIG_PATH.exists():
+        try:
+            shutil.copy2(EXAMPLE_CONFIG_PATH, config_path)
+            print(f"✅ 已从示例创建配置文件: {config_path}")
+            return config_path
+        except Exception as e:
+            print(f"⚠️  复制示例配置失败，使用内置默认值: {e}")
+
     default_config = {
-        "archive_dir": "/Users/jin/SynologyDrive/Working/Dev/Lumis_AIO/Lumis_Doc/📹 Meeting/",
+        "archive_dir": "/Users/jin/SynologyDrive/Working/Lumis_Doc/📹 Meeting/",
         "overwrite": False,
         "skip_existing": True
     }
-
     try:
-        config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(default_config, f, indent=2, ensure_ascii=False)
         print(f"✅ 已创建默认配置文件: {config_path}")
@@ -407,7 +427,7 @@ def main():
     parser.add_argument('source_dir', nargs='?', default='~/Downloads',
                         help='源文件夹路径（默认：~/Downloads）')
     parser.add_argument('--config', '-c',
-                        help='配置文件路径（默认：~/.claude/skills/meeting/config.json）')
+                        help=f'配置文件路径（默认：{DEFAULT_CONFIG_PATH}）')
     parser.add_argument('--no-archive', action='store_true',
                         help='跳过自动归档步骤')
     parser.add_argument('--create-config', action='store_true',
@@ -420,8 +440,8 @@ def main():
         create_default_config()
         sys.exit(0)
 
-    # 如果没有指定配置文件，使用默认路径
-    config_path = args.config or '~/.claude/skills/meeting/config.json'
+    # 如果没有指定配置文件，使用技能目录下的 config.json
+    config_path = args.config or str(DEFAULT_CONFIG_PATH)
 
     try:
         processor = MeetingFileProcessor(args.source_dir, config_path)
