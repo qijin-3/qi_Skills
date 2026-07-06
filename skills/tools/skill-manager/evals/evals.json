@@ -1,0 +1,35 @@
+{
+  "skill_name": "skill-manager",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我把 jin-dev/qi_Skills 加进来，只装 meeting 和 idea-validator",
+      "expected_output": "添加仓库、discover 技能、选择性 install 两个技能并创建软链",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "检查所有技能有没有更新，有的话全部更新",
+      "expected_output": "运行 update 命令，汇报更新结果",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "当前是哪台设备的配置？列出所有设备配置文件",
+      "expected_output": "显示 device current 和 device list 结果",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "打开技能管理页面，帮我把 idea-validator 勾上同步",
+      "expected_output": "启动 ui 并通过 GUI/API 安装 idea-validator",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "我删了几个技能文件夹，帮我清理软链并看看当前状态",
+      "expected_output": "healthcheck 清理断裂软链，status 显示汇总",
+      "files": []
+    }
+  ]
+}

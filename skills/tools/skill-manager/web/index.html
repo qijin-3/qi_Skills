@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-accent="ikb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>技能管理器 · Skill Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root,
+    [data-accent="ikb"] {
+      --paper: #fafaf8;
+      --ink: #0a0a0a;
+      --grey-1: #f0f0ee;
+      --grey-2: #d4d4d2;
+      --grey-3: #737373;
+      --accent: #002FA7;
+      --accent-on: #ffffff;
+      --danger: #c41e16;
+      --ok: #1a7f37;
+      --ok-bg: #d1f4d9;
+      --sans: "Inter", "Helvetica Neue", Helvetica, "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+      --sans-zh: "Noto Sans SC", -apple-system, "PingFang SC", "Inter", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+      --sp-3: 8px;
+      --sp-4: 12px;
+      --sp-5: 16px;
+      --sp-6: 24px;
+      --sp-7: 32px;
+      --sp-8: 40px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--grey-1);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: var(--sp-7) var(--sp-6);
+    }
+
+    /* --- Typography (Swiss) --- */
+    .t-meta {
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin: 0;
+    }
+    .h-md {
+      font-family: var(--sans);
+      font-weight: 300;
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: -.02em;
+      margin: 4px 0 0;
+    }
+    .lead {
+      font-family: var(--sans-zh);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--grey-3);
+      margin: 0;
+    }
+
+    /* --- Header --- */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--sp-6);
+      padding-bottom: var(--sp-6);
+      border-bottom: 1px solid var(--grey-2);
+      margin-bottom: var(--sp-6);
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-4);
+      align-items: center;
+    }
+    .field-label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field-label span {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+    }
+
+    /* --- Tabs --- */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: var(--sp-6);
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .tab {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: var(--sp-4) var(--sp-6);
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--grey-3);
+      cursor: pointer;
+      margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab:hover { color: var(--ink); }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* --- Panels --- */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--grey-2);
+      padding: var(--sp-6);
+    }
+    .card + .card { margin-top: var(--sp-5); }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--sp-5);
+      padding-bottom: var(--sp-4);
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .card-head h2 {
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: 15px;
+      margin: 0;
+      letter-spacing: -.01em;
+    }
+
+    /* --- Form controls --- */
+    select, input {
+      font-family: var(--sans-zh);
+      font-size: 13px;
+      padding: 8px 12px;
+      border: 1px solid var(--grey-2);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 0;
+      min-width: 0;
+    }
+    select:focus, input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-4);
+      align-items: flex-end;
+    }
+    .form-row input[type="text"] { flex: 1; min-width: 200px; }
+    .form-row input.branch { width: 88px; flex: none; }
+
+    /* --- Buttons --- */
+    button.btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 9px 16px;
+      border: none;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    button.btn:hover { opacity: .88; }
+    button.btn-primary { background: var(--accent); color: var(--accent-on); }
+    button.btn-ghost {
+      background: var(--paper);
+      color: var(--ink);
+      border: 1px solid var(--grey-2);
+    }
+    button.btn-danger { background: var(--danger); color: #fff; }
+    button.btn-sm { padding: 5px 10px; font-size: 10px; }
+
+    /* --- Table --- */
+    .table-wrap { overflow-x: auto; }
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.data th {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--grey-2);
+      white-space: nowrap;
+    }
+    table.data td {
+      padding: 12px;
+      border-bottom: 1px solid var(--grey-1);
+      vertical-align: middle;
+      font-family: var(--sans-zh);
+    }
+    table.data tr:hover td { background: var(--grey-1); }
+    table.data code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--grey-3);
+      background: var(--grey-1);
+      padding: 2px 6px;
+    }
+    .skill-name {
+      font-weight: 600;
+      font-family: var(--sans);
+      letter-spacing: -.01em;
+    }
+    .repo-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      padding: 2px 8px;
+      display: inline-block;
+    }
+
+    /* --- Badge --- */
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      display: inline-block;
+    }
+    .badge.ok { background: var(--ok-bg); color: var(--ok); }
+    .badge.muted { background: var(--grey-1); color: var(--grey-3); }
+
+    /* --- Checkbox --- */
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* --- Empty state --- */
+    .empty {
+      text-align: center;
+      padding: var(--sp-8) var(--sp-6);
+      color: var(--grey-3);
+      font-family: var(--sans-zh);
+      font-size: 14px;
+    }
+    .empty strong {
+      display: block;
+      color: var(--ink);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    /* --- Toast --- */
+    .toast {
+      position: fixed;
+      bottom: var(--sp-6);
+      right: var(--sp-6);
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: .04em;
+      padding: 12px 20px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+      z-index: 200;
+      max-width: 360px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* --- Stats strip --- */
+    .stats {
+      display: flex;
+      gap: var(--sp-6);
+      margin-bottom: var(--sp-5);
+      flex-wrap: wrap;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat .num {
+      font-family: var(--sans);
+      font-weight: 300;
+      font-size: 32px;
+      line-height: 1;
+      letter-spacing: -.03em;
+      color: var(--accent);
+    }
+    .stat .label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+    }
+
+    @media (max-width: 640px) {
+      .app { padding: var(--sp-5); }
+      .header { flex-direction: column; align-items: flex-start; }
+      table.data { font-size: 12px; }
+    }
+
+    /* --- Skill groups & toolbar --- */
+    .skill-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-4);
+      align-items: center;
+      margin-bottom: var(--sp-5);
+      padding-bottom: var(--sp-4);
+      border-bottom: 1px solid var(--grey-2);
+    }
+    .skill-group {
+      border: 1px solid var(--grey-2);
+      margin-bottom: var(--sp-4);
+      background: var(--paper);
+    }
+    .skill-group summary {
+      cursor: pointer;
+      padding: var(--sp-4) var(--sp-5);
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--sp-4);
+      font-family: var(--sans);
+      user-select: none;
+    }
+    .skill-group summary::-webkit-details-marker { display: none; }
+    .skill-group summary::before {
+      content: '▸';
+      font-size: 12px;
+      color: var(--grey-3);
+      transition: transform .15s;
+    }
+    .skill-group[open] summary::before { transform: rotate(90deg); }
+    .skill-group .table-wrap { padding: 0 var(--sp-4) var(--sp-4); }
+    .badge.synced { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+    .time-cell { font-family: var(--mono); font-size: 11px; color: var(--grey-3); white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div>
+        <p class="t-meta">Skill Manager · Local</p>
+        <h1 class="h-md">技能管理器</h1>
+        <p class="lead" id="deviceInfo">加载中…</p>
+      </div>
+      <div class="header-actions">
+        <select id="deviceSelect" aria-label="设备"></select>
+        <button class="btn btn-ghost" onclick="doHealthcheck()">健康检查</button>
+        <button class="btn btn-primary" onclick="doUpdate()">检查更新</button>
+        <button class="btn btn-ghost" onclick="loadAll()">刷新</button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="repos" aria-selected="true">仓库管理</button>
+      <button class="tab" role="tab" data-tab="skills" aria-selected="false">技能管理</button>
+    </nav>
+
+    <!-- 仓库管理 -->
+    <section id="panel-repos" class="panel active" role="tabpanel">
+      <div class="stats" id="repoStats"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>添加仓库</h2>
+          <p class="t-meta">GitHub only</p>
+        </div>
+        <div class="form-row">
+          <input type="text" id="repoUrl" placeholder="owner/repo 或 GitHub URL">
+          <input type="text" id="repoBranch" class="branch" placeholder="分支" value="main">
+          <button class="btn btn-primary" onclick="addRepo()">添加</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>已注册仓库</h2>
+        </div>
+        <div id="repoTable"><p class="empty">加载中…</p></div>
+      </div>
+    </section>
+
+    <!-- 技能管理 -->
+    <section id="panel-skills" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>技能列表</h2>
+          <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
+            <span>筛选仓库</span>
+            <select id="skillRepoFilter" onchange="loadSkillsPanel()">
+              <option value="">全部仓库</option>
+            </select>
+          </label>
+        </div>
+        <div class="skill-toolbar" id="skillToolbar" hidden>
+          <button type="button" class="btn btn-ghost btn-sm" id="selectAllSkills">全选</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="clearSelectionBtn">取消选择</button>
+          <button type="button" class="btn btn-primary btn-sm" id="syncSelectedBtn">同步选中</button>
+          <button type="button" class="btn btn-danger btn-sm" id="uninstallSelectedBtn">卸载选中</button>
+          <span class="t-meta" id="selectedCount">已选 0</span>
+        </div>
+        <div id="skillsTable"><p class="empty">加载中…</p></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    let deviceData = null;
+    let reposCache = [];
+    let skillsRowsCache = [];
+
+    /** 转义 HTML 防注入 */
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s ?? '';
+      return d.innerHTML;
+    }
+
+    /** 格式化时间显示 */
+    function fmtTime(t) {
+      return t && String(t).trim() ? esc(String(t).trim()) : '—';
+    }
+
+    /** 更新已选计数 */
+    function updateSelectedCount() {
+      const n = document.querySelectorAll('.row-select:checked').length;
+      const el = document.getElementById('selectedCount');
+      if (el) el.textContent = `已选 ${n}`;
+    }
+
+    /** 绑定技能表内事件 */
+    function bindSkillTableEvents(root) {
+      root.querySelectorAll('.row-select').forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+      });
+    }
+
+    /** 渲染技能表 HTML */
+    function renderSkillTable(rows) {
+      if (!rows.length) return '<p class="empty">无技能</p>';
+      return `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr>
+              <th style="width:36px">选择</th>
+              <th>名称</th>
+              <th>路径</th>
+              <th>摘要</th>
+              <th>状态</th>
+              <th>上次更新</th>
+              <th>软链</th>
+            </tr></thead>
+            <tbody>
+              ${rows.map(s => `
+                <tr>
+                  <td>
+                    <input type="checkbox" class="row-select"
+                      data-repo="${esc(s.repo_id)}" data-name="${esc(s.name)}"
+                      data-synced="${s.sync ? '1' : '0'}"
+                      aria-label="选择 ${esc(s.name)}">
+                  </td>
+                  <td><span class="skill-name">${esc(s.name)}</span></td>
+                  <td><code>${esc(s.source_path)}</code></td>
+                  <td style="max-width:200px;color:var(--grey-3);font-size:12px">${esc(s.summary || '—')}</td>
+                  <td><span class="badge ${s.sync ? 'synced' : 'muted'}">${s.sync ? '已同步' : '未同步'}</span></td>
+                  <td class="time-cell">${fmtTime(s.installed_at || (s.sync ? s.repo_updated_at : ''))}</td>
+                  <td><span class="badge ${s.link_ok ? 'ok' : 'muted'}">${s.link_ok ? 'OK' : '—'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    /** 按仓库分组渲染（可折叠） */
+    function renderSkillGroups(grouped) {
+      return grouped.map(g => {
+        const open = sessionStorage.getItem(`sm-fold-${g.repo_id}`) !== '1';
+        return `
+          <details class="skill-group" data-repo="${esc(g.repo_id)}" ${open ? 'open' : ''}>
+            <summary>
+              <span class="skill-name">${esc(g.repo_id)}</span>
+              <span class="t-meta">${g.skills.length} 项 · 仓库更新 ${fmtTime(g.repo_updated_at)} · 已同步 ${g.skills.filter(s => s.sync).length}</span>
+            </summary>
+            ${renderSkillTable(g.skills)}
+          </details>
+        `;
+      }).join('');
+    }
+
+    /** API 请求封装 */
+    async function api(method, path, body) {
+      const opts = { method, headers: {} };
+      if (body) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const res = await fetch(path, opts);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    /** 显示 Toast 提示 */
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    /** Tab 切换 */
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab').forEach(t => {
+          t.classList.toggle('active', t.dataset.tab === tab);
+          t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
+        });
+        document.querySelectorAll('.panel').forEach(p => {
+          const active = p.id === `panel-${tab}`;
+          p.classList.toggle('active', active);
+          p.hidden = !active;
+        });
+        if (tab === 'skills') loadSkillsPanel();
+      });
+    });
+
+    /** 加载设备信息 */
+    async function loadDevice() {
+      deviceData = await api('GET', '/api/device');
+      const cur = deviceData.current;
+      document.getElementById('deviceInfo').textContent =
+        `${cur.device_id} · ${cur.hostname}`;
+
+      const sel = document.getElementById('deviceSelect');
+      sel.innerHTML = '';
+      for (const id of deviceData.available) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = id;
+        if (id === cur.device_id) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    document.getElementById('deviceSelect').addEventListener('change', async (e) => {
+      await api('POST', '/api/device/switch', { device_id: e.target.value });
+      toast('已切换设备: ' + e.target.value);
+      await loadAll();
+    });
+
+    /** 加载仓库列表与统计 */
+    async function loadRepos() {
+      const data = await api('GET', '/api/repos');
+      reposCache = data.repos;
+
+      const totalSynced = reposCache.reduce((n, r) => n + r.synced_count, 0);
+      document.getElementById('repoStats').innerHTML = `
+        <div class="stat"><span class="num">${reposCache.length}</span><span class="label">仓库</span></div>
+        <div class="stat"><span class="num">${totalSynced}</span><span class="label">已同步技能</span></div>
+      `;
+
+      const filterSel = document.getElementById('skillRepoFilter');
+      const prev = filterSel.value;
+      filterSel.innerHTML = '<option value="">全部仓库</option>' +
+        reposCache.map(r => `<option value="${esc(r.id)}">${esc(r.id)}</option>`).join('');
+      if (prev && reposCache.some(r => r.id === prev)) filterSel.value = prev;
+
+      const el = document.getElementById('repoTable');
+      if (!reposCache.length) {
+        el.innerHTML = '<p class="empty"><strong>暂无仓库</strong>在上方添加 GitHub 仓库开始</p>';
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr>
+              <th>仓库</th><th>分支</th><th>Commit</th><th>上次更新</th><th>已同步</th><th></th>
+            </tr></thead>
+            <tbody>
+              ${reposCache.map(r => `
+                <tr>
+                  <td><span class="skill-name">${esc(r.id)}</span></td>
+                  <td>${esc(r.branch)}</td>
+                  <td><code>${esc((r.last_commit || '').slice(0, 8))}</code></td>
+                  <td class="time-cell">${fmtTime(r.last_updated_at)}</td>
+                  <td>${r.synced_count}</td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-ghost btn-sm view-skills-btn" data-repo="${esc(r.id)}">查看技能</button>
+                    <button class="btn btn-danger btn-sm remove-repo-btn" data-repo="${esc(r.id)}">移除</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      el.querySelectorAll('.view-skills-btn').forEach(btn => {
+        btn.addEventListener('click', () => goSkillsTab(btn.dataset.repo));
+      });
+      el.querySelectorAll('.remove-repo-btn').forEach(btn => {
+        btn.addEventListener('click', () => removeRepo(btn.dataset.repo));
+      });
+    }
+
+    /** 跳转到技能 Tab 并筛选仓库 */
+    function goSkillsTab(repoId) {
+      document.getElementById('skillRepoFilter').value = repoId;
+      document.querySelector('.tab[data-tab="skills"]').click();
+    }
+
+    /** 加载技能面板（支持按仓库筛选、分组、多选） */
+    async function loadSkillsPanel() {
+      const filter = document.getElementById('skillRepoFilter').value;
+      const el = document.getElementById('skillsTable');
+      const toolbar = document.getElementById('skillToolbar');
+
+      if (!reposCache.length) {
+        toolbar.hidden = true;
+        el.innerHTML = '<p class="empty"><strong>暂无仓库</strong>请先在「仓库管理」中添加</p>';
+        return;
+      }
+
+      const targetRepos = filter
+        ? reposCache.filter(r => r.id === filter)
+        : reposCache;
+
+      el.innerHTML = '<p class="empty">扫描技能中…</p>';
+      toolbar.hidden = true;
+
+      try {
+        const rows = [];
+        for (const repo of targetRepos) {
+          const data = await api('GET', `/api/repos/${encodeURIComponent(repo.id)}/skills`);
+          for (const s of data.skills) {
+            rows.push({ ...s, repo_id: repo.id });
+          }
+        }
+
+        skillsRowsCache = rows;
+
+        if (!rows.length) {
+          el.innerHTML = '<p class="empty"><strong>未扫描到 SKILL.md</strong>仓库中可能没有技能文件</p>';
+          return;
+        }
+
+        toolbar.hidden = false;
+        updateSelectedCount();
+
+        if (!filter) {
+          const grouped = targetRepos.map(repo => ({
+            repo_id: repo.id,
+            repo_updated_at: repo.last_updated_at,
+            skills: rows.filter(s => s.repo_id === repo.id).sort((a, b) => a.name.localeCompare(b.name)),
+          })).filter(g => g.skills.length);
+          el.innerHTML = renderSkillGroups(grouped) +
+            `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
+          el.querySelectorAll('.skill-group').forEach(det => {
+            det.addEventListener('toggle', () => {
+              sessionStorage.setItem(`sm-fold-${det.dataset.repo}`, det.open ? '0' : '1');
+            });
+            bindSkillTableEvents(det);
+          });
+        } else {
+          rows.sort((a, b) => a.name.localeCompare(b.name));
+          el.innerHTML = renderSkillTable(rows) +
+            `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
+          bindSkillTableEvents(el);
+        }
+      } catch (e) {
+        el.innerHTML = `<p class="empty"><strong>扫描失败</strong>${esc(e.message)}</p>`;
+        toast('扫描失败: ' + e.message);
+      }
+    }
+
+    /** 全选 / 取消选择 */
+    document.getElementById('selectAllSkills').addEventListener('click', () => {
+      document.querySelectorAll('.row-select').forEach(cb => { cb.checked = true; });
+      updateSelectedCount();
+    });
+    document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+      document.querySelectorAll('.row-select').forEach(cb => { cb.checked = false; });
+      updateSelectedCount();
+    });
+
+    /** 批量同步选中技能 */
+    document.getElementById('syncSelectedBtn').addEventListener('click', async () => {
+      const actions = [];
+      document.querySelectorAll('.row-select:checked').forEach(cb => {
+        if (cb.dataset.synced === '0') {
+          actions.push({ repo_id: cb.dataset.repo, name: cb.dataset.name, sync: true });
+        }
+      });
+      if (!actions.length) return toast('请选择未同步的技能');
+      toast(`正在同步 ${actions.length} 个技能…`);
+      try {
+        const result = await api('POST', '/api/skills/batch', { actions });
+        toast(`已同步: ${(result.installed || []).join(', ') || '完成'}`);
+        await loadRepos();
+        await loadSkillsPanel();
+      } catch (e) {
+        toast('同步失败: ' + e.message);
+      }
+    });
+
+    /** 批量卸载选中技能 */
+    document.getElementById('uninstallSelectedBtn').addEventListener('click', async () => {
+      const actions = [];
+      document.querySelectorAll('.row-select:checked').forEach(cb => {
+        if (cb.dataset.synced === '1') {
+          actions.push({ repo_id: cb.dataset.repo, name: cb.dataset.name, sync: false });
+        }
+      });
+      if (!actions.length) return toast('请选择已同步的技能');
+      if (!confirm(`确认卸载选中的 ${actions.length} 个技能？`)) return;
+      toast(`正在卸载 ${actions.length} 个技能…`);
+      try {
+        const result = await api('POST', '/api/skills/batch', { actions });
+        toast(`已卸载: ${(result.uninstalled || []).join(', ') || '完成'}`);
+        await loadRepos();
+        await loadSkillsPanel();
+      } catch (e) {
+        toast('卸载失败: ' + e.message);
+      }
+    });
+
+    /** 添加仓库 */
+    async function addRepo() {
+      const url = document.getElementById('repoUrl').value.trim();
+      const branch = document.getElementById('repoBranch').value.trim() || 'main';
+      if (!url) return toast('请输入仓库 URL');
+      toast('正在克隆…');
+      const data = await api('POST', '/api/repos', { url, branch });
+      document.getElementById('repoUrl').value = '';
+      toast(`已添加 ${data.repo.id}`);
+      await loadRepos();
+    }
+
+    /** 移除仓库 */
+    async function removeRepo(id) {
+      const purge = confirm('同时卸载该仓库下所有已同步技能？\n确定=是，取消=仅移除记录');
+      await api('DELETE', `/api/repos/${encodeURIComponent(id)}`, { purge });
+      toast('已移除仓库');
+      await loadRepos();
+      const filter = document.getElementById('skillRepoFilter');
+      if (filter.value === id) filter.value = '';
+      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+    }
+
+    /** 健康检查 */
+    async function doHealthcheck() {
+      const data = await api('POST', '/api/healthcheck');
+      const msg = data.removed.length
+        ? `已清理: ${data.removed.join(', ')}`
+        : '软链健康';
+      toast(msg);
+      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+    }
+
+    /** 检查更新 */
+    async function doUpdate() {
+      toast('正在检查更新…');
+      const data = await api('POST', '/api/update', {});
+      toast(data.updated.length
+        ? `已更新 ${data.updated.length} 个技能`
+        : '所有技能已是最新');
+      await loadRepos();
+      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+    }
+
+    /** 全量刷新 */
+    async function loadAll() {
+      await loadDevice();
+      await loadRepos();
+      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+    }
+
+    loadAll().catch(e => toast('错误: ' + e.message));
+  </script>
+</body>
+</html>

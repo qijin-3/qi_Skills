@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-accent="ikb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skill Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root {
+      --paper: #fafaf8;
+      --ink: #0a0a0a;
+      --grey-1: #f0f0ee;
+      --grey-2: #d4d4d2;
+      --grey-3: #737373;
+      --accent: #002FA7;
+      --accent-on: #ffffff;
+      --sans: "Inter", "Helvetica Neue", Helvetica, "Noto Sans SC", sans-serif;
+      --sans-zh: "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100vh;
+      font-family: var(--sans);
+      background: var(--grey-1);
+      color: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px;
+    }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--grey-2);
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .t-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin: 0 0 8px;
+    }
+    h1 {
+      font-weight: 300;
+      font-size: 32px;
+      letter-spacing: -.02em;
+      margin: 0 0 12px;
+    }
+    p {
+      font-family: var(--sans-zh);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--grey-3);
+      margin: 0 0 24px;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--grey-2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    code {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--grey-1);
+      padding: 2px 6px;
+      display: block;
+      margin-top: 12px;
+      word-break: break-all;
+      text-align: left;
+    }
+    a.btn {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 12px 24px;
+      background: var(--accent);
+      color: var(--accent-on);
+      text-decoration: none;
+      margin-top: 8px;
+    }
+    a.btn:hover { opacity: .9; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="state-loading">
+      <div class="spinner"></div>
+      <p class="t-meta">Connecting</p>
+      <h1>技能管理器</h1>
+      <p>正在连接本地服务…</p>
+    </div>
+    <div id="state-ready" class="hidden">
+      <p class="t-meta">Ready</p>
+      <h1>正在打开…</h1>
+      <p>服务已运行，即将跳转到管理页面。</p>
+    </div>
+    <div id="state-offline" class="hidden">
+      <p class="t-meta">Offline</p>
+      <h1>服务未启动</h1>
+      <p>请先启动本地管理器，然后刷新此页面。</p>
+      <p><strong>方式一</strong>：双击同目录下的 <code>Open Skill Manager.command</code></p>
+      <p><strong>方式二</strong>：终端执行</p>
+      <code>python3 ~/.agent/skills/skill-manager/scripts/skill_manager.py ui</code>
+      <br>
+      <a class="btn" href="#" onclick="location.reload();return false;">重新检测</a>
+    </div>
+  </div>
+  <script>
+    const API = 'http://127.0.0.1:8791/api/status';
+    const GUI = 'http://127.0.0.1:8791/';
+
+    function show(id) {
+      ['state-loading', 'state-ready', 'state-offline'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+    }
+
+    fetch(API, { mode: 'cors' })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(() => {
+        show('state-ready');
+        window.location.href = GUI;
+      })
+      .catch(() => show('state-offline'));
+  </script>
+</body>
+</html>
