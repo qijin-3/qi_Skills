@@ -2160,6 +2160,9 @@ def check_updates(mgr: Manager) -> dict:
     updates: list[dict] = []
 
     for repo in mgr.data.get("repos", []):
+        if repo.get("local"):
+            continue
+
         cache = repo_cache_path(repo)
         if not cache.exists():
             clone_repo(repo["url"], repo.get("branch", "main"), cache)
