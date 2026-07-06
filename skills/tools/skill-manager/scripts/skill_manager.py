@@ -1412,17 +1412,22 @@ def read_config_meta(config_id: str) -> dict:
         if legacy.exists():
             path = legacy
         else:
-            return {"config_id": config_id, "display_name": config_id}
+            return {
+                "config_id": config_id,
+                "display_name": config_id,
+                "repo_count": 0,
+                "skill_count": 0,
+            }
     data = json.loads(path.read_text(encoding="utf-8"))
-    skills_root = config_dir(config_id) / "Skills"
-    skill_count = 0
-    if skills_root.is_dir():
-        for repo_dir in skills_root.iterdir():
-            if repo_dir.is_dir():
-                skill_count += sum(1 for c in repo_dir.iterdir() if c.is_dir())
+    repos = data.get("repos", [])
+    repo_count = len(repos)
+    skill_count = sum(
+        1 for repo in repos for sk in repo.get("skills", []) if sk.get("sync")
+    )
     return {
         "config_id": config_id,
         "display_name": data.get("display_name") or config_id,
+        "repo_count": repo_count,
         "skill_count": skill_count,
         "path": str(config_dir(config_id)),
     }

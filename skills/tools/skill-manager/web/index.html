@@ -565,6 +565,7 @@
     .config-row { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; padding: var(--sp-4) 0; border-bottom: 1px solid var(--grey-1); }
     .config-row:last-child { border-bottom: none; }
     .config-row .config-meta { flex: 1; min-width: 200px; }
+    .config-title-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
     .config-row-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; }
     .health-list { max-height: 280px; overflow: auto; border: 1px solid var(--grey-2); padding: var(--sp-3); }
     .health-item { display: flex; gap: var(--sp-3); align-items: flex-start; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--grey-1); }
@@ -1318,13 +1319,14 @@
         return `
         <div class="config-row">
           <div class="config-meta">
-            <strong>${esc(c.display_name)}</strong>
-            <span class="repo-id-sub">${esc(c.config_id)} · ${c.skill_count ?? 0} 个技能目录</span>
+            <div class="config-title-row">
+              <strong>${esc(c.display_name)}</strong>
+              ${isCurrent ? '<span class="repo-builtin-badge">当前</span>' : ''}
+            </div>
+            <span class="repo-id-sub">${c.repo_count ?? 0} 个仓库 · ${c.skill_count ?? 0} 个技能</span>
           </div>
           <div class="config-row-actions">
-            ${isCurrent
-              ? '<span class="repo-builtin-badge">当前</span>'
-              : `<button type="button" class="btn btn-primary btn-sm config-switch-btn"
+            ${isCurrent ? '' : `<button type="button" class="btn btn-primary btn-sm config-switch-btn"
                   data-id="${esc(c.config_id)}" data-name="${esc(c.display_name)}">切换</button>`}
             <button type="button" class="btn btn-ghost btn-sm config-copy-btn"
               data-id="${esc(c.config_id)}" data-name="${esc(c.display_name)}">复制</button>
