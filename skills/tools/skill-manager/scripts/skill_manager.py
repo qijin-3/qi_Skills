@@ -59,6 +59,15 @@ MANAGER_LINK_NAME = "skill-manager"
 REMOVED_AGENT_IDS = frozenset({"cursor-builtin", "agents"})
 DEFAULT_AGENT_IDS = {a["id"] for a in DEFAULT_AGENTS}
 
+BUILTIN_REPOS: list[dict] = [
+    {
+        "id": "anthropics/skills",
+        "url": "https://github.com/anthropics/skills.git",
+        "branch": "main",
+        "alias": "Anthropics",
+    },
+]
+
 EXCLUDE_PARTS = {".git", "node_modules", "deprecated", "template", ".cache", "__pycache__"}
 
 
@@ -556,13 +565,52 @@ def load_manager(device_id: str | None = None) -> Manager:
             encoding="utf-8",
         )
 
-    return Manager(device_id=did, manifest_path=path, data=data)
+    mgr = Manager(device_id=did, manifest_path=path, data=data)
+    ensure_builtin_repos(mgr)
+    return mgr
 
 
 def set_active_device(device_id: str) -> None:
     """持久化当前活跃设备（GUI 切换用）。"""
     ensure_workspace()
     ACTIVE_DEVICE_FILE.write_text(device_id + "\n", encoding="utf-8")
+
+
+def ensure_builtin_repos(mgr: Manager) -> None:
+    """确保内置仓库存在（不可移除、别名固定）。"""
+    changed = False
+    repos = mgr.data.setdefault("repos", [])
+
+    for spec in BUILTIN_REPOS:
+        existing = find_repo(mgr, spec["id"])
+        if existing:
+            if not existing.get("builtin"):
+                existing["builtin"] = True
+                changed = True
+            if existing.get("alias") != spec["alias"]:
+                existing["alias"] = spec["alias"]
+                changed = True
+            continue
+
+        cache = cache_dir_for(spec["id"])
+        if not cache.exists():
+            clone_repo(spec["url"], spec["branch"], cache)
+        commit = git_head(cache)
+        repos.insert(0, {
+            "id": spec["id"],
+            "url": spec["url"],
+            "branch": spec["branch"],
+            "alias": spec["alias"],
+            "builtin": True,
+            "cache_path": cache.relative_to(SM_ROOT).as_posix(),
+            "last_commit": commit,
+            "last_updated_at": git_commit_time(cache, commit) or now_iso(),
+            "skills": [],
+        })
+        changed = True
+
+    if changed:
+        mgr.save()
 
 
 def find_repo(mgr: Manager, repo_id: str) -> dict | None:
@@ -747,6 +795,8 @@ def repo_remove(mgr: Manager, repo_id: str, purge: bool = False) -> dict:
     repo = find_repo(mgr, repo_id)
     if not repo:
         raise ValueError(f"仓库不存在: {repo_id}")
+    if repo.get("builtin"):
+        raise ValueError("内置仓库不可移除")
 
     uninstalled: list[str] = []
     if purge:
@@ -758,6 +808,22 @@ def repo_remove(mgr: Manager, repo_id: str, purge: bool = False) -> dict:
     mgr.data["repos"] = [r for r in mgr.data["repos"] if r.get("id") != repo_id]
     mgr.save()
     return {"removed": repo_id, "uninstalled": uninstalled}
+
+
+def repo_update_alias(mgr: Manager, repo_id: str, alias: str) -> dict:
+    """设置或清除仓库显示别名。"""
+    repo = find_repo(mgr, repo_id)
+    if not repo:
+        raise ValueError(f"仓库不存在: {repo_id}")
+    if repo.get("builtin"):
+        raise ValueError("内置仓库别名不可修改")
+    alias = alias.strip()
+    if alias:
+        repo["alias"] = alias
+    else:
+        repo.pop("alias", None)
+    mgr.save()
+    return repo
 
 
 def repo_update_branch(mgr: Manager, repo_id: str, branch: str) -> dict:

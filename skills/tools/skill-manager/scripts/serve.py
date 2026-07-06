@@ -179,13 +179,22 @@ class Handler(BaseHTTPRequestHandler):
             repos = []
             for repo in mgr.data.get("repos", []):
                 synced = sum(1 for s in repo.get("skills", []) if s.get("sync"))
+                cache = sm.repo_cache_path(repo)
+                skill_count = (
+                    len(sm.discover_skills_in_repo(cache))
+                    if cache.exists()
+                    else 0
+                )
                 repos.append({
                     "id": repo["id"],
+                    "alias": repo.get("alias", ""),
+                    "builtin": bool(repo.get("builtin")),
                     "url": repo.get("url"),
                     "branch": repo.get("branch", "main"),
                     "last_commit": repo.get("last_commit", ""),
                     "last_updated_at": sm.repo_updated_at(repo),
                     "synced_count": synced,
+                    "skill_count": skill_count,
                 })
             return json_response(self, 200, {"repos": repos})
 
@@ -212,6 +221,9 @@ class Handler(BaseHTTPRequestHandler):
                 body = read_body(self)
                 if "branch" in body:
                     repo = sm.repo_update_branch(mgr, repo_id, body["branch"])
+                    return json_response(self, 200, {"repo": repo})
+                if "alias" in body:
+                    repo = sm.repo_update_alias(mgr, repo_id, body.get("alias", ""))
                     return json_response(self, 200, {"repo": repo})
                 raise ValueError("无有效更新字段")
             if method == "DELETE":

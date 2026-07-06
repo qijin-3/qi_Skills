@@ -242,6 +242,11 @@
       font-family: var(--sans);
       letter-spacing: -.01em;
     }
+    a.skill-github-link {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a.skill-github-link:hover { text-decoration: underline; }
     .repo-tag {
       font-family: var(--mono);
       font-size: 11px;
@@ -307,6 +312,63 @@
     }
     .toast.show { opacity: 1; transform: translateY(0); }
 
+    /* --- Alias dialog --- */
+    .alias-dialog {
+      border: 1px solid var(--grey-2);
+      border-radius: 0;
+      padding: 0;
+      max-width: 400px;
+      width: calc(100% - 32px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+    }
+    .alias-dialog::backdrop { background: rgba(10,10,10,.35); }
+    .alias-dialog-form {
+      padding: var(--sp-6);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+    .alias-dialog-form h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .alias-dialog-form input {
+      width: 100%;
+      font-size: 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--grey-2);
+      font-family: var(--sans);
+    }
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--sp-3);
+      margin-top: var(--sp-3);
+    }
+    .repo-builtin-badge {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      border: 1px solid var(--grey-2);
+      padding: 2px 6px;
+      flex-shrink: 0;
+      align-self: flex-start;
+    }
+    .dialog-warn {
+      font-family: var(--sans-zh);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink);
+      margin: 0;
+      padding: var(--sp-4);
+      background: #fff5f5;
+      border-left: 3px solid var(--danger);
+    }
+    .dialog-warn strong { color: var(--danger); font-weight: 500; }
+
     /* --- Stats strip --- */
     .stats {
       display: flex;
@@ -341,7 +403,7 @@
       table.data { font-size: 12px; }
     }
 
-    /* --- Skill groups & toolbar --- */
+    /* --- Skills layout & toolbar --- */
     .skill-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -351,39 +413,132 @@
       padding-bottom: var(--sp-4);
       border-bottom: 1px solid var(--grey-2);
     }
-    .skill-group {
-      border: 1px solid var(--grey-2);
-      margin-bottom: var(--sp-4);
-      background: var(--paper);
-    }
-    .skill-group summary {
-      cursor: pointer;
-      padding: var(--sp-4) var(--sp-5);
-      list-style: none;
+    .skills-layout {
       display: flex;
+      gap: 0;
+      align-items: stretch;
+      min-height: 320px;
+    }
+    .skills-main { flex: 1; min-width: 0; }
+    .skills-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--grey-2);
+      padding-left: var(--sp-5);
+      margin-left: var(--sp-5);
+    }
+    .skills-sidebar-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--grey-3);
+      margin: 0 0 var(--sp-4);
+    }
+    .skill-repo-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .skill-repo-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      text-align: left;
+      padding: var(--sp-4);
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: var(--sans);
+      border-left: 3px solid transparent;
+      transition: background .15s, border-color .15s;
+    }
+    .skill-repo-nav-item:hover { background: var(--grey-1); }
+    .skill-repo-nav-item.active {
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      border-left-color: var(--accent);
+    }
+    .skill-repo-nav-item .repo-label {
+      font-weight: 600;
+      font-size: 13px;
+      line-height: 1.3;
+      word-break: break-all;
+    }
+    .skill-repo-nav-item .repo-meta {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--grey-3);
+    }
+    .skills-repo-head {
+      display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       gap: var(--sp-4);
-      font-family: var(--sans);
-      user-select: none;
+      margin-bottom: var(--sp-4);
+      padding-bottom: var(--sp-4);
+      border-bottom: 1px solid var(--grey-1);
     }
-    .skill-group summary .summary-main {
-      display: flex;
-      align-items: center;
-      gap: var(--sp-4);
-      flex: 1;
-      min-width: 0;
+    .skills-repo-head h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.35;
     }
-    .skill-group summary .group-actions { flex-shrink: 0; }
-    .skill-group summary::-webkit-details-marker { display: none; }
-    .skill-group summary::before {
-      content: '▸';
+    .repo-alias-input {
+      width: 120px;
       font-size: 12px;
-      color: var(--grey-3);
-      transition: transform .15s;
+      padding: 6px 8px;
     }
-    .skill-group[open] summary::before { transform: rotate(90deg); }
-    .skill-group .table-wrap { padding: 0 var(--sp-4) var(--sp-4); }
+    .repo-name-cell {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .repo-alias-edit {
+      padding: 2px 7px;
+      font-size: 13px;
+      line-height: 1;
+      flex-shrink: 0;
+      opacity: .55;
+    }
+    .repo-alias-edit:hover { opacity: 1; }
+    .repo-id-sub {
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--grey-3);
+      font-weight: 400;
+      margin-top: 2px;
+    }
+    @media (max-width: 800px) {
+      .skills-layout { flex-direction: column-reverse; }
+      .skills-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--grey-2);
+        padding-left: 0;
+        margin-left: 0;
+        padding-top: var(--sp-5);
+        margin-top: var(--sp-5);
+      }
+      .skill-repo-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        max-height: none;
+      }
+      .skill-repo-nav-item {
+        width: auto;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+      }
+      .skill-repo-nav-item.active { border-bottom-color: var(--accent); }
+    }
     .badge.synced { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
     .badge.warn { background: #fff3cd; color: #856404; }
     .badge.new { background: #d1f4d9; color: var(--ok); }
@@ -463,35 +618,38 @@
       <div class="card">
         <div class="card-head">
           <h2>技能列表</h2>
-          <div class="card-head-actions">
-            <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
-              <span>搜索</span>
-              <input type="search" id="skillSearch" class="search-input" placeholder="技能名称…" autocomplete="off">
-            </label>
-            <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
-              <span>安装状态</span>
-              <select id="skillSyncFilter">
-                <option value="all">全部</option>
-                <option value="installed">已安装</option>
-                <option value="not-installed">未安装</option>
-              </select>
-            </label>
-            <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
-              <span>筛选仓库</span>
-              <select id="skillRepoFilter" onchange="loadSkillsPanel()">
-                <option value="">全部仓库</option>
-              </select>
-            </label>
+          <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
+            <span>安装状态</span>
+            <select id="skillSyncFilter">
+              <option value="all">全部</option>
+              <option value="installed">已安装</option>
+              <option value="not-installed">未安装</option>
+            </select>
+          </label>
+        </div>
+        <div class="skills-layout">
+          <div class="skills-main">
+            <div class="skills-repo-head" id="skillsRepoHead" hidden>
+              <h3 id="skillsRepoTitle"></h3>
+              <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
+                <span>本仓库搜索</span>
+                <input type="search" id="skillSearch" class="search-input" placeholder="技能名称…" autocomplete="off">
+              </label>
+            </div>
+            <div class="skill-toolbar" id="skillToolbar" hidden>
+              <button type="button" class="btn btn-ghost btn-sm" id="selectAllSkills">本仓库全选</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="clearSelectionBtn">取消选择</button>
+              <button type="button" class="btn btn-primary btn-sm" id="syncSelectedBtn">同步选中</button>
+              <button type="button" class="btn btn-danger btn-sm" id="uninstallSelectedBtn">卸载选中</button>
+              <span class="t-meta" id="selectedCount">已选 0</span>
+            </div>
+            <div id="skillsTable"><p class="empty">加载中…</p></div>
           </div>
+          <aside class="skills-sidebar">
+            <p class="skills-sidebar-title">仓库</p>
+            <nav class="skill-repo-nav" id="skillRepoNav" aria-label="技能仓库"></nav>
+          </aside>
         </div>
-        <div class="skill-toolbar" id="skillToolbar" hidden>
-          <button type="button" class="btn btn-ghost btn-sm" id="selectAllSkills">全选</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="clearSelectionBtn">取消选择</button>
-          <button type="button" class="btn btn-primary btn-sm" id="syncSelectedBtn">同步选中</button>
-          <button type="button" class="btn btn-danger btn-sm" id="uninstallSelectedBtn">卸载选中</button>
-          <span class="t-meta" id="selectedCount">已选 0</span>
-        </div>
-        <div id="skillsTable"><p class="empty">加载中…</p></div>
       </div>
     </section>
 
@@ -527,13 +685,40 @@
 
   <div class="toast" id="toast" role="status"></div>
 
+  <dialog id="aliasDialog" class="alias-dialog">
+    <form id="aliasForm" class="alias-dialog-form">
+      <h3>编辑仓库别名</h3>
+      <p class="t-meta" id="aliasDialogRepoId"></p>
+      <input type="text" id="aliasInput" placeholder="留空则显示仓库名" autocomplete="off">
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="aliasCancel">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="removeRepoDialog" class="alias-dialog">
+    <div class="alias-dialog-form">
+      <h3>确认移除仓库</h3>
+      <p class="t-meta" id="removeRepoDialogId"></p>
+      <p class="dialog-warn" id="removeRepoDialogWarn"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="removeRepoCancel">取消</button>
+        <button type="button" class="btn btn-danger" id="removeRepoConfirm">移除仓库</button>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     let deviceData = null;
     let reposCache = [];
     let skillsRowsCache = [];
     let pendingUpdatesCache = [];
-    let skillSearchQuery = '';
+    let activeSkillRepoId = '';
+    let skillSearchByRepo = {};
     let settingsAgentsCache = [];
+    let aliasEditRepoId = null;
+    let removeRepoTargetId = null;
 
     /** 转义 HTML 防注入 */
     function esc(s) {
@@ -572,7 +757,115 @@
       }
     }
 
-    /** 按名称与安装状态过滤技能行 */
+    /** 仓库显示名：有别名用别名，否则用 id */
+    function repoLabel(r) {
+      const a = (r?.alias || '').trim();
+      return a || r?.id || '';
+    }
+
+    /** 有别名时在标题下显示仓库 id */
+    function repoTitleBlock(r) {
+      const label = repoLabel(r);
+      const hasAlias = !!(r?.alias || '').trim();
+      if (!hasAlias) return esc(label);
+      return `${esc(label)}<span class="repo-id-sub">${esc(r.id)}</span>`;
+    }
+
+    /** 初始化别名编辑对话框（替代 prompt，避免嵌入式浏览器拦截） */
+    function initAliasDialog() {
+      const dlg = document.getElementById('aliasDialog');
+      const form = document.getElementById('aliasForm');
+      const input = document.getElementById('aliasInput');
+      document.getElementById('aliasCancel').addEventListener('click', () => dlg.close());
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const repoId = aliasEditRepoId;
+        if (!repoId) return;
+        const alias = input.value;
+        dlg.close();
+        try {
+          await api('PUT', `/api/repos/${encodeURIComponent(repoId)}`, { alias });
+          const cur = reposCache.find(x => x.id === repoId);
+          if (cur) cur.alias = alias.trim();
+          toast('别名已保存');
+          await loadRepos();
+          if (!document.getElementById('panel-skills').hidden) {
+            renderSkillRepoNav();
+            renderSkillsView();
+          }
+        } catch (err) {
+          toast('保存别名失败: ' + err.message);
+        }
+      });
+    }
+
+    /** 打开别名编辑对话框 */
+    function openAliasDialog(repoId) {
+      const cur = reposCache.find(x => x.id === repoId);
+      aliasEditRepoId = repoId;
+      document.getElementById('aliasDialogRepoId').textContent = repoId;
+      document.getElementById('aliasInput').value = cur?.alias || '';
+      const dlg = document.getElementById('aliasDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+      document.getElementById('aliasInput').focus();
+    }
+
+    /** 初始化移除仓库确认对话框 */
+    function initRemoveRepoDialog() {
+      const dlg = document.getElementById('removeRepoDialog');
+      document.getElementById('removeRepoCancel').addEventListener('click', () => {
+        removeRepoTargetId = null;
+        dlg.close();
+      });
+      document.getElementById('removeRepoConfirm').addEventListener('click', async () => {
+        const id = removeRepoTargetId;
+        removeRepoTargetId = null;
+        dlg.close();
+        if (!id) return;
+        await removeRepo(id);
+      });
+    }
+
+    /** 打开移除仓库确认对话框 */
+    function openRemoveRepoDialog(repoId) {
+      const r = reposCache.find(x => x.id === repoId);
+      const label = repoLabel(r) || repoId;
+      const synced = r?.synced_count ?? 0;
+      removeRepoTargetId = repoId;
+      document.getElementById('removeRepoDialogId').textContent = repoId;
+      document.getElementById('removeRepoDialogWarn').innerHTML =
+        `确定移除 <strong>${esc(label)}</strong>？<br>` +
+        `移除后，该仓库下 <strong>${synced}</strong> 个已安装技能将一并卸载（删除 Agent 目录中的软链）。此操作不可撤销。`;
+      const dlg = document.getElementById('removeRepoDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+    }
+
+    /** 绑定仓库别名编辑按钮 */
+    function bindRepoAliasEditButtons(root) {
+      root.querySelectorAll('.repo-alias-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openAliasDialog(btn.dataset.repo);
+        });
+      });
+    }
+
+    /** 仓库技能数：已同步 / 总数 */
+    function repoSkillRatio(r) {
+      const synced = r.synced_count ?? 0;
+      const total = r.skill_count ?? skillsRowsCache.filter(s => s.repo_id === r.id).length;
+      return `${synced} / ${total}`;
+    }
+
+    /** 当前仓库的搜索关键词 */
+    function currentSkillSearch() {
+      return (skillSearchByRepo[activeSkillRepoId] || '').trim();
+    }
+
+    /** 按安装状态与当前仓库内搜索过滤 */
     function filterSkills(rows) {
       let result = rows;
       const syncFilter = document.getElementById('skillSyncFilter')?.value || 'all';
@@ -581,69 +874,85 @@
       } else if (syncFilter === 'not-installed') {
         result = result.filter(s => !s.sync);
       }
-      const q = skillSearchQuery.trim().toLowerCase();
+      const q = currentSkillSearch().toLowerCase();
       if (q) {
         result = result.filter(s => (s.name || '').toLowerCase().includes(q));
       }
       return result;
     }
 
-    /** 渲染技能列表（应用搜索与分组） */
+    /** 渲染右侧仓库菜单 */
+    function renderSkillRepoNav() {
+      const nav = document.getElementById('skillRepoNav');
+      if (!nav) return;
+      if (!reposCache.length) {
+        nav.innerHTML = '<p class="t-meta">暂无仓库</p>';
+        return;
+      }
+      if (!activeSkillRepoId || !reposCache.some(r => r.id === activeSkillRepoId)) {
+        activeSkillRepoId = reposCache[0].id;
+      }
+      nav.innerHTML = reposCache.map(r => {
+        const repoSkills = skillsRowsCache.filter(s => s.repo_id === r.id);
+        const total = repoSkills.length || r.skill_count || 0;
+        const synced = repoSkills.length
+          ? repoSkills.filter(s => s.sync).length
+          : (r.synced_count || 0);
+        return `
+          <button type="button" class="skill-repo-nav-item ${r.id === activeSkillRepoId ? 'active' : ''}"
+            data-repo="${esc(r.id)}" aria-current="${r.id === activeSkillRepoId ? 'true' : 'false'}">
+            <span class="repo-label">${esc(repoLabel(r))}</span>
+            <span class="repo-meta">已安装 ${synced} / ${total}</span>
+          </button>
+        `;
+      }).join('');
+      nav.querySelectorAll('.skill-repo-nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeSkillRepoId = btn.dataset.repo;
+          renderSkillRepoNav();
+          renderSkillsView();
+        });
+      });
+    }
+
+    /** 渲染当前仓库技能列表 */
     function renderSkillsView() {
-      const filter = document.getElementById('skillRepoFilter').value;
       const el = document.getElementById('skillsTable');
       const toolbar = document.getElementById('skillToolbar');
-      const rows = filterSkills(skillsRowsCache);
+      const repoHead = document.getElementById('skillsRepoHead');
+      const repoTitle = document.getElementById('skillsRepoTitle');
+      const searchInput = document.getElementById('skillSearch');
 
-      if (!skillsRowsCache.length) return;
+      if (!skillsRowsCache.length || !activeSkillRepoId) return;
+
+      const repo = reposCache.find(r => r.id === activeSkillRepoId);
+      if (searchInput) searchInput.value = skillSearchByRepo[activeSkillRepoId] || '';
+      if (repoHead) repoHead.hidden = false;
+      if (repoTitle && repo) {
+        repoTitle.innerHTML = repoTitleBlock(repo);
+      }
+
+      const repoRows = skillsRowsCache.filter(s => s.repo_id === activeSkillRepoId);
+      const rows = filterSkills(repoRows);
 
       if (!rows.length) {
         toolbar.hidden = true;
         const syncFilter = document.getElementById('skillSyncFilter')?.value || 'all';
-        const emptyMsg = syncFilter === 'installed' ? '暂无已安装技能'
-          : syncFilter === 'not-installed' ? '暂无未安装技能'
-          : skillSearchQuery.trim() ? '无匹配技能' : '无技能';
-        const emptyHint = skillSearchQuery.trim() && syncFilter === 'all' ? '试试其他关键词' : '调整筛选条件试试';
+        const q = currentSkillSearch();
+        const emptyMsg = syncFilter === 'installed' ? '该仓库暂无已安装技能'
+          : syncFilter === 'not-installed' ? '该仓库暂无未安装技能'
+          : q ? '本仓库无匹配技能' : '该仓库无技能';
+        const emptyHint = q ? '试试其他关键词' : '调整筛选条件试试';
         el.innerHTML = `<p class="empty"><strong>${emptyMsg}</strong>${emptyHint}</p>`;
         return;
       }
 
       toolbar.hidden = false;
+      const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+      el.innerHTML = renderSkillTable(sorted) +
+        `<p class="t-meta" style="margin-top:16px">已安装 ${rows.filter(s => s.sync).length} / ${repoRows.length}</p>`;
+      bindSkillTableEvents(el);
       updateSelectedCount();
-
-      const targetRepos = filter
-        ? reposCache.filter(r => r.id === filter)
-        : reposCache;
-
-      if (!filter) {
-        const grouped = targetRepos.map(repo => ({
-          repo_id: repo.id,
-          repo_updated_at: repo.last_updated_at,
-          skills: rows.filter(s => s.repo_id === repo.id).sort((a, b) => a.name.localeCompare(b.name)),
-        })).filter(g => g.skills.length);
-        el.innerHTML = renderSkillGroups(grouped) +
-          `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
-        el.querySelectorAll('.skill-group').forEach(det => {
-          det.addEventListener('toggle', () => {
-            sessionStorage.setItem(`sm-fold-${det.dataset.repo}`, det.open ? '0' : '1');
-          });
-          const groupBtn = det.querySelector('.group-select-all');
-          if (groupBtn) {
-            groupBtn.addEventListener('click', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              det.querySelectorAll('.row-select').forEach(cb => { cb.checked = true; });
-              updateSelectedCount();
-            });
-          }
-          bindSkillTableEvents(det);
-        });
-      } else {
-        const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
-        el.innerHTML = renderSkillTable(sorted) +
-          `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
-        bindSkillTableEvents(el);
-      }
     }
 
     /** 刷新更新 Tab 角标 */
@@ -659,6 +968,20 @@
       });
     }
 
+    /** 生成技能在 GitHub 上的目录地址 */
+    function skillGithubUrl(skill) {
+      const repo = reposCache.find(r => r.id === skill.repo_id);
+      if (!repo?.url) return '#';
+      const base = String(repo.url).replace(/\.git$/i, '');
+      const branch = encodeURIComponent(repo.branch || 'main');
+      const path = (skill.source_path || '')
+        .split('/')
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join('/');
+      return path ? `${base}/tree/${branch}/${path}` : `${base}/tree/${branch}`;
+    }
+
     /** 渲染技能表 HTML */
     function renderSkillTable(rows) {
       if (!rows.length) return '<p class="empty">无技能</p>';
@@ -668,7 +991,6 @@
             <thead><tr>
               <th style="width:36px">选择</th>
               <th>名称</th>
-              <th>路径</th>
               <th>摘要</th>
               <th>状态</th>
               <th>上次更新</th>
@@ -683,9 +1005,12 @@
                       data-synced="${s.sync ? '1' : '0'}"
                       aria-label="选择 ${esc(s.name)}">
                   </td>
-                  <td><span class="skill-name">${esc(s.name)}</span></td>
-                  <td><code>${esc(s.source_path)}</code></td>
-                  <td style="max-width:200px;color:var(--grey-3);font-size:12px">${esc(s.summary || '—')}</td>
+                  <td>
+                    <a class="skill-name skill-github-link" href="${esc(skillGithubUrl(s))}"
+                      target="_blank" rel="noopener noreferrer"
+                      title="${esc(s.source_path || '—')}">${esc(s.name)}</a>
+                  </td>
+                  <td style="max-width:240px;color:var(--grey-3);font-size:12px">${esc(s.summary || '—')}</td>
                   <td><span class="badge ${s.sync ? 'synced' : 'muted'}">${s.sync ? '已同步' : '未同步'}</span></td>
                   <td class="time-cell">${fmtTime(s.installed_at || (s.sync ? s.repo_updated_at : ''))}</td>
                   <td><span class="badge ${s.link_ok ? 'ok' : 'muted'}">${s.link_ok ? 'OK' : '—'}</span></td>
@@ -695,27 +1020,6 @@
           </table>
         </div>
       `;
-    }
-
-    /** 按仓库分组渲染（可折叠） */
-    function renderSkillGroups(grouped) {
-      return grouped.map(g => {
-        const open = sessionStorage.getItem(`sm-fold-${g.repo_id}`) !== '1';
-        return `
-          <details class="skill-group" data-repo="${esc(g.repo_id)}" ${open ? 'open' : ''}>
-            <summary>
-              <div class="summary-main">
-                <span class="skill-name">${esc(g.repo_id)}</span>
-                <span class="t-meta">${g.skills.length} 项 · 仓库更新 ${fmtTime(g.repo_updated_at)} · 已同步 ${g.skills.filter(s => s.sync).length}</span>
-              </div>
-              <span class="group-actions">
-                <button type="button" class="btn btn-ghost btn-sm group-select-all" data-repo="${esc(g.repo_id)}">组内全选</button>
-              </span>
-            </summary>
-            ${renderSkillTable(g.skills)}
-          </details>
-        `;
-      }).join('');
     }
 
     /** 渲染更新列表 */
@@ -827,7 +1131,9 @@
     });
 
     document.getElementById('skillSearch').addEventListener('input', (e) => {
-      skillSearchQuery = e.target.value;
+      if (activeSkillRepoId) {
+        skillSearchByRepo[activeSkillRepoId] = e.target.value;
+      }
       if (skillsRowsCache.length) renderSkillsView();
     });
 
@@ -925,12 +1231,6 @@
         <div class="stat"><span class="num">${totalSynced}</span><span class="label">已同步技能</span></div>
       `;
 
-      const filterSel = document.getElementById('skillRepoFilter');
-      const prev = filterSel.value;
-      filterSel.innerHTML = '<option value="">全部仓库</option>' +
-        reposCache.map(r => `<option value="${esc(r.id)}">${esc(r.id)}</option>`).join('');
-      if (prev && reposCache.some(r => r.id === prev)) filterSel.value = prev;
-
       const el = document.getElementById('repoTable');
       if (!reposCache.length) {
         el.innerHTML = '<p class="empty"><strong>暂无仓库</strong>在上方添加 GitHub 仓库开始</p>';
@@ -941,19 +1241,30 @@
         <div class="table-wrap">
           <table class="data">
             <thead><tr>
-              <th>仓库</th><th>分支</th><th>Commit</th><th>上次更新</th><th>已同步</th><th></th>
+              <th>仓库</th><th>分支</th><th>Commit</th><th>上次更新</th><th>同步</th><th></th>
             </tr></thead>
             <tbody>
               ${reposCache.map(r => `
                 <tr>
-                  <td><span class="skill-name">${esc(r.id)}</span></td>
+                  <td>
+                    <div class="repo-name-cell">
+                      <div>
+                        <span class="skill-name">${esc(repoLabel(r))}</span>
+                        ${(r.alias || '').trim() ? `<span class="repo-id-sub">${esc(r.id)}</span>` : ''}
+                      </div>
+                      ${r.builtin
+                        ? '<span class="repo-builtin-badge" title="内置仓库">内置</span>'
+                        : `<button type="button" class="btn btn-ghost btn-sm repo-alias-edit"
+                            data-repo="${esc(r.id)}" title="编辑别名" aria-label="编辑 ${esc(r.id)} 别名">✎</button>`}
+                    </div>
+                  </td>
                   <td>${esc(r.branch)}</td>
                   <td><code>${esc((r.last_commit || '').slice(0, 8))}</code></td>
                   <td class="time-cell">${fmtTime(r.last_updated_at)}</td>
-                  <td>${r.synced_count}</td>
+                  <td class="time-cell">${repoSkillRatio(r)}</td>
                   <td style="white-space:nowrap">
                     <button class="btn btn-ghost btn-sm view-skills-btn" data-repo="${esc(r.id)}">查看技能</button>
-                    <button class="btn btn-danger btn-sm remove-repo-btn" data-repo="${esc(r.id)}">移除</button>
+                    ${r.builtin ? '' : `<button class="btn btn-danger btn-sm remove-repo-btn" data-repo="${esc(r.id)}">移除</button>`}
                   </td>
                 </tr>
               `).join('')}
@@ -966,38 +1277,42 @@
         btn.addEventListener('click', () => goSkillsTab(btn.dataset.repo));
       });
       el.querySelectorAll('.remove-repo-btn').forEach(btn => {
-        btn.addEventListener('click', () => removeRepo(btn.dataset.repo));
+        btn.addEventListener('click', () => openRemoveRepoDialog(btn.dataset.repo));
       });
+      bindRepoAliasEditButtons(el);
     }
 
-    /** 跳转到技能 Tab 并筛选仓库 */
+    /** 跳转到技能 Tab 并选中仓库 */
     function goSkillsTab(repoId) {
-      document.getElementById('skillRepoFilter').value = repoId;
+      activeSkillRepoId = repoId;
       document.querySelector('.tab[data-tab="skills"]').click();
+      if (skillsRowsCache.length) {
+        renderSkillRepoNav();
+        renderSkillsView();
+      }
     }
 
-    /** 加载技能面板（支持按仓库筛选、分组、多选） */
+    /** 加载技能面板 */
     async function loadSkillsPanel() {
-      const filter = document.getElementById('skillRepoFilter').value;
       const el = document.getElementById('skillsTable');
       const toolbar = document.getElementById('skillToolbar');
+      const repoHead = document.getElementById('skillsRepoHead');
 
       if (!reposCache.length) {
         toolbar.hidden = true;
+        if (repoHead) repoHead.hidden = true;
+        document.getElementById('skillRepoNav').innerHTML = '<p class="t-meta">暂无仓库</p>';
         el.innerHTML = '<p class="empty"><strong>暂无仓库</strong>请先在「仓库管理」中添加</p>';
         return;
       }
 
-      const targetRepos = filter
-        ? reposCache.filter(r => r.id === filter)
-        : reposCache;
-
       el.innerHTML = '<p class="empty">扫描技能中…</p>';
       toolbar.hidden = true;
+      if (repoHead) repoHead.hidden = true;
 
       try {
         const rows = [];
-        for (const repo of targetRepos) {
+        for (const repo of reposCache) {
           const data = await api('GET', `/api/repos/${encodeURIComponent(repo.id)}/skills`);
           for (const s of data.skills) {
             rows.push({ ...s, repo_id: repo.id });
@@ -1007,10 +1322,12 @@
         skillsRowsCache = rows;
 
         if (!rows.length) {
+          document.getElementById('skillRepoNav').innerHTML = '';
           el.innerHTML = '<p class="empty"><strong>未扫描到 SKILL.md</strong>仓库中可能没有技能文件</p>';
           return;
         }
 
+        renderSkillRepoNav();
         renderSkillsView();
       } catch (e) {
         el.innerHTML = `<p class="empty"><strong>扫描失败</strong>${esc(e.message)}</p>`;
@@ -1124,15 +1441,17 @@
       await loadRepos();
     }
 
-    /** 移除仓库 */
+    /** 移除仓库（含已安装技能卸载） */
     async function removeRepo(id) {
-      const purge = confirm('同时卸载该仓库下所有已同步技能？\n确定=是，取消=仅移除记录');
-      await api('DELETE', `/api/repos/${encodeURIComponent(id)}`, { purge });
-      toast('已移除仓库');
-      await loadRepos();
-      const filter = document.getElementById('skillRepoFilter');
-      if (filter.value === id) filter.value = '';
-      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+      try {
+        await api('DELETE', `/api/repos/${encodeURIComponent(id)}`, { purge: true });
+        toast('已移除仓库及关联技能');
+        await loadRepos();
+        if (activeSkillRepoId === id) activeSkillRepoId = '';
+        if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+      } catch (e) {
+        toast('移除失败: ' + e.message);
+      }
     }
 
     /** 健康检查 */
@@ -1173,6 +1492,8 @@
       if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
     }
 
+    initAliasDialog();
+    initRemoveRepoDialog();
     loadAll().catch(e => toast('错误: ' + e.message));
     refreshUpdatesTabVisibility();
   </script>

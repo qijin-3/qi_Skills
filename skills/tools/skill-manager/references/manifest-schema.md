@@ -32,6 +32,7 @@
 |------|------|
 | `device_id` | 设备标识，与文件名一致 |
 | `repos[].id` | GitHub `owner/repo` |
+| `repos[].alias` | 可选显示别名 |
 | `repos[].cache_path` | 相对于 `~/Skill Manager` 的 git 缓存路径 |
 | `repos[].last_commit` | 仓库上次 fetch 的 commit SHA |
 | `skills[].name` | SKILL.md frontmatter 中的 `name` |
