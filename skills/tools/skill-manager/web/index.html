@@ -570,6 +570,25 @@
     .health-list { max-height: 280px; overflow: auto; border: 1px solid var(--grey-2); padding: var(--sp-3); }
     .health-item { display: flex; gap: var(--sp-3); align-items: flex-start; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--grey-1); }
     .health-item:last-child { border-bottom: none; }
+    .healthcheck-dialog { max-width: 720px; width: calc(100% - 24px); }
+    .health-group { margin-bottom: var(--sp-5); }
+    .health-group:last-child { margin-bottom: 0; }
+    .health-group-head { margin-bottom: var(--sp-3); }
+    .health-group-title { font-size: 14px; font-weight: 500; margin: 0 0 4px; }
+    .health-group-desc { font-size: 12px; color: var(--grey-3); margin: 0 0 var(--sp-3); }
+    .health-group-batch { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--sp-3); }
+    .health-table { border: 1px solid var(--grey-2); }
+    .health-row {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: 10px var(--sp-4); font-size: 13px;
+      border-bottom: 1px solid var(--grey-1);
+    }
+    .health-row:last-child { border-bottom: none; }
+    .health-row-check { flex-shrink: 0; }
+    .health-row-main { flex: 1; min-width: 0; }
+    .health-row-name { font-weight: 500; }
+    .health-row-sub { font-size: 11px; color: var(--grey-3); margin-top: 2px; }
+    .health-row-actions { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; justify-content: flex-end; }
     .badge.primary { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
     .card-head-actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; }
   </style>
@@ -780,17 +799,13 @@
     </form>
   </dialog>
 
-  <dialog id="healthcheckDialog" class="alias-dialog">
+  <dialog id="healthcheckDialog" class="alias-dialog healthcheck-dialog">
     <div class="alias-dialog-form">
-      <h3>健康检查 — 发现不一致</h3>
-      <p class="lead" style="margin:0">勾选要修复的项，然后选择修复方式：</p>
-      <div class="health-list" id="healthcheckList"></div>
-      <div class="dialog-actions" style="justify-content:space-between">
+      <h3>健康检查</h3>
+      <p class="lead" style="margin:0">以下技能在配置文件、本地目录与 Agent 软链之间不一致。可逐项操作，或勾选后批量处理。</p>
+      <div id="healthcheckGroups"></div>
+      <div class="dialog-actions" style="justify-content:flex-end">
         <button type="button" class="btn btn-ghost" id="healthcheckCancel">关闭</button>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="btn btn-ghost" id="healthcheckFixConfig">修复配置文件</button>
-          <button type="button" class="btn btn-primary" id="healthcheckFixSkills">修复技能文件</button>
-        </div>
       </div>
     </div>
   </dialog>
@@ -1514,45 +1529,154 @@
       else dlg.setAttribute('open', '');
     }
 
+    const HEALTH_GROUPS = [
+      {
+        id: 'config_mismatch',
+        title: '配置与技能不一致',
+        desc: '配置中标记为已安装，但文件位置或软链有问题',
+      },
+      {
+        id: 'extra_disk',
+        title: '磁盘多出技能',
+        desc: '本地 Skills 目录存在该技能，但配置未记录',
+      },
+      {
+        id: 'extra_link',
+        title: '软链多出技能',
+        desc: 'Agent 目录存在软链，但配置未记录',
+      },
+    ];
+
+    const HEALTH_ACTION_LABELS = {
+      config_add: '加入配置',
+      config_remove: '删除配置',
+      skill_add: '加入技能',
+      skill_remove: '删除技能',
+    };
+
     /** 初始化健康检查对话框 */
     function initHealthcheckDialog() {
       document.getElementById('healthcheckCancel').addEventListener('click', () => {
         document.getElementById('healthcheckDialog').close();
       });
-      document.getElementById('healthcheckFixConfig').addEventListener('click', () =>
-        applyHealthcheckFix('config'));
-      document.getElementById('healthcheckFixSkills').addEventListener('click', () =>
-        applyHealthcheckFix('skills'));
+      document.getElementById('healthcheckGroups').addEventListener('click', async (e) => {
+        const batchBtn = e.target.closest('.health-batch-btn');
+        if (batchBtn) {
+          e.preventDefault();
+          await runHealthBatch(batchBtn.dataset.group, batchBtn.dataset.action);
+          return;
+        }
+        const actBtn = e.target.closest('.health-act-btn');
+        if (actBtn) {
+          e.preventDefault();
+          const idx = Number(actBtn.dataset.idx);
+          const item = healthcheckItems[idx];
+          if (item) await runHealthActions([item], actBtn.dataset.action);
+        }
+      });
+    }
+
+    /** 渲染健康检查分组表单 */
+    function renderHealthcheckGroups() {
+      const root = document.getElementById('healthcheckGroups');
+      root.innerHTML = HEALTH_GROUPS.map(g => {
+        const items = healthcheckItems
+          .map((m, i) => ({ ...m, _idx: i }))
+          .filter(m => m.group === g.id);
+        if (!items.length) return '';
+        const batchActions = ['config_add', 'config_remove', 'skill_add', 'skill_remove']
+          .filter(action => items.some(m => m.actions?.[action]));
+        return `
+          <section class="health-group" data-group="${g.id}">
+            <div class="health-group-head">
+              <h4 class="health-group-title">${esc(g.title)}</h4>
+              <p class="health-group-desc">${esc(g.desc)}</p>
+              <div class="health-group-batch">
+                ${batchActions.map(action => `
+                  <button type="button" class="btn btn-ghost btn-sm health-batch-btn"
+                    data-group="${g.id}" data-action="${action}">
+                    批量${esc(HEALTH_ACTION_LABELS[action])}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+            <div class="health-table">
+              ${items.map(m => renderHealthRow(m)).join('')}
+            </div>
+          </section>
+        `;
+      }).join('');
+    }
+
+    /** 渲染单行健康检查项 */
+    function renderHealthRow(m) {
+      const actions = ['config_add', 'config_remove', 'skill_add', 'skill_remove']
+        .filter(a => m.actions?.[a]);
+      const btns = actions.map(a => `
+        <button type="button" class="btn btn-ghost btn-sm health-act-btn"
+          data-idx="${m._idx}" data-action="${a}">${esc(HEALTH_ACTION_LABELS[a])}</button>
+      `).join('');
+      return `
+        <div class="health-row" data-idx="${m._idx}">
+          <label class="health-row-check">
+            <input type="checkbox" class="health-select" data-idx="${m._idx}" checked>
+          </label>
+          <div class="health-row-main">
+            <div class="health-row-name">${esc(m.name)}</div>
+            <div class="health-row-sub">${esc(m.hint || '')}${m.detail ? ` · ${esc(m.detail)}` : ''}</div>
+          </div>
+          <div class="health-row-actions">${btns}</div>
+        </div>
+      `;
     }
 
     /** 打开健康检查不一致项对话框 */
     function openHealthcheckDialog(mismatches) {
       healthcheckItems = mismatches || [];
-      const list = document.getElementById('healthcheckList');
-      list.innerHTML = healthcheckItems.map((m, i) => `
-        <label class="health-item">
-          <input type="checkbox" class="health-select" data-idx="${i}" checked>
-          <span>${esc(m.message || m.type)}</span>
-        </label>
-      `).join('');
+      renderHealthcheckGroups();
       const dlg = document.getElementById('healthcheckDialog');
       if (dlg.showModal) dlg.showModal();
       else dlg.setAttribute('open', '');
     }
 
-    /** 应用健康检查修复 */
-    async function applyHealthcheckFix(mode) {
-      const selected = [...document.querySelectorAll('.health-select:checked')]
-        .map(cb => healthcheckItems[Number(cb.dataset.idx)])
-        .filter(Boolean);
-      if (!selected.length) { toast('请至少勾选一项'); return; }
+    /** 获取分组内已勾选项 */
+    function selectedHealthItems(groupId) {
+      const selected = new Set(
+        [...document.querySelectorAll('.health-select:checked')].map(cb => Number(cb.dataset.idx))
+      );
+      return healthcheckItems
+        .map((m, i) => ({ ...m, _idx: i }))
+        .filter(m => m.group === groupId && selected.has(m._idx));
+    }
+
+    /** 批量执行某分组操作 */
+    async function runHealthBatch(groupId, action) {
+      const items = selectedHealthItems(groupId).filter(m => m.actions?.[action]);
+      if (!items.length) {
+        toast('请勾选至少一项可执行该操作的技能');
+        return;
+      }
+      await runHealthActions(items, action);
+    }
+
+    /** 执行健康检查修复（单项或批量） */
+    async function runHealthActions(items, action) {
+      const label = HEALTH_ACTION_LABELS[action] || action;
       try {
-        const data = await api('POST', '/api/healthcheck/apply', { mode, items: selected });
-        document.getElementById('healthcheckDialog').close();
-        toast(`已修复 ${data.fixed?.length || 0} 项（${mode === 'config' ? '配置文件' : '技能文件'}）`);
-        await loadAll();
+        const actions = items.map(item => ({ item, action }));
+        const data = await api('POST', '/api/healthcheck/apply', { actions });
+        toast(`已${label} ${data.fixed?.length || 0} 项`);
+        const hc = await api('POST', '/api/healthcheck');
+        if (hc.ok) {
+          document.getElementById('healthcheckDialog').close();
+          toast('全部一致');
+          await loadAll();
+          return;
+        }
+        openHealthcheckDialog(hc.mismatches);
+        if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
       } catch (e) {
-        toast('修复失败: ' + e.message);
+        toast(`${label}失败: ` + e.message);
       }
     }
 

@@ -303,9 +303,12 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/healthcheck/apply" and method == "POST":
             body = read_body(self)
-            result = sm.apply_healthcheck_fix(
-                mgr, body.get("mode", ""), body.get("items", []),
-            )
+            if body.get("actions"):
+                result = sm.apply_healthcheck_actions(mgr, body.get("actions", []))
+            else:
+                result = sm.apply_healthcheck_fix(
+                    mgr, body.get("mode", ""), body.get("items", []),
+                )
             return json_response(self, 200, result)
 
         if path == "/api/settings" and method == "GET":

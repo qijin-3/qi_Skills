@@ -1057,6 +1057,76 @@ def move_skill_to_local_repo(mgr: Manager, name: str, source: Path | None = None
     return True
 
 
+def _health_group(mtype: str) -> str:
+    """健康检查分组：config_mismatch | extra_disk | extra_link。"""
+    if mtype in ("misplaced_disk", "missing_disk", "missing_link", "broken_link", "wrong_link"):
+        return "config_mismatch"
+    if mtype == "orphan_disk":
+        return "extra_disk"
+    return "extra_link"
+
+
+def _health_hint(mtype: str) -> str:
+    """健康检查项简短说明。"""
+    return {
+        "misplaced_disk": "文件在无效仓库目录",
+        "missing_disk": "本地技能目录缺失",
+        "missing_link": "未创建 Agent 软链",
+        "broken_link": "软链已断裂",
+        "wrong_link": "软链指向错误",
+        "orphan_disk": "磁盘有目录，配置未记录",
+        "orphan_link": "软链存在，配置未记录",
+    }.get(mtype, mtype)
+
+
+def _health_actions(mtype: str) -> dict[str, bool]:
+    """每项可用的修复操作。"""
+    base = {"config_add": False, "config_remove": False, "skill_add": False, "skill_remove": False}
+    if mtype == "misplaced_disk":
+        return {**base, "config_add": True, "skill_remove": True}
+    if mtype in ("missing_disk", "missing_link", "broken_link", "wrong_link"):
+        return {**base, "config_remove": True, "skill_add": True}
+    if mtype in ("orphan_disk", "orphan_link"):
+        return {**base, "config_add": True, "skill_remove": True}
+    return base
+
+
+def _enrich_mismatch(raw: dict) -> dict:
+    """为不一致项补充分组、说明与可用操作。"""
+    mtype = raw["type"]
+    item = {**raw, "group": _health_group(mtype), "hint": _health_hint(mtype), "actions": _health_actions(mtype)}
+    slug = raw.get("repo_slug", "")
+    if slug:
+        item["detail"] = f"目录 {slug}/"
+    elif raw.get("repo_id") and raw["repo_id"] != LOCAL_REPO_ID:
+        item["detail"] = f"配置仓库 {raw['repo_id']}"
+    else:
+        item["detail"] = ""
+    return item
+
+
+def _add_local_config_entry(mgr: Manager, name: str) -> None:
+    """将技能登记到 Local 仓库配置。"""
+    repo = find_repo(mgr, LOCAL_REPO_ID)
+    if not repo:
+        return
+    skills_list = repo.setdefault("skills", [])
+    entry = next((s for s in skills_list if s.get("name") == name), None)
+    if entry is None:
+        skills_list.append({
+            "name": name,
+            "source_path": f"local/{name}",
+            "sync": True,
+            "installed_at": now_iso(),
+            "installed_commit": "local",
+        })
+    else:
+        entry["sync"] = True
+        entry["source_path"] = f"local/{name}"
+        entry["installed_at"] = now_iso()
+        entry["installed_commit"] = "local"
+
+
 def healthcheck(mgr: Manager) -> dict:
     """
     对比配置文件、本地技能目录与 Agent 软链，返回不一致项。
@@ -1086,91 +1156,163 @@ def healthcheck(mgr: Manager) -> dict:
         if name in on_disk:
             disk_slug, disk_path = on_disk[name]
             if disk_slug not in configured_slugs and disk_path.resolve() != dest.resolve():
-                mismatches.append({
+                mismatches.append(_enrich_mismatch({
                     "id": f"misplaced_disk:{name}",
                     "type": "misplaced_disk",
                     "name": name,
                     "repo_slug": disk_slug,
                     "repo_id": repo_id,
-                    "message": (
-                        f"配置已记录但位于无效目录 {disk_slug}/: {name}"
-                        "（非 local 且非配置仓库），修复配置将迁入 local"
-                    ),
-                })
+                }))
                 continue
 
         if not dest.exists():
-            mismatches.append({
+            mismatches.append(_enrich_mismatch({
                 "id": f"missing_disk:{name}",
                 "type": "missing_disk",
                 "name": name,
                 "repo_id": repo_id,
-                "message": f"配置已安装但本地目录缺失: {name}",
-            })
+            }))
         elif link is None:
-            mismatches.append({
+            mismatches.append(_enrich_mismatch({
                 "id": f"missing_link:{name}",
                 "type": "missing_link",
                 "name": name,
                 "repo_id": repo_id,
-                "message": f"本地存在但未创建软链: {name}",
-            })
+            }))
         elif not link.exists() or not link.resolve().exists():
-            mismatches.append({
+            mismatches.append(_enrich_mismatch({
                 "id": f"broken_link:{name}",
                 "type": "broken_link",
                 "name": name,
                 "repo_id": repo_id,
-                "message": f"软链断裂: {name}",
-            })
+            }))
         elif link.resolve() != dest.resolve():
-            mismatches.append({
+            mismatches.append(_enrich_mismatch({
                 "id": f"wrong_link:{name}",
                 "type": "wrong_link",
                 "name": name,
                 "repo_id": repo_id,
-                "message": f"软链指向错误: {name}",
-            })
+            }))
 
     for name, (slug, _path) in on_disk.items():
         if name in expected:
             continue
         if slug not in configured_slugs:
-            mismatches.append({
+            mismatches.append(_enrich_mismatch({
                 "id": f"orphan_disk:{name}",
                 "type": "orphan_disk",
                 "name": name,
                 "repo_slug": slug,
                 "repo_id": LOCAL_REPO_ID,
-                "message": (
-                    f"磁盘存在于无效目录 {slug}/: {name}"
-                    "（非 local 且非配置仓库），修复配置将迁入 local"
-                ),
-            })
+            }))
             continue
-        mismatches.append({
+        mismatches.append(_enrich_mismatch({
             "id": f"orphan_disk:{name}",
             "type": "orphan_disk",
             "name": name,
             "repo_slug": slug,
             "repo_id": LOCAL_REPO_ID if slug == "local" else None,
-            "message": f"磁盘存在但未写入配置: {name}",
-        })
+        }))
 
     for name, link in links.items():
         if name in expected:
             continue
         if link.exists() and link.resolve().exists():
-            mismatches.append({
+            mismatches.append(_enrich_mismatch({
                 "id": f"orphan_link:{name}",
                 "type": "orphan_link",
                 "name": name,
-                "message": f"软链存在但配置未记录: {name}",
-            })
+            }))
         else:
             link.unlink(missing_ok=True)
 
     return {"ok": not mismatches, "mismatches": mismatches}
+
+
+def apply_healthcheck_action(
+    mgr: Manager,
+    item: dict,
+    action: str,
+    *,
+    save: bool = True,
+) -> bool:
+    """
+    对单项不一致执行指定修复操作。
+
+    action: config_add | config_remove | skill_add | skill_remove
+    """
+    valid = {"config_add", "config_remove", "skill_add", "skill_remove"}
+    if action not in valid:
+        raise ValueError(f"未知操作: {action}")
+
+    mtype = item.get("type", "")
+    name = item.get("name", "")
+    if not name:
+        return False
+
+    if action == "config_remove":
+        if mtype in ("missing_disk", "missing_link", "broken_link", "wrong_link", "misplaced_disk"):
+            owner = find_skill_owner(mgr, name)
+            if owner:
+                owner[1]["sync"] = False
+        else:
+            return False
+    elif action == "config_add":
+        if mtype == "misplaced_disk":
+            if not move_skill_to_local_repo(mgr, name):
+                return False
+        elif mtype == "orphan_disk":
+            configured = configured_repo_slugs(mgr)
+            slug = item.get("repo_slug", "")
+            if slug not in configured:
+                if not move_skill_to_local_repo(mgr, name):
+                    return False
+            else:
+                _add_local_config_entry(mgr, name)
+        elif mtype == "orphan_link":
+            _add_local_config_entry(mgr, name)
+        else:
+            return False
+    elif action == "skill_add":
+        if mtype == "missing_disk":
+            owner = find_skill_owner(mgr, name)
+            if not owner:
+                return False
+            install_skill(mgr, owner[0]["id"], name, save=False)
+        elif mtype in ("missing_link", "broken_link", "wrong_link"):
+            owner = find_skill_owner(mgr, name)
+            if not owner or not skill_dest(mgr, name, owner[0]["id"]).exists():
+                return False
+            create_symlink(mgr, name, owner[0]["id"])
+        else:
+            return False
+    elif action == "skill_remove":
+        if mtype in ("orphan_disk", "misplaced_disk"):
+            disk = scan_disk_skills(mgr)
+            if name in disk and disk[name][1].exists():
+                shutil.rmtree(disk[name][1])
+            for repo in mgr.data.get("repos", []):
+                repo["skills"] = [s for s in repo.get("skills", []) if s.get("name") != name]
+        elif mtype == "orphan_link":
+            remove_symlink(name)
+        else:
+            return False
+
+    if save:
+        mgr.save()
+    return True
+
+
+def apply_healthcheck_actions(mgr: Manager, actions: list[dict]) -> dict:
+    """批量执行健康检查修复操作。"""
+    fixed: list[str] = []
+    for act in actions:
+        item = act.get("item") or act
+        action = act.get("action", "")
+        if apply_healthcheck_action(mgr, item, action, save=False):
+            fixed.append(f"{item.get('name')}:{action}")
+    mgr.save()
+    return {"fixed": fixed}
 
 
 def apply_healthcheck_fix(mgr: Manager, mode: str, items: list[dict]) -> dict:
