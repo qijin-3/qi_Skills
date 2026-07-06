@@ -2,52 +2,54 @@
 
 我的 agent skills 集合，用于日常工程实践和生产力提升。
 
-## 快速开始 (30秒配置)
+## 快速开始
 
-### 方式一：克隆并按 skills-sync.yaml 同步
+### 克隆仓库
 
 ```bash
-# 克隆仓库
 git clone https://github.com/jin-dev/qi_Skills.git ~/qi_Skills
-
-# 按 skills-sync.yaml 配置软链接到 Claude Code
-cd ~/qi_Skills
-python3 scripts/skills-registry.py all
 ```
 
-编辑 `skills-sync.yaml`，在 `sync` / `unsync` 两组之间移动技能 `name`，再重新运行上述命令。
-
-### 方式二：通过 AI Agent 直接安装
+### 通过 AI Agent 安装
 
 直接对你的 AI Agent 说：
 
-- "安装 jin-dev/qi_Skills" - 安装所有 skills
-- "安装 jin-dev/qi_Skills 的 grill-me skill" - 安装单个 skill
+- "安装 jin-dev/qi_Skills" — 安装所有 skills
+- "安装 jin-dev/qi_Skills 的 idea-validator skill" — 安装单个 skill
 
-Agent 会自动处理克隆、定位、链接等操作。
+Agent 会自动处理克隆与安装。
 
-### 方式三：手动链接单个 skill
+### 更新技能目录
+
+增删技能后，运行：
 
 ```bash
-cd ~/.claude/skills
-ln -s ~/qi_Skills/skills/<skill-name> <skill-name>
+cd ~/qi_Skills
+python3 scripts/skills-registry.py readme
 ```
 
 ## Skills 目录
 
-仓库内全部技能如下。带 `[已同步]` 的会安装到 `~/.claude/skills/`（在 `skills-sync.yaml` 的 `sync` 组）。
+仓库内全部技能如下。
 
 ```
 skills/
 ├── career/
 │   └── interview-coach/  — High-rigor interview coaching skill for…
 ├── design/
-│   ├── ai-design-reviewer/ [已同步]  — AI 功能设计评审工具
-│   └── guizang-social-card-skill-main/  — Generate Guizang-style social card image…
+│   └── ai-design-reviewer/  — AI 功能设计评审工具
 ├── dev/
 │   ├── ali-deploy-guide-generator/  — 根据项目技术栈生成阿里云 ECS 部署方案与 GitHub 自动化部署配置
 │   └── ecs-server-manager/  — 阿里云 ECS 服务器运维管理工具
-├── meeting/  — 自动整理会议相关文件
+├── havefun/
+│   └── travel-journal/  — 游记生成器
+├── health_os/
+│   ├── health-coach/  — 飞书健康教练
+│   ├── health-daily-remind/  — 健康每日提醒
+│   ├── health-evening-close/  — 健康每日晚间收口
+│   ├── health-monthly-review/  — 健康月复盘
+│   ├── health-weekly-plan/  — 健康周计划
+│   └── health-weekly-review/  — 健康周反馈
 ├── personal_os/
 │   ├── annual-review/  — 北极星管理与年度复盘的统一入口
 │   ├── daily-briefing/  — 每日早报调度
@@ -59,18 +61,17 @@ skills/
 │   ├── weekly-plan/  — 下周计划安排
 │   └── weekly-review/  — 周复盘
 ├── product/
-│   ├── 10x-impact-judge/ [已同步]  — 10倍影响力判断器
-│   ├── ai-user-research/ [已同步]  — AI-powered user research analysis techniques…
-│   ├── brainstorm/ [已同步]  — 头脑风暴 · 传播型想法共创
-│   ├── deep-research/ [已同步]  — 深度调研方法论（8步法）
-│   ├── idea-agile-assessment/ [已同步]  — 想法敏捷评估
-│   ├── idea-validator/ [已同步]  — Idea 快速验证工具
+│   ├── 10x-impact-judge/  — 10倍影响力判断器
+│   ├── ai-user-research/  — AI-powered user research analysis techniques…
+│   ├── brainstorm/  — 头脑风暴 · 传播型想法共创
+│   ├── deep-research/  — 深度调研方法论（8步法）
+│   ├── idea-agile-assessment/  — 想法敏捷评估
+│   ├── idea-validator/  — Idea 快速验证工具
 │   └── product-namer/  — 产品命名专家
-├── tools/
-│   └── wechat-doubler/  — macOS 微信双开工具
-└── travel_journal/
-    ├── install-travel-journal/  — Travel Journal 安装引导
-    └── travel-journal/  — 游记生成器
+└── tools/
+    ├── meeting/  — 自动整理会议相关文件
+    ├── tunnel-serve/  — Expose local HTML files or…
+    └── wechat-doubler/  — macOS 微信双开工具
 ```
 
 ### Career
@@ -83,8 +84,7 @@ skills/
 
 `skills/design/`
 
-- **[ai-design-reviewer](./skills/design/ai-design-reviewer/SKILL.md)** `[已同步]` — AI 功能设计评审工具
-- **[guizang-social-card-skill](./skills/design/guizang-social-card-skill-main/SKILL.md)** — Generate Guizang-style social card image…
+- **[ai-design-reviewer](./skills/design/ai-design-reviewer/SKILL.md)** — AI 功能设计评审工具
 
 ### Dev
 
@@ -93,13 +93,24 @@ skills/
 - **[ali-deploy-guide-generator](./skills/dev/ali-deploy-guide-generator/SKILL.md)** — 根据项目技术栈生成阿里云 ECS 部署方案与 GitHub 自动化部署配置
 - **[ecs-server-manager](./skills/dev/ecs-server-manager/SKILL.md)** — 阿里云 ECS 服务器运维管理工具
 
-### Meeting
+### Havefun
 
-`skills/meeting/`
+`skills/havefun/`
 
-- **[meeting](./skills/meeting/SKILL.md)** — 自动整理会议相关文件
+- **[travel-journal](./skills/havefun/travel-journal/SKILL.md)** — 游记生成器
 
-### Personal Os
+### Health OS
+
+`skills/health_os/`
+
+- **[health-coach](./skills/health_os/health-coach/SKILL.md)** — 飞书健康教练
+- **[health-daily-remind](./skills/health_os/health-daily-remind/SKILL.md)** — 健康每日提醒
+- **[health-evening-close](./skills/health_os/health-evening-close/SKILL.md)** — 健康每日晚间收口
+- **[health-monthly-review](./skills/health_os/health-monthly-review/SKILL.md)** — 健康月复盘
+- **[health-weekly-plan](./skills/health_os/health-weekly-plan/SKILL.md)** — 健康周计划
+- **[health-weekly-review](./skills/health_os/health-weekly-review/SKILL.md)** — 健康周反馈
+
+### Personal OS
 
 `skills/personal_os/`
 
@@ -117,26 +128,21 @@ skills/
 
 `skills/product/`
 
-- **[10x-impact-judge](./skills/product/10x-impact-judge/SKILL.md)** `[已同步]` — 10倍影响力判断器
-- **[ai-user-research](./skills/product/ai-user-research/SKILL.md)** `[已同步]` — AI-powered user research analysis techniques…
-- **[brainstorm](./skills/product/brainstorm/SKILL.md)** `[已同步]` — 头脑风暴 · 传播型想法共创
-- **[deep-research](./skills/product/deep-research/SKILL.md)** `[已同步]` — 深度调研方法论（8步法）
-- **[idea-agile-assessment](./skills/product/idea-agile-assessment/SKILL.md)** `[已同步]` — 想法敏捷评估
-- **[idea-validator](./skills/product/idea-validator/SKILL.md)** `[已同步]` — Idea 快速验证工具
+- **[10x-impact-judge](./skills/product/10x-impact-judge/SKILL.md)** — 10倍影响力判断器
+- **[ai-user-research](./skills/product/ai-user-research/SKILL.md)** — AI-powered user research analysis techniques…
+- **[brainstorm](./skills/product/brainstorm/SKILL.md)** — 头脑风暴 · 传播型想法共创
+- **[deep-research](./skills/product/deep-research/SKILL.md)** — 深度调研方法论（8步法）
+- **[idea-agile-assessment](./skills/product/idea-agile-assessment/SKILL.md)** — 想法敏捷评估
+- **[idea-validator](./skills/product/idea-validator/SKILL.md)** — Idea 快速验证工具
 - **[product-namer](./skills/product/product-namer/SKILL.md)** — 产品命名专家
 
 ### Tools
 
 `skills/tools/`
 
+- **[meeting](./skills/tools/meeting/SKILL.md)** — 自动整理会议相关文件
+- **[tunnel-serve](./skills/tools/tunnel-serve/SKILL.md)** — Expose local HTML files or…
 - **[wechat-doubler](./skills/tools/wechat-doubler/SKILL.md)** — macOS 微信双开工具
-
-### Travel Journal
-
-`skills/travel_journal/`
-
-- **[install-travel-journal](./skills/travel_journal/install-travel-journal/SKILL.md)** — Travel Journal 安装引导
-- **[travel-journal](./skills/travel_journal/travel-journal/SKILL.md)** — 游记生成器
 
 ## License
 

@@ -19,11 +19,13 @@ lark-cli task +get-my-tasks --as user \
 lark-cli base +record-search --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
   --table-id "$TABLE_LOGS" \
-  --filter '{"conjunction":"and","conditions":[
-    {"field_name":"日期","operator":"isAfter","value":["ExactDate","<上周一>"]},
-    {"field_name":"日期","operator":"isBefore","value":["ExactDate","<本周一>"]}
+  --keyword "<YYYY-MM>" \
+  --search-field "日期" \
+  --filter-json '{"logic":"and","conditions":[
+    ["日期",">","<上周一 YYYY-MM-DD>"],
+    ["日期","<","<本周一 YYYY-MM-DD>"]
   ]}' \
-  --format json
+  --format json --limit 20
 ```
 
 提取每天的 `今日任务完成度`（FIELD_LOG_COMPLETION_RATE）和 `主线推进情况`（FIELD_LOG_MAINLINE），计算均值和推进天数。

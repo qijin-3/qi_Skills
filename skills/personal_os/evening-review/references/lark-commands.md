@@ -32,9 +32,8 @@ lark-cli task sections tasks --as user \
 lark-cli base +record-search --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
   --table-id "$TABLE_LOGS" \
-  --filter '{"conjunction":"and","conditions":[
-    {"field_name":"日期","operator":"is","value":["ExactDate","<YYYY-MM-DD>"]}
-  ]}' \
+  --keyword "<YYYY-MM-DD>" \
+  --search-field "日期" \
   --format json
 ```
 
@@ -46,9 +45,11 @@ lark-cli base +record-search --as user \
 lark-cli base +record-search --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
   --table-id "$TABLE_LOGS" \
-  --filter '{"conjunction":"and","conditions":[
-    {"field_name":"日期","operator":"isAfter","value":["ExactDate","<前天日期>"]},
-    {"field_name":"日期","operator":"isBefore","value":["ExactDate","<明天日期>"]}
+  --keyword "<YYYY-MM>" \
+  --search-field "日期" \
+  --filter-json '{"logic":"and","conditions":[
+    ["日期",">","<前天日期 YYYY-MM-DD>"],
+    ["日期","<","<明天日期 YYYY-MM-DD>"]
   ]}' \
   --format json
 ```
