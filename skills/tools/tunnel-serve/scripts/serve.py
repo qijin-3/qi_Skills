@@ -32,7 +32,7 @@ DEADLINE = STATE_DIR / "deadline.txt"
 LOG = STATE_DIR / "server.log"
 
 HOST = "127.0.0.1"
-PORT = 8787
+PORT = int(os.environ.get("TS_PORT", "8787"))
 SLUG_RE = re.compile(r"^[a-z0-9-]{1,63}$")
 CHECK_INTERVAL = 5.0  # seconds between deadline checks
 

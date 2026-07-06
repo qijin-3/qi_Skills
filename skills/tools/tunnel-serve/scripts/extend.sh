@@ -25,6 +25,6 @@ fi
 
 # The running server picks up the new deadline within a few seconds (watchdog
 # polls state/deadline.txt every 5s). No restart needed.
-if ts_server_running; then
+if ts_serve_running; then
   echo "  (running server will adopt this within ~5s)"
 fi

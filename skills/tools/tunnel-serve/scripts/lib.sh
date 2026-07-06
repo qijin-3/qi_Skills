@@ -4,6 +4,7 @@
 
 # --- Paths -----------------------------------------------------------------
 TS_SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TS_CONFIG_FILE="$TS_SKILL_DIR/config.env"
 TS_STATE_DIR="$TS_SKILL_DIR/state"
 TS_SERVE_PY="$TS_SKILL_DIR/scripts/serve.py"
 TS_REGISTRY="$TS_STATE_DIR/registry.json"
@@ -13,15 +14,67 @@ TS_DEADLINE="$TS_STATE_DIR/deadline.txt"
 TS_LOG="$TS_STATE_DIR/server.log"
 TS_CF_LOG="$TS_STATE_DIR/cloudflared.log"
 
-# Cloudflared lives in ~/.cloudflared after `tunnel login`
-TS_CF_HOME="${HOME}/.cloudflared"
-TS_CF_CONFIG="${TS_CF_HOME}/config.yml"
-TS_TUNNEL_NAME="share"
-TS_TUNNEL_CRED="${TS_CF_HOME}/${TS_TUNNEL_NAME}.json"
+# --- Config (loaded from config.env) ---------------------------------------
+# Required: TS_ZONE, TS_SUBDOMAIN, TS_TUNNEL_NAME
+# Derived:  TS_DOMAIN = ${TS_SUBDOMAIN}.${TS_ZONE}
+# Optional: TS_PORT, TS_DEFAULT_TTL, TS_CF_HOME, TS_CF_CONFIG
 
-TS_DOMAIN="share.jinqi33.top"
-TS_PORT="8787"
-TS_DEFAULT_TTL=3600   # seconds (1 hour)
+ts_load_config() {
+  if [ -f "$TS_CONFIG_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$TS_CONFIG_FILE"
+    set +a
+  fi
+
+  TS_CF_HOME="${TS_CF_HOME:-${HOME}/.cloudflared}"
+  TS_CF_CONFIG="${TS_CF_CONFIG:-${TS_CF_HOME}/config.yml}"
+  TS_PORT="${TS_PORT:-8787}"
+  TS_DEFAULT_TTL="${TS_DEFAULT_TTL:-3600}"
+
+  if [ -n "${TS_ZONE:-}" ] && [ -n "${TS_SUBDOMAIN:-}" ]; then
+    TS_DOMAIN="${TS_SUBDOMAIN}.${TS_ZONE}"
+  else
+    TS_DOMAIN="${TS_DOMAIN:-}"
+  fi
+}
+
+# Echo missing required config keys (one per line); empty if complete.
+ts_config_missing_keys() {
+  ts_load_config
+  [ -z "${TS_ZONE:-}" ] && echo TS_ZONE
+  [ -z "${TS_SUBDOMAIN:-}" ] && echo TS_SUBDOMAIN
+  [ -z "${TS_TUNNEL_NAME:-}" ] && echo TS_TUNNEL_NAME
+}
+
+# Exit with guidance when config.env is missing or incomplete.
+ts_require_config() {
+  if [ ! -f "$TS_CONFIG_FILE" ]; then
+    ts_die_config_help "config.env 不存在"
+  fi
+  local missing key
+  missing="$(ts_config_missing_keys)"
+  if [ -n "$missing" ]; then
+    ts_die_config_help "config.env 缺少必填项: $(echo "$missing" | tr '\n' ' ')"
+  fi
+}
+
+# Print config error + how to fix; then exit 1.
+ts_die_config_help() {
+  local reason="${1:-配置无效}"
+  echo "✗ $reason" >&2
+  echo >&2
+  echo "tunnel-serve 需要 config.env（每台机器一份，不入库）。" >&2
+  echo "必填变量：TS_ZONE、TS_SUBDOMAIN、TS_TUNNEL_NAME" >&2
+  echo >&2
+  echo "快速创建：" >&2
+  echo "  bash scripts/init-config.sh" >&2
+  echo "或：" >&2
+  echo "  cp config.env.example config.env   # 编辑后保存" >&2
+  echo >&2
+  echo "各变量含义与获取方式 → references/config-variables.md" >&2
+  exit 1
+}
 
 ts_init_state() {
   mkdir -p "$TS_STATE_DIR"
@@ -124,10 +177,11 @@ PY
 ts_have() { command -v "$1" >/dev/null 2>&1; }
 
 ts_check_bootstrap() {
+  ts_require_config
   if [ ! -f "$TS_CF_CONFIG" ]; then
-    ts_die "tunnel not set up yet. Run: bash scripts/bootstrap.sh"
+    ts_die "tunnel 尚未初始化。运行: bash scripts/bootstrap.sh"
   fi
-  ts_have cloudflared || ts_die "cloudflared not found. Run: brew install cloudflared"
+  ts_have cloudflared || ts_die "未找到 cloudflared。运行 bootstrap 或: brew install cloudflared"
 }
 
 # --- Start / stop ----------------------------------------------------------
@@ -135,9 +189,8 @@ ts_check_bootstrap() {
 ts_start_serve() {
   if ts_serve_running; then return 0; fi
   rm -f "$TS_SERVE_PID"
-  nohup python3 "$TS_SERVE_PY" >> "$TS_LOG" 2>&1 &
+  TS_PORT="$TS_PORT" nohup python3 "$TS_SERVE_PY" >> "$TS_LOG" 2>&1 &
   echo $! > "$TS_SERVE_PID"
-  # wait for it to bind
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
     if curl -fsS -o /dev/null "http://127.0.0.1:${TS_PORT}/" 2>/dev/null; then
@@ -148,15 +201,13 @@ ts_start_serve() {
   return 0
 }
 
-# Start cloudflared (tunnel "share") in the background if not running.
+# Start cloudflared tunnel in the background if not running.
 ts_start_cf() {
   if ts_cf_running; then return 0; fi
   rm -f "$TS_CF_PID"
   nohup cloudflared tunnel --config "$TS_CF_CONFIG" run "$TS_TUNNEL_NAME" \
     >> "$TS_CF_LOG" 2>&1 &
   echo $! > "$TS_CF_PID"
-  # cloudflared takes a few seconds to register with the edge. We don't block
-  # long here; the first request may take a moment to succeed.
   sleep 1
   return 0
 }
@@ -195,3 +246,6 @@ ts_die() {
   echo "✗ $*" >&2
   exit 1
 }
+
+# Load config as soon as lib.sh is sourced.
+ts_load_config

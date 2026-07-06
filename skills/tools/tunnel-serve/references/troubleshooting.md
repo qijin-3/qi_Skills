@@ -1,100 +1,110 @@
 # Troubleshooting
 
-Diagnose from the inside out: local server → cloudflared → Cloudflare edge → DNS.
+从里到外排查：本地 router → cloudflared → Cloudflare 边缘 → DNS。
 
 ## Quick check
+
 ```bash
 bash scripts/status.sh
 ```
-Confirms both processes are up and the config exists.
 
-## The public URL doesn't load
+若提示 config 问题，见 `config-variables.md`。
 
-### 1. Is the router up locally?
+## config.env missing or incomplete
+
 ```bash
+bash scripts/init-config.sh
+# 或
+cp config.env.example config.env   # 编辑 TS_ZONE / TS_SUBDOMAIN / TS_TUNNEL_NAME
+```
+
+## Public URL doesn't load
+
+### 1. Local router up?
+
+```bash
+# 端口以 config.env 中 TS_PORT 为准，默认 8787
 curl -I http://127.0.0.1:8787/
-# expect HTTP 200
 ```
-If not, the router isn't running. `expose` starts it; if it failed, check:
-```bash
-cat state/server.log
-```
-Common cause: port 8787 in use by something else.
+
+若失败，查看 `state/server.log`。常见原因：端口被占用。
+
 ```bash
 lsof -nP -iTCP:8787 -sTCP:LISTEN
 ```
 
-### 2. Is cloudflared running and connected?
+### 2. cloudflared running?
+
 ```bash
-bash scripts/status.sh          # shows cloudflared pid
+bash scripts/status.sh
 tail -20 state/cloudflared.log
 ```
-A healthy log shows lines like `Registered tunnel connection`. If you see
-repeated connection failures (e.g. on a restrictive network), cloudflared
-will keep retrying — it recovers automatically once the network allows.
 
-If cloudflared isn't running at all, restart via:
+健康日志含 `Registered tunnel connection`。重启：
+
 ```bash
 bash scripts/close.sh && bash scripts/expose.sh <some-file>
 ```
 
-### 3. Did bootstrap actually complete?
+### 3. Bootstrap complete?
+
 ```bash
-ls ~/.cloudflared/              # cert.pem, <uuid>.json, config.yml should exist
-cat ~/.cloudflared/config.yml   # tunnel + ingress for share.jinqi33.top
+ls ~/.cloudflared/
+cat ~/.cloudflared/config.yml   # hostname 应为 config.env 中的 TS_DOMAIN
 ```
-If `config.yml` or the credentials json is missing, re-run:
+
+缺少文件则：
+
 ```bash
 bash scripts/bootstrap.sh
 ```
 
-### 4. Does the DNS CNAME exist?
+### 4. DNS CNAME exists?
+
 ```bash
-cloudflared tunnel route dns share share.jinqi33.top
-# idempotent: if missing it creates it; if present it says so
+source config.env 2>/dev/null || true
+cloudflared tunnel route dns "$TS_TUNNEL_NAME" "${TS_SUBDOMAIN}.${TS_ZONE}"
 ```
-Or check in the Cloudflare dashboard → `jinqi33.top` → DNS: there should be a
-proxied CNAME `share → <tunnel-uuid>.cfargotunnel.com`.
 
-### 5. Wrong content / stale
-Routes are keyed by slug; re-exposing with the same slug updates instantly.
-The server sends `Cache-Control: no-store`, but a hard reload (Cmd+Shift+R)
-rules out browser cache.
+或在 Cloudflare Dashboard → `TS_ZONE` → DNS：应有 proxied CNAME
+`<TS_SUBDOMAIN> → <tunnel-uuid>.cfargotunnel.com`。
 
-## cloudflared login didn't open a browser
-`cloudflared tunnel login` prints a URL in the terminal. Copy it into a
-browser manually. After authorizing, make sure you selected `jinqi33.top`.
+### 5. Wrong zone at login
 
-## "tunnel not set up yet" error
-You're running an expose/close before bootstrap. Run:
+`cert.pem` 须对应 `TS_ZONE`。若 login 时选错 Zone，删除 cert 后重登：
+
 ```bash
+rm ~/.cloudflared/cert.pem
 bash scripts/bootstrap.sh
 ```
 
-## Port 8787 already in use
+## Login didn't open browser
+
+`cloudflared tunnel login` 会打印 URL，手动打开浏览器，并选择 **`TS_ZONE`**。
+
+## Port already in use
+
+改 `TS_PORT` in `config.env`，重新 `bootstrap.sh`，再 `close.sh` + `expose`。
+
+## Route points to missing file
+
+`status.sh` 显示 `⚠️ missing`。重新 `expose` 新路径，或 `close.sh <slug>`。
+
+## Other tunnels on same account
+
+本技能使用 **独立** 的 `TS_TUNNEL_NAME` 与本地 `config.yml`，不修改 Dashboard 上其他隧道或 Docker 容器，除非名称/hostname 冲突。
+
+## Reset
+
 ```bash
-lsof -nP -iTCP:8787 -sTCP:LISTEN
+bash scripts/close.sh
+rm -f state/*.log
 ```
-Either stop the other process, or change the port: edit `TS_PORT` in
-`scripts/lib.sh`, `PORT` in `scripts/serve.py`, and the `service:` URL in
-`~/.cloudflared/config.yml` to match.
 
-## A route points to a missing file
-`status.sh` shows `⚠️ missing`. The file moved or was deleted. Re-expose with
-the new path, or `close.sh <slug>` to remove it.
+完全删除隧道：
 
-## Relationship to the Docker miniflux tunnel
-None. This skill runs a **separate, local** tunnel named `share`. It does not
-read or modify the Docker `cloudflared-tunnel` container or its config. If
-miniflux stops working, it's unrelated to this skill.
-
-## Reset everything
 ```bash
-bash scripts/close.sh           # stop processes, clear routes
-rm -f state/*.log               # optional: clear logs
-```
-To fully remove the tunnel:
-```bash
-cloudflared tunnel delete share
+source config.env
+cloudflared tunnel delete "$TS_TUNNEL_NAME"
 rm ~/.cloudflared/config.yml
 ```

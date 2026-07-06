@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# bootstrap.sh — one-time setup for the local "share" Cloudflare Tunnel.
+# bootstrap.sh — one-time Cloudflare Tunnel setup (reads config.env).
 #
 # Steps:
 #   1. ensure cloudflared is installed (brew)
-#   2. ensure logged in (cloudflared tunnel login) — opens browser, you pick jinqi33.top
-#   3. create tunnel named "share" (if missing) -> writes ~/.cloudflared/share.json
-#   4. write ~/.cloudflared/config.yml with ingress: share.jinqi33.top -> 127.0.0.1:8787
-#   5. create DNS CNAME: share.jinqi33.top -> <tunnel-id>.cfargotunnel.com
+#   2. ensure logged in (cloudflared tunnel login) — pick TS_ZONE in browser
+#   3. create tunnel TS_TUNNEL_NAME (if missing)
+#   4. write config.yml: TS_DOMAIN -> 127.0.0.1:TS_PORT
+#   5. DNS CNAME: TS_DOMAIN -> <tunnel-id>.cfargotunnel.com
 #
 # Idempotent: safe to re-run; skips steps already done.
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
+ts_require_config
+
 echo "═══ tunnel-serve bootstrap ═══"
+echo "  zone:   $TS_ZONE"
+echo "  host:   $TS_DOMAIN"
+echo "  tunnel: $TS_TUNNEL_NAME"
 echo
 
 # --- 1. cloudflared binary -------------------------------------------------
@@ -34,11 +39,11 @@ if [ -f "${TS_CF_HOME}/cert.pem" ]; then
   echo "✓ already logged in (cert.pem present)"
 else
   echo "→ Opening browser for cloudflared tunnel login..."
-  echo "  In the browser, select the zone: jinqi33.top"
+  echo "  In the browser, select the zone: $TS_ZONE"
   echo "  Authorize, then return here."
   echo
   cloudflared tunnel login
-  [ -f "${TS_CF_HOME}/cert.pem" ] || ts_die "login did not produce cert.pem — did you authorize jinqi33.top?"
+  [ -f "${TS_CF_HOME}/cert.pem" ] || ts_die "login did not produce cert.pem — did you authorize $TS_ZONE?"
   echo "✓ logged in"
 fi
 echo
