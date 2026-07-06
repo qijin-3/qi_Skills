@@ -26,7 +26,7 @@ lark-cli task sections tasks --as user \
 
 从结果中过滤掉已完成的（`completed_at` 不为空），得到未完成任务列表。
 
-## 读今日日志记录（Step 2 / Step 7 共用）
+## 读今日日志记录（Step 7 去重用，不用于读今日计划）
 
 ```bash
 lark-cli base +record-search --as user \
@@ -38,7 +38,7 @@ lark-cli base +record-search --as user \
   --format json
 ```
 
-**硬规则**：晚报只更新早报创建的当日记录，禁止新建第二条。若查询到多条，优先选有 `今日计划` 的那条。
+**硬规则**：晚报是 `$TABLE_LOGS` **唯一写入方**，每天只创建或更新一条。今日计划来自本地快照 `state/daily_snapshot_{YYYY-MM-DD}.json`，不在此查询中读取。若查询到多条历史重复，选字段最完整的一条更新，并警告用户合并。
 
 ## 读最近2天日志（连续低完成率检查）
 
@@ -74,26 +74,11 @@ lark-cli task +tasklist-task-add --as user \
   --format json
 ```
 
-## 更新日志表（晚报核心写入）
+## 写入日志表（晚报唯一写入方）
 
-先执行「读今日日志记录」查询，再按结果选择：
+先执行「读今日日志记录」查询，再按结果选择。**每次 upsert 均写入完整字段**（含 `今日计划`，来自快照 `am.MY_TODAY[].summary`）。
 
-**1 条（正常）** → 带 `record_id` 更新晚报字段，**禁止**不带 `record_id` 的 upsert：
-
-```bash
-lark-cli base +record-upsert --as user \
-  --base-token "$FEISHU_BASE_TOKEN" \
-  --table-id "$TABLE_LOGS" \
-  --record-id "<今日 record_id>" \
-  --json '{
-    "今日完成任务": "<完成任务1\n完成任务2>",
-    "今日任务完成度": <0-1小数，如0.67>,
-    "主线推进情况": "<推进 / 部分推进 / 未推进>",
-    "说明": "<主线推进依据一句话>"
-  }'
-```
-
-**0 条（早报未运行）** → 创建当日唯一记录，同时写入日期与晚报字段：
+**0 条** → 创建当日唯一记录：
 
 ```bash
 lark-cli base +record-upsert --as user \
@@ -101,6 +86,7 @@ lark-cli base +record-upsert --as user \
   --table-id "$TABLE_LOGS" \
   --json '{
     "日期": <YYYY-MM-DD 的 Unix 毫秒时间戳>,
+    "今日计划": "<计划任务1\n计划任务2>",
     "今日完成任务": "<完成任务1\n完成任务2>",
     "今日任务完成度": <0-1小数，如0.67>,
     "主线推进情况": "<推进 / 部分推进 / 未推进>",
@@ -108,7 +94,23 @@ lark-cli base +record-upsert --as user \
   }'
 ```
 
-**多条** → 选有 `今日计划` 的那条（或最早一条）更新，警告用户合并重复记录。
+**1 条** → 带 `record_id` 全量更新（**禁止**不带 `record_id` 的 upsert）：
+
+```bash
+lark-cli base +record-upsert --as user \
+  --base-token "$FEISHU_BASE_TOKEN" \
+  --table-id "$TABLE_LOGS" \
+  --record-id "<今日 record_id>" \
+  --json '{
+    "今日计划": "<计划任务1\n计划任务2>",
+    "今日完成任务": "<完成任务1\n完成任务2>",
+    "今日任务完成度": <0-1小数，如0.67>,
+    "主线推进情况": "<推进 / 部分推进 / 未推进>",
+    "说明": "<主线推进依据一句话>"
+  }'
+```
+
+**多条** → 选字段最完整的一条（或最早一条）更新，警告用户合并历史重复记录。
 
 字段说明：
 - `今日任务完成度`（FIELD_LOG_COMPLETION_RATE）：完成数 / 计划数，0–1 小数

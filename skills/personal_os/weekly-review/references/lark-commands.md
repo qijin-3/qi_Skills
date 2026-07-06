@@ -39,54 +39,40 @@ lark-cli base +record-search --as user \
   --format json --limit 10
 ```
 
-## 读上周目标
+## 读上周目标（Step 1d / Step 7 共用）
 
 ```bash
 lark-cli base +record-search --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
   --table-id "$TABLE_WEEKLY" \
   --keyword "<YYYY-Wnn-1>" --search-field "周期" \
-  --format json --limit 5
+  --format json --limit 10
 ```
 
-## 更新上周目标（打分）
+**必须保留**返回的每条 `record_id` 与 `主线` 字段，供 Step 4 打分与 Step 7 归档使用。周期格式示例：`2026-W26`。
+
+## 归档上周目标（Step 7 必须执行）
+
+对 Step 1d 返回的**每一条**记录执行 upsert。**必须带 `record_id`**，禁止新建：
 
 ```bash
 lark-cli base +record-upsert --as user \
   --base-token "$FEISHU_BASE_TOKEN" \
   --table-id "$TABLE_WEEKLY" \
   --record-id "<上周目标 record_id>" \
-  --json '{"完成度": <0-1 小数>,"状态": "<已达成/已调整>"}'
-```
-
-- 分数换算：用户说的百分比 ÷ 100（如 75% → 0.75）
-- 状态：≥0.8 → 已达成；<0.8 → 已调整
-
-## 创建下周目标（每个活跃月度目标各一条）
-
-> 每条活跃月度目标对应 TABLE_WEEKLY 中一条独立周记录，不合并。
-
-第一步：查询本月月度目标 record_id（取所有进行中的条目）：
-```bash
-lark-cli base +record-search --as user \
-  --base-token "$FEISHU_BASE_TOKEN" \
-  --table-id "$TABLE_MONTHLY" \
-  --keyword "<YYYY-MM>" --search-field "周期" \
-  --format json --limit 10
-```
-
-第二步：为每个本周有行动的月度目标，分别写入一条周目标：
-```bash
-lark-cli base +record-upsert --as user \
-  --base-token "$FEISHU_BASE_TOKEN" \
-  --table-id "$TABLE_WEEKLY" \
   --json '{
-    "主线":"<本周针对该目标的具体行动，一句话>",
-    "周期":"<YYYY-Wnn>",
-    "状态":"进行中",
-    "领域":"<该目标领域>",
-    "所属月度目标":[{"id":"<对应月度目标 record_id>"}]
+    "完成度": <0-1小数>,
+    "状态": "<已达成/已调整>",
+    "总结": "<该主线的周复盘小结，≤150字>"
   }'
 ```
 
-若某月度目标本周无具体行动（如时机未到），不建记录。
+字段说明：
+- `完成度`：Step 4 最终分数 ÷ 100（如 75% → 0.75）
+- `状态`：完成度 ≥0.8 → `已达成`；<0.8 → `已调整`
+- `总结`：针对该条 `主线` 的周复盘小结（完成情况 + 偏离/收获 + 改进点）
+
+**硬规则**：
+- 同周 N 条记录须逐条 upsert，不得漏更新
+- 禁止不带 `record_id` 的 upsert（创建下周目标由 `weekly-plan` 负责，不在本技能）
+- Step 1d 返回 0 条时可跳过，输出注明即可

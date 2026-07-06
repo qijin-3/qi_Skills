@@ -1,15 +1,15 @@
 ---
 name: daily-briefing
-version: 1.2.1
+version: 1.3.0
 description: >
   每日早报调度。用户说"发一下早报"、"早报"时触发；也由调度系统定时调用。
-  读取当前目标与任务分组 → 偏差扫描 → 挑 ≤3 条今天要做 → 写评论 + 日志 + 每日快照。
+  读取当前目标与任务分组 → 偏差扫描 → 挑 ≤3 条今天要做 → 写评论 + 每日快照（不写飞书日志表）。
   是每日调度的起点，为晚报和周复盘提供数据。
 ---
 
 # Daily Briefing
 
-读目标 + 分组任务 → 偏差扫描 → 选今天要做（≤3条）→ 写评论 → 写日志 → 保存快照。
+读目标 + 分组任务 → 偏差扫描 → 选今天要做（≤3条）→ 写评论 → 保存快照（今日计划仅存本地，由晚报统一写入日志表）。
 
 ---
 
@@ -33,7 +33,7 @@ description: >
 Read `{PERSONAL_OS_ROOT}/references/config.md`，找到「调什么命令（加载系统变量）」部分，执行 `eval "$(python3 ...)"` 命令，加载 `$FEISHU_BASE_TOKEN`、`$MY_TODAY` 等环境变量。
 
 **Step 0c：读飞书 CLI 命令语法**
-Read `[技能参考]/lark-commands.md`（Step 3 移动任务、Step 5 写日志前必读）。
+Read `[技能参考]/lark-commands.md`（Step 3 移动任务前必读）。
 
 今日日期：`YYYY-MM-DD`，本周：`Wnn`。
 
@@ -88,20 +88,13 @@ Read `[技能参考]/task-triage.md`（**注意：此文件在技能 references/
 
 命令见 `[技能参考]/lark-commands.md`。
 
-### Step 5：写日志表
-
-命令见 `[技能参考]/lark-commands.md`。**每天只允许一条日志记录**，早报负责创建：
-
-1. 用 `ExactDate` 过滤器查询今日记录
-2. **0 条** → 创建，写入「日期」和「今日计划」（任务标题列表，换行分隔）
-3. **1 条** → 带 `record_id` 更新「今日计划」，禁止新建
-4. **多条** → 选一条更新，警告用户合并重复记录
-
-### Step 6：保存每日快照（必须执行，不可跳过）
+### Step 5：保存每日快照（必须执行，不可跳过）
 
 写入 `{PERSONAL_OS_ROOT}/state/daily_snapshot_{YYYY-MM-DD}.json`。
 
-快照记录**晨间状态**（早报执行时刻），是晚报行为分析的基准线。`am.MY_TODAY` 需标记哪些是 AI 放入（`ai_placed: true`），以便晚报判断用户主动行为。
+快照记录**晨间状态**（早报执行时刻），是晚报行为分析与日志表「今日计划」的唯一来源。`am.MY_TODAY` 需标记哪些是 AI 放入（`ai_placed: true`），以便晚报判断用户主动行为。
+
+**不写飞书日志表**：`$TABLE_LOGS` 由 `evening-review` 统一写入，早报禁止对日志表执行任何 upsert。
 
 ```json
 {
@@ -129,5 +122,6 @@ Read `[技能参考]/task-triage.md`（**注意：此文件在技能 references/
 
 - MY_TODAY 上限 **3 条**，超出的移 MY_WEEK（不是 MY_WATCH）
 - 不改任务标题、描述、重要性（只移分组 + 加评论）
-- 快照文件是行为分析和周/月复盘的数据来源，**必须每天保存**
+- 快照文件是行为分析、今日计划与周/月复盘的数据来源，**必须每天保存**
+- **禁止**写入 `$TABLE_LOGS`（避免与晚报重复创建当日记录）
 - `task-triage.md` 在技能自己的 `references/` 目录，**不在** `PERSONAL_OS_ROOT/references/` 中
