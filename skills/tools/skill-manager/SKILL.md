@@ -1,14 +1,14 @@
 ---
 name: skill-manager
 description: |
-  管理 ~/.agent/skills 软链接与 ~/Skill Manager 本地技能库：从 GitHub 仓库选择性安装、覆盖更新、多设备配置、健康检查。
-  只要用户提到安装/卸载/更新技能、管理技能仓库、打开技能管理页面、检查软链接、Skill Manager 或 ~/.agent/skills，就应使用本技能——即使用户没说「skill-manager」。
+  管理 ~/.agents/skills 软链接与 ~/Skill Manager 本地技能库：从 GitHub 仓库选择性安装、覆盖更新、多设备配置、健康检查。
+  只要用户提到安装/卸载/更新技能、管理技能仓库、打开技能管理页面、检查软链接、Skill Manager 或 ~/.agents/skills，就应使用本技能——即使用户没说「skill-manager」。
   触发词：安装技能、更新技能、管理技能仓库、技能管理页面、检查技能更新、清理软链接、同步技能。
 ---
 
 # 技能管理器
 
-统一管理 `~/Skill Manager`（本地数据）与 `~/.agent/skills`（软链接注册）。已安装技能存放在 `~/Skill Manager/Skills/`。skill-manager 自身保留在仓库 / `~/.agent/skills/skill-manager`，不放入 Skill Manager 目录。
+统一管理 `~/Skill Manager`（本地数据）与 `~/.agents/skills`（默认软链接注册）。已安装技能存放在 `~/Skill Manager/Skills/`。skill-manager 自身可通过 `~/.agent/skills/skill-manager` 软链指向仓库，不放入 Skill Manager 目录。
 
 ## 首次使用（Bootstrap）
 
@@ -65,9 +65,11 @@ GUI 默认 `http://127.0.0.1:8791/`，支持增删仓库、勾选同步技能、
 └── Skills/
     └── <skill-name>/         # 已安装技能
 
-~/.agent/skills/
-├── skill-manager -> <仓库路径>/skill-manager   # 管理器自身，不在 Skills 下
-└── <skill-name> -> ~/Skill Manager/Skills/<skill-name>
+~/.agents/skills/
+├── <skill-name> -> ~/Skill Manager/Skills/<skill-name>
+
+~/.agent/skills/                    # 可选：管理器 CLI 入口
+└── skill-manager -> <仓库路径>/skill-manager
 ```
 
 ## 多设备识别

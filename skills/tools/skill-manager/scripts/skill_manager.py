@@ -31,13 +31,33 @@ SM_ROOT = Path(
     os.environ.get("SKILL_MANAGER_ROOT", os.environ.get("MYSKILLS_ROOT", "~/Skill Manager"))
 ).expanduser()
 SKILLS_DIR = SM_ROOT / "Skills"
-AGENT_SKILLS = Path(os.environ.get("AGENT_SKILLS", "~/.agent/skills")).expanduser()
+AGENT_SKILLS = Path(os.environ.get("AGENT_SKILLS", "~/.agents/skills")).expanduser()
 CONFIGS_DIR = SM_ROOT / "configs"
 CACHE_ROOT = SM_ROOT / ".cache" / "repos"
 DEVICES_FILE = CONFIGS_DIR / "devices.json"
 ACTIVE_DEVICE_FILE = SM_ROOT / ".active-device"
 LAUNCHER_HTML = SM_ROOT / "Open Skill Manager.html"
 LAUNCHER_CMD = SM_ROOT / "Open Skill Manager.command"
+SETTINGS_FILE = SM_ROOT / "settings.json"
+
+DEFAULT_AGENTS: list[dict] = [
+    {"id": "agent", "name": "Agent", "path": "~/.agents/skills", "enabled": True},
+    {"id": "cursor", "name": "Cursor", "path": "~/.cursor/skills", "enabled": False},
+    {"id": "claude", "name": "Claude Code", "path": "~/.claude/skills", "enabled": False},
+    {"id": "codex", "name": "Codex", "path": "~/.codex/skills", "enabled": False},
+    {"id": "antigravity", "name": "Antigravity", "path": "~/.gemini/config/skills", "enabled": False},
+    {"id": "gemini", "name": "Gemini CLI", "path": "~/.gemini/skills", "enabled": False},
+    {"id": "opencode", "name": "OpenCode", "path": "~/.config/opencode/skills", "enabled": False},
+    {"id": "windsurf", "name": "Windsurf", "path": "~/.codeium/windsurf/skills", "enabled": False},
+    {"id": "cline", "name": "Cline", "path": "~/.cline/skills", "enabled": False},
+    {"id": "roo", "name": "Roo Code", "path": "~/.roo/skills", "enabled": False},
+]
+SETTINGS_VERSION = 4
+LEGACY_AGENT_PATH = "~/.agent/skills"
+LEGACY_AGENT_SKILLS = Path("~/.agent/skills").expanduser()
+MANAGER_LINK_NAME = "skill-manager"
+REMOVED_AGENT_IDS = frozenset({"cursor-builtin", "agents"})
+DEFAULT_AGENT_IDS = {a["id"] for a in DEFAULT_AGENTS}
 
 EXCLUDE_PARTS = {".git", "node_modules", "deprecated", "template", ".cache", "__pycache__"}
 
@@ -277,6 +297,217 @@ def resolve_device_id(override: str | None = None) -> str:
     return sanitize_device_id(hostname)
 
 
+def merge_agent_settings(saved_agents: list[dict], *, reset_enabled: bool = False) -> list[dict]:
+    """将已保存配置与默认 Agent 列表合并（默认项优先、保留用户自定义路径）。"""
+    by_id = {a["id"]: a for a in saved_agents if a.get("id")}
+    merged: list[dict] = []
+    for default in DEFAULT_AGENTS:
+        aid = default["id"]
+        saved = by_id.get(aid, {})
+        if reset_enabled or aid not in by_id:
+            enabled = default.get("enabled", False)
+        else:
+            enabled = saved.get("enabled", default.get("enabled", False))
+        path = str(saved.get("path") or default["path"]).strip()
+        if aid == "agent" and path in (LEGACY_AGENT_PATH, "~/.agent/skills"):
+            path = "~/.agents/skills"
+        merged.append({
+            "id": aid,
+            "name": str(saved.get("name") or default["name"]).strip(),
+            "path": path,
+            "enabled": enabled,
+        })
+    for agent in saved_agents:
+        aid = agent.get("id", "")
+        if aid and aid not in DEFAULT_AGENT_IDS and aid not in REMOVED_AGENT_IDS:
+            merged.append(agent)
+    return merged
+
+
+def migrate_settings(data: dict) -> bool:
+    """迁移旧版设置（路径修正、移除重复项）。"""
+    changed = False
+    version = data.get("version", 1)
+    agents = data.get("agents", [])
+
+    if version < SETTINGS_VERSION:
+        for agent in agents:
+            if agent.get("id") == "agent" and agent.get("path") in (LEGACY_AGENT_PATH, "~/.agent/skills"):
+                agent["path"] = "~/.agents/skills"
+                changed = True
+        # 移除已废弃的 Agent 项
+        before = len(agents)
+        data["agents"] = [
+            a for a in agents
+            if a.get("id") not in REMOVED_AGENT_IDS
+        ]
+        if len(data["agents"]) < before:
+            changed = True
+        data["version"] = SETTINGS_VERSION
+        changed = True
+
+    return changed
+
+
+def migrate_legacy_symlinks() -> dict:
+    """
+    将 ~/.agent/skills 下指向 Skill Manager 的技能软链迁移到 ~/.agents/skills。
+
+    保留 ~/.agent/skills/skill-manager（管理器 CLI 入口）。
+    """
+    legacy = LEGACY_AGENT_SKILLS
+    target = AGENT_SKILLS
+    if not legacy.is_dir():
+        return {"moved": [], "skipped": []}
+
+    target.mkdir(parents=True, exist_ok=True)
+    skills_root = SKILLS_DIR.resolve()
+    moved: list[str] = []
+    skipped: list[str] = []
+
+    for entry in legacy.iterdir():
+        name = entry.name
+        if name.startswith(".") or name == MANAGER_LINK_NAME:
+            continue
+        if not entry.is_symlink():
+            skipped.append(name)
+            continue
+        try:
+            dest = entry.resolve()
+        except (OSError, RuntimeError):
+            skipped.append(name)
+            continue
+        try:
+            dest.relative_to(skills_root)
+        except ValueError:
+            skipped.append(name)
+            continue
+
+        new_link = target / name
+        if new_link.exists():
+            if new_link.is_symlink() and new_link.resolve() == dest:
+                entry.unlink()
+                moved.append(name)
+            else:
+                skipped.append(name)
+            continue
+        new_link.symlink_to(dest)
+        entry.unlink()
+        moved.append(name)
+
+    return {"moved": moved, "skipped": skipped}
+
+
+def load_settings() -> dict:
+    """加载全局设置（Agent 技能目录等）。"""
+    if not SETTINGS_FILE.exists():
+        data = {"version": SETTINGS_VERSION, "agents": [dict(a) for a in DEFAULT_AGENTS]}
+        save_settings(data)
+        return data
+    data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    if data.get("agents"):
+        reset = data.get("version", 1) < 2
+        if migrate_settings(data):
+            save_settings(data)
+        data["agents"] = merge_agent_settings(data["agents"], reset_enabled=reset)
+        if reset:
+            data["version"] = SETTINGS_VERSION
+            save_settings(data)
+        return data
+    return {"version": SETTINGS_VERSION, "agents": [dict(a) for a in DEFAULT_AGENTS]}
+
+
+def save_settings(data: dict) -> None:
+    """保存全局设置到磁盘。"""
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SETTINGS_FILE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def get_enabled_agent_paths() -> list[Path]:
+    """返回已启用的 Agent 技能目录列表。"""
+    paths: list[Path] = []
+    for agent in load_settings().get("agents", []):
+        if not agent.get("enabled", True):
+            continue
+        raw = str(agent.get("path", "")).strip()
+        if raw:
+            paths.append(Path(raw).expanduser())
+    if not paths:
+        paths.append(AGENT_SKILLS)
+    return paths
+
+
+def count_skills_in_dir(path: Path) -> int:
+    """统计目录下的技能数量（顶层目录或软链，忽略隐藏项）。"""
+    if not path.is_dir():
+        return 0
+    return sum(
+        1
+        for p in path.iterdir()
+        if not p.name.startswith(".") and (p.is_symlink() or p.is_dir())
+    )
+
+
+def get_settings_info() -> dict:
+    """返回设置与各 Agent 技能数量。"""
+    settings = load_settings()
+    agents: list[dict] = []
+    for i, agent in enumerate(settings.get("agents", [])):
+        path = Path(str(agent.get("path", ""))).expanduser()
+        agents.append({
+            "id": agent.get("id", ""),
+            "name": agent.get("name", ""),
+            "path": str(agent.get("path", "")),
+            "enabled": bool(agent.get("enabled", True)),
+            "is_default": i == 0,
+            "exists": path.is_dir(),
+            "skill_count": count_skills_in_dir(path),
+            "resolved_path": str(path),
+        })
+    return {"settings": settings, "agents": agents}
+
+
+def open_agent_path(path_str: str) -> str:
+    """在 Finder 中打开 Agent 技能目录（不存在则创建）。"""
+    raw = path_str.strip()
+    if not raw:
+        raise ValueError("路径不能为空")
+    path = Path(raw).expanduser()
+    path.mkdir(parents=True, exist_ok=True)
+    if sys.platform != "darwin":
+        raise RuntimeError("打开目录仅支持 macOS")
+    subprocess.run(["open", str(path)], check=True)
+    return str(path)
+
+
+def update_settings(agents: list[dict]) -> dict:
+    """更新 Agent 路径配置。"""
+    cleaned: list[dict] = []
+    seen: set[str] = set()
+    for agent in agents:
+        aid = str(agent.get("id", "")).strip() or f"agent-{len(cleaned)}"
+        if aid in seen:
+            continue
+        seen.add(aid)
+        path = str(agent.get("path", "")).strip()
+        if not path:
+            continue
+        cleaned.append({
+            "id": aid,
+            "name": str(agent.get("name", aid)).strip() or aid,
+            "path": path,
+            "enabled": bool(agent.get("enabled", True)),
+        })
+    if not cleaned:
+        raise ValueError("至少保留一个 Agent 配置")
+    data = {"version": SETTINGS_VERSION, "agents": cleaned}
+    save_settings(data)
+    return get_settings_info()
+
+
 def manifest_path_for(device_id: str) -> Path:
     """返回设备配置文件路径。"""
     return CONFIGS_DIR / f"{device_id}.json"
@@ -288,6 +519,8 @@ def ensure_workspace() -> None:
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
     CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
     AGENT_SKILLS.mkdir(parents=True, exist_ok=True)
+    migrate_legacy_symlinks()
+    load_settings()
     deploy_launcher_files()
 
 
@@ -377,9 +610,23 @@ def skill_dest(name: str) -> Path:
     return SKILLS_DIR / name
 
 
-def skill_link(name: str) -> Path:
-    """~/.agent/skills 下的软链接路径。"""
-    return AGENT_SKILLS / name
+def skill_link(name: str, agent_path: Path | None = None) -> Path:
+    """Agent 技能目录下的软链接路径。"""
+    base = agent_path if agent_path is not None else get_enabled_agent_paths()[0]
+    return base / name
+
+
+def skill_link_ok(name: str) -> bool:
+    """检查技能是否在任一已启用 Agent 目录中正确软链。"""
+    dest = skill_dest(name)
+    if not dest.exists():
+        return False
+    dest_resolved = dest.resolve()
+    for agent_path in get_enabled_agent_paths():
+        link = agent_path / name
+        if link.is_symlink() and link.resolve() == dest_resolved:
+            return True
+    return False
 
 
 def find_skill_owner(mgr: Manager, skill_name: str) -> tuple[dict, dict] | None:
@@ -414,49 +661,54 @@ def copy_skill_tree(src: Path, dest: Path) -> None:
 
 
 def create_symlink(name: str) -> None:
-    """创建 ~/.agent/skills/<name> -> Skill Manager/Skills/<name> 软链。"""
+    """在所有已启用 Agent 目录创建指向本地技能的软链。"""
     dest = skill_dest(name)
-    link = skill_link(name)
     if not dest.exists():
         raise FileNotFoundError(f"技能目录不存在: {dest}")
-    if link.is_symlink() or link.exists():
-        link.unlink()
-    link.symlink_to(dest)
+    for agent_path in get_enabled_agent_paths():
+        agent_path.mkdir(parents=True, exist_ok=True)
+        link = agent_path / name
+        if link.is_symlink() or link.exists():
+            link.unlink()
+        link.symlink_to(dest)
 
 
 def remove_symlink(name: str) -> None:
-    """移除软链接（若存在）。"""
-    link = skill_link(name)
-    if link.is_symlink() or link.is_file():
-        link.unlink()
-    elif link.is_dir() and not link.is_symlink():
-        raise RuntimeError(f"{link} 是真实目录而非软链，请手动处理")
+    """从所有已启用 Agent 目录移除软链。"""
+    for agent_path in get_enabled_agent_paths():
+        link = agent_path / name
+        if link.is_symlink() or link.is_file():
+            link.unlink()
+        elif link.is_dir() and not link.is_symlink():
+            raise RuntimeError(f"{link} 是真实目录而非软链，请手动处理")
 
 
 def healthcheck() -> dict:
     """
-    扫描 ~/.agent/skills，删除断裂软链。
+    扫描所有已启用 Agent 技能目录，删除断裂软链。
 
     Returns:
         报告字典：removed, broken, orphans
     """
-    AGENT_SKILLS.mkdir(parents=True, exist_ok=True)
     removed: list[str] = []
     broken: list[str] = []
 
-    for entry in AGENT_SKILLS.iterdir():
-        if not entry.is_symlink():
-            continue
-        if not entry.resolve().exists():
-            broken.append(entry.name)
-            entry.unlink()
-            removed.append(entry.name)
+    for agent_path in get_enabled_agent_paths():
+        agent_path.mkdir(parents=True, exist_ok=True)
+        for entry in agent_path.iterdir():
+            if not entry.is_symlink():
+                continue
+            if not entry.resolve().exists():
+                broken.append(f"{agent_path.name}/{entry.name}")
+                entry.unlink()
+                removed.append(entry.name)
 
     orphans: list[str] = []
-    if SKILLS_DIR.is_dir():
+    primary = get_enabled_agent_paths()[0]
+    if SKILLS_DIR.is_dir() and primary.is_dir():
         linked_names = {
             p.name
-            for p in AGENT_SKILLS.iterdir()
+            for p in primary.iterdir()
             if p.is_symlink() and p.resolve().exists()
         }
         for child in SKILLS_DIR.iterdir():
@@ -540,8 +792,7 @@ def discover_repo(mgr: Manager, repo_id: str) -> list[dict]:
     result = []
     for sk in discover_skills_in_repo(cache):
         existing = synced.get(sk.name)
-        link = skill_link(sk.name)
-        link_ok = link.is_symlink() and link.resolve().exists()
+        link_ok = skill_link_ok(sk.name)
         installed_at = None
         if existing and existing.get("sync"):
             installed_at = existing.get("installed_at")

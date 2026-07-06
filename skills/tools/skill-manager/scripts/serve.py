@@ -251,6 +251,19 @@ class Handler(BaseHTTPRequestHandler):
             report = sm.healthcheck()
             return json_response(self, 200, report)
 
+        if path == "/api/settings" and method == "GET":
+            return json_response(self, 200, sm.get_settings_info())
+
+        if path == "/api/settings" and method == "PUT":
+            body = read_body(self)
+            result = sm.update_settings(body.get("agents", []))
+            return json_response(self, 200, result)
+
+        if path == "/api/settings/open" and method == "POST":
+            body = read_body(self)
+            opened = sm.open_agent_path(body.get("path", ""))
+            return json_response(self, 200, {"opened": opened})
+
         log_error(method, path, "API not found")
         json_response(self, 404, {"error": "not found"})
 

@@ -401,6 +401,14 @@
       vertical-align: middle;
     }
     .tab-badge:empty { display: none; }
+    .tab.hidden { display: none; }
+    .search-input { width: 200px; flex: none; }
+    .settings-agent-row { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; padding: var(--sp-4) 0; border-bottom: 1px solid var(--grey-1); }
+    .settings-agent-row:last-child { border-bottom: none; }
+    .settings-agent-row input[type="text"] { flex: 1; min-width: 240px; }
+    .settings-agent-row .agent-count { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 48px; text-align: right; }
+    .badge.primary { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+    .card-head-actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; }
   </style>
 </head>
 <body>
@@ -422,7 +430,8 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" role="tab" data-tab="repos" aria-selected="true">仓库管理</button>
       <button class="tab" role="tab" data-tab="skills" aria-selected="false">技能管理</button>
-      <button class="tab" role="tab" data-tab="updates" aria-selected="false">更新<span class="tab-badge" id="updatesBadge"></span></button>
+      <button class="tab hidden" role="tab" data-tab="updates" id="tab-updates" aria-selected="false">更新<span class="tab-badge" id="updatesBadge"></span></button>
+      <button class="tab" role="tab" data-tab="settings" aria-selected="false">设置</button>
     </nav>
 
     <!-- 仓库管理 -->
@@ -454,12 +463,26 @@
       <div class="card">
         <div class="card-head">
           <h2>技能列表</h2>
-          <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
-            <span>筛选仓库</span>
-            <select id="skillRepoFilter" onchange="loadSkillsPanel()">
-              <option value="">全部仓库</option>
-            </select>
-          </label>
+          <div class="card-head-actions">
+            <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
+              <span>搜索</span>
+              <input type="search" id="skillSearch" class="search-input" placeholder="技能名称…" autocomplete="off">
+            </label>
+            <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
+              <span>安装状态</span>
+              <select id="skillSyncFilter">
+                <option value="all">全部</option>
+                <option value="installed">已安装</option>
+                <option value="not-installed">未安装</option>
+              </select>
+            </label>
+            <label class="field-label" style="flex-direction:row;align-items:center;gap:8px">
+              <span>筛选仓库</span>
+              <select id="skillRepoFilter" onchange="loadSkillsPanel()">
+                <option value="">全部仓库</option>
+              </select>
+            </label>
+          </div>
         </div>
         <div class="skill-toolbar" id="skillToolbar" hidden>
           <button type="button" class="btn btn-ghost btn-sm" id="selectAllSkills">全选</button>
@@ -488,6 +511,18 @@
         <div id="updatesTable"><p class="empty"><strong>暂无更新</strong>点击顶部「检查更新」扫描云端差异</p></div>
       </div>
     </section>
+
+    <!-- 设置 -->
+    <section id="panel-settings" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>Agent 技能目录</h2>
+          <button type="button" class="btn btn-primary btn-sm" id="saveSettingsBtn">保存</button>
+        </div>
+        <p class="lead" style="margin-bottom:var(--sp-5)">第一项 <strong>Agent</strong> 为默认同步目录；启用后会在对应路径创建软链。点击「打开」可在 Finder 中查看目录。</p>
+        <div id="settingsAgents"></div>
+      </div>
+    </section>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
@@ -497,6 +532,8 @@
     let reposCache = [];
     let skillsRowsCache = [];
     let pendingUpdatesCache = [];
+    let skillSearchQuery = '';
+    let settingsAgentsCache = [];
 
     /** 转义 HTML 防注入 */
     function esc(s) {
@@ -522,6 +559,91 @@
       const n = document.querySelectorAll('#panel-updates .update-select:checked').length;
       const el = document.getElementById('updatesSelectedCount');
       if (el) el.textContent = `已选 ${n}`;
+    }
+
+    /** 刷新更新 Tab 可见性（仅有待更新项时显示） */
+    function refreshUpdatesTabVisibility() {
+      const tab = document.getElementById('tab-updates');
+      const hasUpdates = pendingUpdatesCache.length > 0;
+      if (tab) tab.classList.toggle('hidden', !hasUpdates);
+      refreshUpdatesBadge();
+      if (!hasUpdates && tab && tab.classList.contains('active')) {
+        document.querySelector('.tab[data-tab="skills"]').click();
+      }
+    }
+
+    /** 按名称与安装状态过滤技能行 */
+    function filterSkills(rows) {
+      let result = rows;
+      const syncFilter = document.getElementById('skillSyncFilter')?.value || 'all';
+      if (syncFilter === 'installed') {
+        result = result.filter(s => s.sync);
+      } else if (syncFilter === 'not-installed') {
+        result = result.filter(s => !s.sync);
+      }
+      const q = skillSearchQuery.trim().toLowerCase();
+      if (q) {
+        result = result.filter(s => (s.name || '').toLowerCase().includes(q));
+      }
+      return result;
+    }
+
+    /** 渲染技能列表（应用搜索与分组） */
+    function renderSkillsView() {
+      const filter = document.getElementById('skillRepoFilter').value;
+      const el = document.getElementById('skillsTable');
+      const toolbar = document.getElementById('skillToolbar');
+      const rows = filterSkills(skillsRowsCache);
+
+      if (!skillsRowsCache.length) return;
+
+      if (!rows.length) {
+        toolbar.hidden = true;
+        const syncFilter = document.getElementById('skillSyncFilter')?.value || 'all';
+        const emptyMsg = syncFilter === 'installed' ? '暂无已安装技能'
+          : syncFilter === 'not-installed' ? '暂无未安装技能'
+          : skillSearchQuery.trim() ? '无匹配技能' : '无技能';
+        const emptyHint = skillSearchQuery.trim() && syncFilter === 'all' ? '试试其他关键词' : '调整筛选条件试试';
+        el.innerHTML = `<p class="empty"><strong>${emptyMsg}</strong>${emptyHint}</p>`;
+        return;
+      }
+
+      toolbar.hidden = false;
+      updateSelectedCount();
+
+      const targetRepos = filter
+        ? reposCache.filter(r => r.id === filter)
+        : reposCache;
+
+      if (!filter) {
+        const grouped = targetRepos.map(repo => ({
+          repo_id: repo.id,
+          repo_updated_at: repo.last_updated_at,
+          skills: rows.filter(s => s.repo_id === repo.id).sort((a, b) => a.name.localeCompare(b.name)),
+        })).filter(g => g.skills.length);
+        el.innerHTML = renderSkillGroups(grouped) +
+          `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
+        el.querySelectorAll('.skill-group').forEach(det => {
+          det.addEventListener('toggle', () => {
+            sessionStorage.setItem(`sm-fold-${det.dataset.repo}`, det.open ? '0' : '1');
+          });
+          const groupBtn = det.querySelector('.group-select-all');
+          if (groupBtn) {
+            groupBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              det.querySelectorAll('.row-select').forEach(cb => { cb.checked = true; });
+              updateSelectedCount();
+            });
+          }
+          bindSkillTableEvents(det);
+        });
+      } else {
+        const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+        el.innerHTML = renderSkillTable(sorted) +
+          `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
+        bindSkillTableEvents(el);
+      }
     }
 
     /** 刷新更新 Tab 角标 */
@@ -640,7 +762,7 @@
       const el = document.getElementById('updatesTable');
       const toolbar = document.getElementById('updatesToolbar');
       const checkedAt = document.getElementById('updatesCheckedAt');
-      refreshUpdatesBadge();
+      refreshUpdatesTabVisibility();
 
       if (checkedAt) {
         checkedAt.textContent = pendingUpdatesCache.length
@@ -700,7 +822,72 @@
         });
         if (tab === 'skills') loadSkillsPanel();
         if (tab === 'updates') renderUpdatesPanel();
+        if (tab === 'settings') loadSettingsPanel();
       });
+    });
+
+    document.getElementById('skillSearch').addEventListener('input', (e) => {
+      skillSearchQuery = e.target.value;
+      if (skillsRowsCache.length) renderSkillsView();
+    });
+
+    document.getElementById('skillSyncFilter').addEventListener('change', () => {
+      if (skillsRowsCache.length) renderSkillsView();
+    });
+
+    /** 加载设置面板 */
+    async function loadSettingsPanel() {
+      const data = await api('GET', '/api/settings');
+      settingsAgentsCache = data.agents || [];
+      const el = document.getElementById('settingsAgents');
+      el.innerHTML = settingsAgentsCache.map((a, i) => `
+        <div class="settings-agent-row" data-idx="${i}">
+          <label style="display:flex;align-items:center;gap:6px;min-width:140px">
+            <input type="checkbox" class="agent-enabled" ${a.enabled ? 'checked' : ''}>
+            <span class="skill-name">${esc(a.name)}</span>
+            ${a.is_default ? '<span class="badge primary">默认</span>' : ''}
+          </label>
+          <input type="text" class="agent-path" value="${esc(a.path)}" placeholder="~/path/to/skills">
+          <span class="agent-count" title="${a.exists ? '目录存在' : '目录不存在'}">${a.skill_count} 个</span>
+          <button type="button" class="btn btn-ghost btn-sm open-agent-path">打开</button>
+          ${a.exists ? '' : '<span class="badge muted">未创建</span>'}
+        </div>
+      `).join('');
+      el.querySelectorAll('.open-agent-path').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const row = btn.closest('.settings-agent-row');
+          const path = row.querySelector('.agent-path').value.trim();
+          if (!path) return toast('路径为空');
+          try {
+            await api('POST', '/api/settings/open', { path });
+            toast('已在 Finder 中打开');
+            await loadSettingsPanel();
+          } catch (e) {
+            toast('打开失败: ' + e.message);
+          }
+        });
+      });
+    }
+
+    document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+      const agents = [];
+      document.querySelectorAll('#settingsAgents .settings-agent-row').forEach((row, i) => {
+        const prev = settingsAgentsCache[i] || {};
+        agents.push({
+          id: prev.id || `agent-${i}`,
+          name: prev.name || `Agent ${i + 1}`,
+          path: row.querySelector('.agent-path').value.trim(),
+          enabled: row.querySelector('.agent-enabled').checked,
+        });
+      });
+      try {
+        const data = await api('PUT', '/api/settings', { agents });
+        settingsAgentsCache = data.agents || [];
+        toast('设置已保存');
+        await loadSettingsPanel();
+      } catch (e) {
+        toast('保存失败: ' + e.message);
+      }
     });
 
     /** 加载设备信息 */
@@ -824,38 +1011,7 @@
           return;
         }
 
-        toolbar.hidden = false;
-        updateSelectedCount();
-
-        if (!filter) {
-          const grouped = targetRepos.map(repo => ({
-            repo_id: repo.id,
-            repo_updated_at: repo.last_updated_at,
-            skills: rows.filter(s => s.repo_id === repo.id).sort((a, b) => a.name.localeCompare(b.name)),
-          })).filter(g => g.skills.length);
-          el.innerHTML = renderSkillGroups(grouped) +
-            `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
-          el.querySelectorAll('.skill-group').forEach(det => {
-            det.addEventListener('toggle', () => {
-              sessionStorage.setItem(`sm-fold-${det.dataset.repo}`, det.open ? '0' : '1');
-            });
-            const groupBtn = det.querySelector('.group-select-all');
-            if (groupBtn) {
-              groupBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                det.querySelectorAll('.row-select').forEach(cb => { cb.checked = true; });
-                updateSelectedCount();
-              });
-            }
-            bindSkillTableEvents(det);
-          });
-        } else {
-          rows.sort((a, b) => a.name.localeCompare(b.name));
-          el.innerHTML = renderSkillTable(rows) +
-            `<p class="t-meta" style="margin-top:16px">${rows.length} 项 · ${rows.filter(s => s.sync).length} 已同步</p>`;
-          bindSkillTableEvents(el);
-        }
+        renderSkillsView();
       } catch (e) {
         el.innerHTML = `<p class="empty"><strong>扫描失败</strong>${esc(e.message)}</p>`;
         toast('扫描失败: ' + e.message);
@@ -996,11 +1152,11 @@
         const data = await api('POST', '/api/updates/check', {});
         pendingUpdatesCache = data.updates || [];
         pendingUpdatesCache._checkedAt = (data.checked_at || '').slice(0, 19).replace('T', ' ');
-        refreshUpdatesBadge();
         renderUpdatesPanel();
 
         if (pendingUpdatesCache.length) {
           toast(`发现 ${pendingUpdatesCache.length} 项可更新`);
+          document.getElementById('tab-updates').classList.remove('hidden');
           document.querySelector('.tab[data-tab="updates"]').click();
         } else {
           toast('所有技能均与云端一致');
@@ -1018,6 +1174,7 @@
     }
 
     loadAll().catch(e => toast('错误: ' + e.message));
+    refreshUpdatesTabVisibility();
   </script>
 </body>
 </html>

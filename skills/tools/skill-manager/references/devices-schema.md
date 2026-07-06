@@ -31,5 +31,5 @@
 ## 说明
 
 - 每台设备的 `~/Skill Manager` 目录独立，不跨设备同步
-- skill-manager 管理器本身位于 `~/.agent/skills/skill-manager`，不在 `Skill Manager/Skills/` 下
+- skill-manager 管理器 CLI 可位于 `~/.agent/skills/skill-manager`；已安装技能默认软链到 `~/.agents/skills/`
 - 其他设备的 `.json` 可因 dotfiles 同步存在，但仅当前 hostname 匹配的配置会被使用
