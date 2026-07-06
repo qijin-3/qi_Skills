@@ -31,10 +31,12 @@ SM_ROOT = Path(
     os.environ.get("SKILL_MANAGER_ROOT", os.environ.get("MYSKILLS_ROOT", "~/Skill Manager"))
 ).expanduser()
 LEGACY_SKILLS_DIR = SM_ROOT / "Skills"
+LEGACY_CONFIGS_DIR = SM_ROOT / "configs"
+MIGRATED_DIR = SM_ROOT / ".migrated"
+MIGRATED_CONFIGS_ARCHIVE = MIGRATED_DIR / "configs"
 AGENT_SKILLS = Path(os.environ.get("AGENT_SKILLS", "~/.agents/skills")).expanduser()
-CONFIGS_DIR = SM_ROOT / "configs"
 CACHE_ROOT = SM_ROOT / ".cache" / "repos"
-DEVICES_FILE = CONFIGS_DIR / "devices.json"
+DEVICES_FILE = MIGRATED_DIR / "devices.json"
 ACTIVE_DEVICE_FILE = SM_ROOT / ".active-device"
 ACTIVE_CONFIG_FILE = SM_ROOT / ".active-config"
 LAYOUT_MIGRATION_FLAG = SM_ROOT / ".layout-v2"
@@ -278,10 +280,15 @@ def clone_repo(url: str, branch: str, dest: Path) -> None:
 
 
 def load_devices_registry() -> dict:
-    """加载 devices.json，不存在则返回空结构。"""
-    if not DEVICES_FILE.exists():
-        return {"version": 1, "devices": []}
-    return json.loads(DEVICES_FILE.read_text(encoding="utf-8"))
+    """加载 devices.json（优先 .migrated，兼容旧 configs/ 路径）。"""
+    if DEVICES_FILE.exists():
+        return json.loads(DEVICES_FILE.read_text(encoding="utf-8"))
+    legacy_devices = LEGACY_CONFIGS_DIR / "devices.json"
+    if legacy_devices.exists():
+        MIGRATED_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy_devices, DEVICES_FILE)
+        return json.loads(DEVICES_FILE.read_text(encoding="utf-8"))
+    return {"version": 1, "devices": []}
 
 
 def list_device_configs() -> list[str]:
@@ -295,8 +302,8 @@ def list_device_configs() -> list[str]:
                 continue
             if (p / "config.json").is_file():
                 ids.add(p.name)
-    if CONFIGS_DIR.exists():
-        for p in CONFIGS_DIR.glob("*.json"):
+    if LEGACY_CONFIGS_DIR.exists():
+        for p in LEGACY_CONFIGS_DIR.glob("*.json"):
             if p.name != "devices.json":
                 ids.add(p.stem)
     return sorted(ids)
@@ -565,30 +572,63 @@ def manifest_path_for(config_id: str) -> Path:
 
 
 def legacy_manifest_path(config_id: str) -> Path:
-    """旧版 configs/{id}.json 路径。"""
-    return CONFIGS_DIR / f"{config_id}.json"
+    """旧版 configs/{id}.json 路径（只读，目录可能已移除）。"""
+    return LEGACY_CONFIGS_DIR / f"{config_id}.json"
 
 
-def config_skills_dir(mgr: Manager) -> Path:
-    """当前配置下的 Skills 根目录。"""
-    return config_dir(mgr.device_id) / "Skills"
+def _consolidate_legacy_configs_archive() -> None:
+    """将 configs/.migrated 归档并入 .migrated/configs/。"""
+    old_archive = LEGACY_CONFIGS_DIR / ".migrated"
+    if not old_archive.is_dir():
+        return
+    MIGRATED_CONFIGS_ARCHIVE.mkdir(parents=True, exist_ok=True)
+    for item in old_archive.iterdir():
+        dest = MIGRATED_CONFIGS_ARCHIVE / item.name
+        if item.is_file() and not dest.exists():
+            shutil.move(str(item), str(dest))
+        elif item.is_file():
+            item.unlink(missing_ok=True)
+    try:
+        old_archive.rmdir()
+    except OSError:
+        pass
+
+
+def remove_legacy_configs_dir() -> None:
+    """legacy configs/ 内容归档后删除该目录。"""
+    if not LEGACY_CONFIGS_DIR.is_dir():
+        return
+    _consolidate_legacy_configs_archive()
+    try:
+        shutil.rmtree(LEGACY_CONFIGS_DIR)
+    except OSError:
+        pass
 
 
 def archive_legacy_manifests() -> None:
-    """迁移后将 configs/*.json 归档，避免旧进程继续写入扁平 Skills 布局。"""
-    archive_dir = CONFIGS_DIR / ".migrated"
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    for cfg_path in CONFIGS_DIR.glob("*.json"):
+    """将遗留 configs/*.json 归档到 .migrated/configs/，并删除 configs/ 目录。"""
+    if not LEGACY_CONFIGS_DIR.is_dir():
+        return
+    MIGRATED_CONFIGS_ARCHIVE.mkdir(parents=True, exist_ok=True)
+    legacy_devices = LEGACY_CONFIGS_DIR / "devices.json"
+    if legacy_devices.exists() and not DEVICES_FILE.exists():
+        MIGRATED_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(legacy_devices), str(DEVICES_FILE))
+    elif legacy_devices.exists():
+        legacy_devices.unlink(missing_ok=True)
+    for cfg_path in LEGACY_CONFIGS_DIR.glob("*.json"):
         if cfg_path.name == "devices.json":
             continue
         cid = cfg_path.stem
         if not manifest_path_for(cid).exists():
             continue
-        bak = archive_dir / f"{cid}.json.bak"
+        bak = MIGRATED_CONFIGS_ARCHIVE / f"{cid}.json.bak"
         if bak.exists():
             cfg_path.unlink(missing_ok=True)
         else:
             shutil.move(str(cfg_path), str(bak))
+    _consolidate_legacy_configs_archive()
+    remove_legacy_configs_dir()
 
 
 def relocate_legacy_skill(mgr: Manager, name: str, repo_id: str) -> bool:
@@ -604,17 +644,23 @@ def relocate_legacy_skill(mgr: Manager, name: str, repo_id: str) -> bool:
     return True
 
 
+def config_skills_dir(mgr: Manager) -> Path:
+    """当前配置下的 Skills 根目录。"""
+    return config_dir(mgr.device_id) / "Skills"
+
+
 def migrate_layout_v2() -> None:
     """将 configs/*.json + 扁平 Skills/ 迁移为按配置名分目录的布局。"""
     if LAYOUT_MIGRATION_FLAG.exists():
         return
 
     SM_ROOT.mkdir(parents=True, exist_ok=True)
-    CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
 
-    legacy_configs = [
-        p for p in CONFIGS_DIR.glob("*.json") if p.name != "devices.json"
-    ]
+    legacy_configs: list[Path] = []
+    if LEGACY_CONFIGS_DIR.is_dir():
+        legacy_configs = [
+            p for p in LEGACY_CONFIGS_DIR.glob("*.json") if p.name != "devices.json"
+        ]
 
     for cfg_path in legacy_configs:
         cid = cfg_path.stem
@@ -673,7 +719,6 @@ def migrate_layout_v2() -> None:
 def ensure_workspace() -> None:
     """初始化 Skill Manager 工作区目录并部署启动器文件。"""
     SM_ROOT.mkdir(parents=True, exist_ok=True)
-    CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
     AGENT_SKILLS.mkdir(parents=True, exist_ok=True)
     if LAYOUT_MIGRATION_FLAG.exists():
         archive_legacy_manifests()
@@ -1006,6 +1051,33 @@ def configured_repo_slugs(mgr: Manager) -> set[str]:
     return {repo_slug(r["id"]) for r in mgr.data.get("repos", [])}
 
 
+def cleanup_orphan_empty_repo_dirs(mgr: Manager) -> list[str]:
+    """
+    删除 Skills 下不在配置中且无技能子目录的空仓库文件夹。
+
+    ponytail: 仅删空目录；含 .DS_Store 等隐藏文件仍视为可删。
+    """
+    removed: list[str] = []
+    root = config_skills_dir(mgr)
+    if not root.is_dir():
+        return removed
+    configured = configured_repo_slugs(mgr)
+    for repo_dir in list(root.iterdir()):
+        if not repo_dir.is_dir() or repo_dir.name.startswith("."):
+            continue
+        if repo_dir.name in configured:
+            continue
+        has_skill = any(
+            c.is_dir() and not c.name.startswith(".")
+            for c in repo_dir.iterdir()
+        )
+        if has_skill:
+            continue
+        shutil.rmtree(repo_dir)
+        removed.append(repo_dir.name)
+    return removed
+
+
 def move_skill_to_local_repo(mgr: Manager, name: str, source: Path | None = None) -> bool:
     """
     将技能目录迁入 local 并登记到 Local 仓库（从其他仓库配置中移除）。
@@ -1132,8 +1204,10 @@ def healthcheck(mgr: Manager) -> dict:
     对比配置文件、本地技能目录与 Agent 软链，返回不一致项。
 
     Returns:
-        ok, mismatches（供 GUI 勾选修复）
+        ok, mismatches（供 GUI 勾选修复）, removed_empty_dirs
     """
+    removed_empty_dirs = cleanup_orphan_empty_repo_dirs(mgr)
+
     expected: dict[str, dict] = {}
     for repo in mgr.data.get("repos", []):
         for sk in repo.get("skills", []):
@@ -1226,7 +1300,11 @@ def healthcheck(mgr: Manager) -> dict:
         else:
             link.unlink(missing_ok=True)
 
-    return {"ok": not mismatches, "mismatches": mismatches}
+    return {
+        "ok": not mismatches,
+        "mismatches": mismatches,
+        "removed_empty_dirs": removed_empty_dirs,
+    }
 
 
 def apply_healthcheck_action(

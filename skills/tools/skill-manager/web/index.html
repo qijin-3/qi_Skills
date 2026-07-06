@@ -1926,6 +1926,9 @@
     async function doHealthcheck() {
       try {
         const data = await api('POST', '/api/healthcheck');
+        if (data.removed_empty_dirs?.length) {
+          toast(`已清理空目录: ${data.removed_empty_dirs.join(', ')}`);
+        }
         if (data.ok) {
           toast('配置、技能目录与软链一致');
           return;
