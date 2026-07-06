@@ -562,6 +562,13 @@
     .settings-agent-row:last-child { border-bottom: none; }
     .settings-agent-row input[type="text"] { flex: 1; min-width: 240px; }
     .settings-agent-row .agent-count { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 48px; text-align: right; }
+    .config-row { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; padding: var(--sp-4) 0; border-bottom: 1px solid var(--grey-1); }
+    .config-row:last-child { border-bottom: none; }
+    .config-row .config-meta { flex: 1; min-width: 200px; }
+    .config-row-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; }
+    .health-list { max-height: 280px; overflow: auto; border: 1px solid var(--grey-2); padding: var(--sp-3); }
+    .health-item { display: flex; gap: var(--sp-3); align-items: flex-start; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--grey-1); }
+    .health-item:last-child { border-bottom: none; }
     .badge.primary { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
     .card-head-actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; }
   </style>
@@ -570,12 +577,11 @@
   <div class="app">
     <header class="header">
       <div>
-        <p class="t-meta">Skill Manager · Local</p>
+        <p class="t-meta">Skill Manager</p>
         <h1 class="h-md">技能管理器</h1>
         <p class="lead" id="deviceInfo">加载中…</p>
       </div>
       <div class="header-actions">
-        <select id="deviceSelect" aria-label="设备"></select>
         <button class="btn btn-ghost" onclick="doHealthcheck()">健康检查</button>
         <button class="btn btn-primary" onclick="doUpdate()">检查更新</button>
         <button class="btn btn-ghost" onclick="loadAll()">刷新</button>
@@ -674,6 +680,18 @@
     <section id="panel-settings" class="panel" role="tabpanel" hidden>
       <div class="card">
         <div class="card-head">
+          <h2>配置管理</h2>
+        </div>
+        <p class="lead" style="margin-bottom:var(--sp-5)">每个配置拥有独立的仓库与技能库，目录位于 <code>~/Skill Manager/{配置名}/</code>。</p>
+        <div class="form-row" style="margin-bottom:var(--sp-5)">
+          <input type="text" id="newConfigName" placeholder="新配置名称，如 work / home">
+          <button type="button" class="btn btn-primary" id="addConfigBtn">添加配置</button>
+        </div>
+        <div id="configsList"><p class="empty">加载中…</p></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
           <h2>Agent 技能目录</h2>
           <button type="button" class="btn btn-primary btn-sm" id="saveSettingsBtn">保存</button>
         </div>
@@ -709,6 +727,73 @@
     </div>
   </dialog>
 
+  <dialog id="switchConfigDialog" class="alias-dialog">
+    <div class="alias-dialog-form">
+      <h3>切换配置</h3>
+      <p class="t-meta" id="switchConfigDialogId"></p>
+      <p class="dialog-warn" id="switchConfigDialogWarn"></p>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px">
+        <input type="checkbox" id="switchConfigRelink" checked>
+        同时切换 Agent 技能软链（卸载当前配置软链，链接到新配置）
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="switchConfigCancel">取消</button>
+        <button type="button" class="btn btn-primary" id="switchConfigConfirm">切换</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="deleteConfigDialog" class="alias-dialog">
+    <div class="alias-dialog-form">
+      <h3>确认删除配置</h3>
+      <p class="t-meta" id="deleteConfigDialogId"></p>
+      <p class="dialog-warn" id="deleteConfigDialogWarn"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="deleteConfigCancel">取消</button>
+        <button type="button" class="btn btn-danger" id="deleteConfigConfirm">删除配置</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="copyConfigDialog" class="alias-dialog">
+    <form id="copyConfigForm" class="alias-dialog-form">
+      <h3>复制配置</h3>
+      <p class="t-meta" id="copyConfigDialogSource"></p>
+      <input type="text" id="copyConfigNameInput" placeholder="新配置名称" autocomplete="off" required>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="copyConfigCancel">取消</button>
+        <button type="submit" class="btn btn-primary">复制</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="renameConfigDialog" class="alias-dialog">
+    <form id="renameConfigForm" class="alias-dialog-form">
+      <h3>重命名配置</h3>
+      <p class="t-meta" id="renameConfigDialogId"></p>
+      <input type="text" id="renameConfigNameInput" placeholder="配置名称" autocomplete="off" required>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="renameConfigCancel">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="healthcheckDialog" class="alias-dialog">
+    <div class="alias-dialog-form">
+      <h3>健康检查 — 发现不一致</h3>
+      <p class="lead" style="margin:0">勾选要修复的项，然后选择修复方式：</p>
+      <div class="health-list" id="healthcheckList"></div>
+      <div class="dialog-actions" style="justify-content:space-between">
+        <button type="button" class="btn btn-ghost" id="healthcheckCancel">关闭</button>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-ghost" id="healthcheckFixConfig">修复配置文件</button>
+          <button type="button" class="btn btn-primary" id="healthcheckFixSkills">修复技能文件</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     let deviceData = null;
     let reposCache = [];
@@ -719,6 +804,12 @@
     let settingsAgentsCache = [];
     let aliasEditRepoId = null;
     let removeRepoTargetId = null;
+    let pendingConfigId = null;
+    let deleteConfigTargetId = null;
+    let copyConfigSourceId = null;
+    let renameConfigTargetId = null;
+    let configsCache = [];
+    let healthcheckItems = [];
 
     /** 转义 HTML 防注入 */
     function esc(s) {
@@ -755,6 +846,19 @@
       if (!hasUpdates && tab && tab.classList.contains('active')) {
         document.querySelector('.tab[data-tab="skills"]').click();
       }
+    }
+
+    const LOCAL_REPO_ID = '__local__';
+
+    /** 仓库排序：Local 置顶，其余保持原顺序 */
+    function sortRepos(repos) {
+      const local = [];
+      const rest = [];
+      for (const r of repos) {
+        if (r.local || r.id === LOCAL_REPO_ID) local.push(r);
+        else rest.push(r);
+      }
+      return [...local, ...rest];
     }
 
     /** 仓库显示名：有别名用别名，否则用 id */
@@ -1126,7 +1230,10 @@
         });
         if (tab === 'skills') loadSkillsPanel();
         if (tab === 'updates') renderUpdatesPanel();
-        if (tab === 'settings') loadSettingsPanel();
+        if (tab === 'settings') {
+          loadConfigsPanel();
+          loadSettingsPanel();
+        }
       });
     });
 
@@ -1196,34 +1303,269 @@
       }
     });
 
-    /** 加载设备信息 */
-    async function loadDevice() {
-      deviceData = await api('GET', '/api/device');
-      const cur = deviceData.current;
-      document.getElementById('deviceInfo').textContent =
-        `${cur.device_id} · ${cur.hostname}`;
+    /** 加载配置列表 */
+    async function loadConfigsPanel() {
+      const data = await api('GET', '/api/configs');
+      configsCache = data.configs || [];
+      const el = document.getElementById('configsList');
+      const current = data.current;
+      if (!configsCache.length) {
+        el.innerHTML = '<p class="empty"><strong>暂无配置</strong></p>';
+        return;
+      }
+      el.innerHTML = configsCache.map(c => {
+        const isCurrent = c.config_id === current;
+        return `
+        <div class="config-row">
+          <div class="config-meta">
+            <strong>${esc(c.display_name)}</strong>
+            <span class="repo-id-sub">${esc(c.config_id)} · ${c.skill_count ?? 0} 个技能目录</span>
+          </div>
+          <div class="config-row-actions">
+            ${isCurrent
+              ? '<span class="repo-builtin-badge">当前</span>'
+              : `<button type="button" class="btn btn-primary btn-sm config-switch-btn"
+                  data-id="${esc(c.config_id)}" data-name="${esc(c.display_name)}">切换</button>`}
+            <button type="button" class="btn btn-ghost btn-sm config-copy-btn"
+              data-id="${esc(c.config_id)}" data-name="${esc(c.display_name)}">复制</button>
+            <button type="button" class="btn btn-ghost btn-sm config-rename-btn"
+              data-id="${esc(c.config_id)}" data-name="${esc(c.display_name)}">重命名</button>
+            ${isCurrent ? '' : `<button type="button" class="btn btn-danger btn-sm config-delete-btn"
+              data-id="${esc(c.config_id)}" data-name="${esc(c.display_name)}">删除</button>`}
+          </div>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('.config-switch-btn').forEach(btn => {
+        btn.addEventListener('click', () => openSwitchConfigDialog(btn.dataset.id));
+      });
+      el.querySelectorAll('.config-copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => openCopyConfigDialog(btn.dataset.id, btn.dataset.name));
+      });
+      el.querySelectorAll('.config-rename-btn').forEach(btn => {
+        btn.addEventListener('click', () => openRenameConfigDialog(btn.dataset.id, btn.dataset.name));
+      });
+      el.querySelectorAll('.config-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteConfigDialog(btn.dataset.id, btn.dataset.name));
+      });
+    }
 
-      const sel = document.getElementById('deviceSelect');
-      sel.innerHTML = '';
-      for (const id of deviceData.available) {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = id;
-        if (id === cur.device_id) opt.selected = true;
-        sel.appendChild(opt);
+    /** 添加配置 */
+    document.getElementById('addConfigBtn').addEventListener('click', async () => {
+      const name = document.getElementById('newConfigName').value.trim();
+      if (!name) { toast('请输入配置名称'); return; }
+      try {
+        await api('POST', '/api/configs', { name });
+        document.getElementById('newConfigName').value = '';
+        toast(`已创建配置: ${name}`);
+        await loadConfigsPanel();
+        await loadDevice();
+      } catch (e) {
+        toast('创建失败: ' + e.message);
+      }
+    });
+
+    /** 初始化复制配置对话框 */
+    function initCopyConfigDialog() {
+      const dlg = document.getElementById('copyConfigDialog');
+      document.getElementById('copyConfigCancel').addEventListener('click', () => {
+        copyConfigSourceId = null;
+        dlg.close();
+      });
+      document.getElementById('copyConfigForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const srcId = copyConfigSourceId;
+        const name = document.getElementById('copyConfigNameInput').value.trim();
+        copyConfigSourceId = null;
+        dlg.close();
+        if (!srcId || !name) return;
+        try {
+          await api('POST', `/api/configs/${encodeURIComponent(srcId)}/copy`, { name });
+          toast(`已复制配置: ${name}`);
+          await loadConfigsPanel();
+          await loadDevice();
+        } catch (err) {
+          toast('复制失败: ' + err.message);
+        }
+      });
+    }
+
+    /** 打开复制配置对话框 */
+    function openCopyConfigDialog(id, name) {
+      copyConfigSourceId = id;
+      document.getElementById('copyConfigDialogSource').textContent = `复制自 ${name || id}`;
+      document.getElementById('copyConfigNameInput').value = `${name || id}-copy`;
+      const dlg = document.getElementById('copyConfigDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+      document.getElementById('copyConfigNameInput').focus();
+      document.getElementById('copyConfigNameInput').select();
+    }
+
+    /** 初始化重命名配置对话框 */
+    function initRenameConfigDialog() {
+      const dlg = document.getElementById('renameConfigDialog');
+      document.getElementById('renameConfigCancel').addEventListener('click', () => {
+        renameConfigTargetId = null;
+        dlg.close();
+      });
+      document.getElementById('renameConfigForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = renameConfigTargetId;
+        const name = document.getElementById('renameConfigNameInput').value.trim();
+        renameConfigTargetId = null;
+        dlg.close();
+        if (!id || !name) return;
+        try {
+          await api('PUT', `/api/configs/${encodeURIComponent(id)}`, { name });
+          toast('配置已重命名');
+          await loadConfigsPanel();
+          await loadDevice();
+          await loadAll();
+        } catch (err) {
+          toast('重命名失败: ' + err.message);
+        }
+      });
+    }
+
+    /** 打开重命名配置对话框 */
+    function openRenameConfigDialog(id, name) {
+      renameConfigTargetId = id;
+      document.getElementById('renameConfigDialogId').textContent = id;
+      document.getElementById('renameConfigNameInput').value = name || id;
+      const dlg = document.getElementById('renameConfigDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+      document.getElementById('renameConfigNameInput').focus();
+      document.getElementById('renameConfigNameInput').select();
+    }
+
+    /** 初始化删除配置对话框 */
+    function initDeleteConfigDialog() {
+      const dlg = document.getElementById('deleteConfigDialog');
+      document.getElementById('deleteConfigCancel').addEventListener('click', () => {
+        deleteConfigTargetId = null;
+        dlg.close();
+      });
+      document.getElementById('deleteConfigConfirm').addEventListener('click', async () => {
+        const id = deleteConfigTargetId;
+        deleteConfigTargetId = null;
+        dlg.close();
+        if (!id) return;
+        try {
+          await api('DELETE', `/api/configs/${encodeURIComponent(id)}`);
+          toast('配置已删除');
+          await loadConfigsPanel();
+          await loadDevice();
+        } catch (e) {
+          toast('删除失败: ' + e.message);
+        }
+      });
+    }
+
+    /** 打开删除配置确认框 */
+    function openDeleteConfigDialog(id, name) {
+      deleteConfigTargetId = id;
+      document.getElementById('deleteConfigDialogId').textContent = id;
+      document.getElementById('deleteConfigDialogWarn').innerHTML =
+        `确定删除配置 <strong>${esc(name || id)}</strong>？<br>` +
+        '将永久删除该配置目录及其中全部技能库，此操作不可撤销。';
+      const dlg = document.getElementById('deleteConfigDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+    }
+
+    /** 初始化切换配置对话框 */
+    function initSwitchConfigDialog() {
+      const dlg = document.getElementById('switchConfigDialog');
+      document.getElementById('switchConfigCancel').addEventListener('click', () => {
+        pendingConfigId = null;
+        dlg.close();
+      });
+      document.getElementById('switchConfigConfirm').addEventListener('click', async () => {
+        const id = pendingConfigId;
+        const relink = document.getElementById('switchConfigRelink').checked;
+        pendingConfigId = null;
+        dlg.close();
+        if (!id) return;
+        try {
+          await api('POST', '/api/device/switch', { config_id: id, relink });
+          toast(relink ? `已切换并更新软链: ${id}` : `已切换配置: ${id}`);
+          await loadAll();
+        } catch (e) {
+          toast('切换失败: ' + e.message);
+          await loadDevice();
+        }
+      });
+    }
+
+    /** 打开切换配置确认框 */
+    function openSwitchConfigDialog(configId) {
+      const cfg = configsCache.find(c => c.config_id === configId)
+        || (deviceData?.available || []).find(c => (c.config_id || c) === configId);
+      const label = cfg?.display_name || configId;
+      pendingConfigId = configId;
+      document.getElementById('switchConfigDialogId').textContent = configId;
+      document.getElementById('switchConfigDialogWarn').innerHTML =
+        `切换到配置 <strong>${esc(label)}</strong>？`;
+      const dlg = document.getElementById('switchConfigDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+    }
+
+    /** 初始化健康检查对话框 */
+    function initHealthcheckDialog() {
+      document.getElementById('healthcheckCancel').addEventListener('click', () => {
+        document.getElementById('healthcheckDialog').close();
+      });
+      document.getElementById('healthcheckFixConfig').addEventListener('click', () =>
+        applyHealthcheckFix('config'));
+      document.getElementById('healthcheckFixSkills').addEventListener('click', () =>
+        applyHealthcheckFix('skills'));
+    }
+
+    /** 打开健康检查不一致项对话框 */
+    function openHealthcheckDialog(mismatches) {
+      healthcheckItems = mismatches || [];
+      const list = document.getElementById('healthcheckList');
+      list.innerHTML = healthcheckItems.map((m, i) => `
+        <label class="health-item">
+          <input type="checkbox" class="health-select" data-idx="${i}" checked>
+          <span>${esc(m.message || m.type)}</span>
+        </label>
+      `).join('');
+      const dlg = document.getElementById('healthcheckDialog');
+      if (dlg.showModal) dlg.showModal();
+      else dlg.setAttribute('open', '');
+    }
+
+    /** 应用健康检查修复 */
+    async function applyHealthcheckFix(mode) {
+      const selected = [...document.querySelectorAll('.health-select:checked')]
+        .map(cb => healthcheckItems[Number(cb.dataset.idx)])
+        .filter(Boolean);
+      if (!selected.length) { toast('请至少勾选一项'); return; }
+      try {
+        const data = await api('POST', '/api/healthcheck/apply', { mode, items: selected });
+        document.getElementById('healthcheckDialog').close();
+        toast(`已修复 ${data.fixed?.length || 0} 项（${mode === 'config' ? '配置文件' : '技能文件'}）`);
+        await loadAll();
+      } catch (e) {
+        toast('修复失败: ' + e.message);
       }
     }
 
-    document.getElementById('deviceSelect').addEventListener('change', async (e) => {
-      await api('POST', '/api/device/switch', { device_id: e.target.value });
-      toast('已切换设备: ' + e.target.value);
-      await loadAll();
-    });
+    /** 加载当前配置信息（页头展示） */
+    async function loadDevice() {
+      deviceData = await api('GET', '/api/device');
+      const cur = deviceData.current;
+      const label = cur.display_name || cur.config_id || cur.device_id;
+      document.getElementById('deviceInfo').textContent = label;
+    }
 
     /** 加载仓库列表与统计 */
     async function loadRepos() {
       const data = await api('GET', '/api/repos');
-      reposCache = data.repos;
+      reposCache = sortRepos(data.repos);
 
       const totalSynced = reposCache.reduce((n, r) => n + r.synced_count, 0);
       document.getElementById('repoStats').innerHTML = `
@@ -1258,8 +1600,8 @@
                             data-repo="${esc(r.id)}" title="编辑别名" aria-label="编辑 ${esc(r.id)} 别名">✎</button>`}
                     </div>
                   </td>
-                  <td>${esc(r.branch)}</td>
-                  <td><code>${esc((r.last_commit || '').slice(0, 8))}</code></td>
+                  <td>${r.local ? '—' : esc(r.branch || 'main')}</td>
+                  <td>${r.local ? '—' : `<code>${esc((r.last_commit || '').slice(0, 8))}</code>`}</td>
                   <td class="time-cell">${fmtTime(r.last_updated_at)}</td>
                   <td class="time-cell">${repoSkillRatio(r)}</td>
                   <td style="white-space:nowrap">
@@ -1456,12 +1798,16 @@
 
     /** 健康检查 */
     async function doHealthcheck() {
-      const data = await api('POST', '/api/healthcheck');
-      const msg = data.removed.length
-        ? `已清理: ${data.removed.join(', ')}`
-        : '软链健康';
-      toast(msg);
-      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+      try {
+        const data = await api('POST', '/api/healthcheck');
+        if (data.ok) {
+          toast('配置、技能目录与软链一致');
+          return;
+        }
+        openHealthcheckDialog(data.mismatches || []);
+      } catch (e) {
+        toast('健康检查失败: ' + e.message);
+      }
     }
 
     /** 检查云端与本地差异（不自动覆盖） */
@@ -1494,6 +1840,11 @@
 
     initAliasDialog();
     initRemoveRepoDialog();
+    initSwitchConfigDialog();
+    initCopyConfigDialog();
+    initRenameConfigDialog();
+    initDeleteConfigDialog();
+    initHealthcheckDialog();
     loadAll().catch(e => toast('错误: ' + e.message));
     refreshUpdatesTabVisibility();
   </script>

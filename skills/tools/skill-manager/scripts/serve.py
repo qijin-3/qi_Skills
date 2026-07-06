@@ -159,6 +159,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _api(self, path: str, method: str) -> None:
         """路由 REST API。"""
+        global _active_device
         mgr = get_mgr()
 
         if path == "/api/device" and method == "GET":
@@ -166,29 +167,65 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/device/switch" and method == "POST":
             body = read_body(self)
-            device_id = body.get("device_id", "").strip()
+            device_id = (body.get("config_id") or body.get("device_id") or "").strip()
             if not device_id:
-                raise ValueError("device_id 不能为空")
-            global _active_device
+                raise ValueError("config_id 不能为空")
+            relink = bool(body.get("relink", False))
+            old_id = mgr.device_id
+            result = sm.switch_config(old_id, device_id, relink=relink)
             _active_device = device_id
-            sm.set_active_device(device_id)
             mgr = get_mgr()
-            return json_response(self, 200, sm.get_device_info(mgr))
+            info = sm.get_device_info(mgr)
+            return json_response(self, 200, {**info, **result})
+
+        if path == "/api/configs" and method == "GET":
+            return json_response(self, 200, {
+                "configs": [sm.read_config_meta(c) for c in sm.list_device_configs()],
+                "current": mgr.device_id,
+            })
+
+        if path == "/api/configs" and method == "POST":
+            body = read_body(self)
+            created = sm.config_create(body.get("name", ""))
+            return json_response(self, 201, created)
+
+        m = re.match(r"^/api/configs/(.+)/copy$", path)
+        if m and method == "POST":
+            config_id = m.group(1)
+            body = read_body(self)
+            result = sm.config_copy(config_id, body.get("name", ""))
+            return json_response(self, 201, result)
+
+        m = re.match(r"^/api/configs/(.+)$", path)
+        if m:
+            config_id = m.group(1)
+            if method == "PUT":
+                body = read_body(self)
+                result = sm.config_rename(config_id, body.get("name", ""))
+                _active_device = result["config_id"]
+                return json_response(self, 200, result)
+            if method == "DELETE":
+                result = sm.config_delete(config_id)
+                return json_response(self, 200, result)
 
         if path == "/api/repos" and method == "GET":
             repos = []
             for repo in mgr.data.get("repos", []):
                 synced = sum(1 for s in repo.get("skills", []) if s.get("sync"))
-                cache = sm.repo_cache_path(repo)
-                skill_count = (
-                    len(sm.discover_skills_in_repo(cache))
-                    if cache.exists()
-                    else 0
-                )
+                if repo.get("local"):
+                    skill_count = len(sm.discover_local_skills(mgr))
+                else:
+                    cache = sm.repo_cache_path(repo)
+                    skill_count = (
+                        len(sm.discover_skills_in_repo(cache))
+                        if cache.exists()
+                        else 0
+                    )
                 repos.append({
                     "id": repo["id"],
                     "alias": repo.get("alias", ""),
                     "builtin": bool(repo.get("builtin")),
+                    "local": bool(repo.get("local")),
                     "url": repo.get("url"),
                     "branch": repo.get("branch", "main"),
                     "last_commit": repo.get("last_commit", ""),
@@ -196,6 +233,7 @@ class Handler(BaseHTTPRequestHandler):
                     "synced_count": synced,
                     "skill_count": skill_count,
                 })
+            repos = sm.sort_repos_for_display(repos)
             return json_response(self, 200, {"repos": repos})
 
         if path == "/api/repos" and method == "POST":
@@ -260,8 +298,15 @@ class Handler(BaseHTTPRequestHandler):
             return json_response(self, 200, sm.get_status(mgr))
 
         if path == "/api/healthcheck" and method == "POST":
-            report = sm.healthcheck()
+            report = sm.healthcheck(mgr)
             return json_response(self, 200, report)
+
+        if path == "/api/healthcheck/apply" and method == "POST":
+            body = read_body(self)
+            result = sm.apply_healthcheck_fix(
+                mgr, body.get("mode", ""), body.get("items", []),
+            )
+            return json_response(self, 200, result)
 
         if path == "/api/settings" and method == "GET":
             return json_response(self, 200, sm.get_settings_info())
