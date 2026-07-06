@@ -1,6 +1,8 @@
 # 飞书知识库文档索引
 
 > **本地为真相，飞书为用户视图。** 技能读上下文一律走本地 `content/`、`state/` 与脚本；飞书文档/Base 仅作展示与同步写入目标，**禁止**在周/月计划与复盘中从飞书回读。
+>
+> **日记录流（2026-07 起）**：白天 health-coach 只写 `daily-log.md`；每晚 health-evening-close 从 daily-log 统一同步 Base。白天不写 Base。
 
 ## 知识库结构
 
@@ -43,5 +45,6 @@ python3 health-system/scripts/health_wiki.py --sync-profile
 | 月目标 | `content/{YYYY}/{MM}/monthly-plan.md` |
 | 周计划 | `state/current-week.json` |
 | 周复盘 | `content/{YYYY}/{MM}/weekly-review.md` |
-| 日日志 | `content/{YYYY}/{MM}/daily-log.md` |
-| 近期记录 | `health_analytics.py` / `health_base.py`（脚本读 Base 落库数据） |
+| 日日志（白天真相源） | `content/{YYYY}/{MM}/daily-log.md` |
+| 结构化落库 | 每晚 `health-evening-close` → `health_base.py` 从 daily-log 同步 Base |
+| 近期记录 | `health_analytics.py`（读 Base 或 daily-log，以脚本实现为准） |
