@@ -678,6 +678,89 @@ def update_skills(
     return updated
 
 
+def skill_diff_summary(
+    cache: Path,
+    source_path: str,
+    old_commit: str | None,
+    new_commit: str,
+) -> str:
+    """生成技能目录在两次 commit 之间的 diff 摘要。"""
+    if not old_commit or old_commit in ("local", "") or old_commit == new_commit:
+        return "云端有新版本"
+    try:
+        stat = run_git(
+            ["diff", "--stat", old_commit, new_commit, "--", source_path],
+            cwd=cache,
+        )
+        lines = [ln.strip() for ln in stat.strip().splitlines() if ln.strip()]
+        if not lines:
+            return "commit 已变化，该技能路径无文件差异"
+        return lines[-1][:120]
+    except RuntimeError:
+        return f"{old_commit[:8]} → {new_commit[:8]}"
+
+
+def check_updates(mgr: Manager) -> dict:
+    """
+    检查云端仓库与本地已同步技能的差异（仅 fetch，不覆盖本地）。
+
+    Returns:
+        {"checked_at": "...", "updates": [...]}
+    """
+    updates: list[dict] = []
+
+    for repo in mgr.data.get("repos", []):
+        cache = repo_cache_path(repo)
+        if not cache.exists():
+            clone_repo(repo["url"], repo.get("branch", "main"), cache)
+
+        branch = repo.get("branch", "main")
+        try:
+            remote_commit = git_fetch(cache, branch)
+        except RuntimeError:
+            remote_commit = git_head(cache)
+
+        remote_time = git_commit_time(cache, remote_commit)
+
+        for sk in repo.get("skills", []):
+            if not sk.get("sync"):
+                continue
+            local_commit = sk.get("installed_commit") or ""
+            if local_commit == remote_commit:
+                continue
+
+            src = cache / sk.get("source_path", "")
+            if not src.exists():
+                continue
+
+            updates.append({
+                "repo_id": repo["id"],
+                "name": sk["name"],
+                "source_path": sk.get("source_path", ""),
+                "local_commit": local_commit[:8] if local_commit else "—",
+                "remote_commit": remote_commit[:8],
+                "local_updated_at": sk.get("installed_at"),
+                "remote_updated_at": remote_time,
+                "diff_summary": skill_diff_summary(
+                    cache, sk.get("source_path", ""), local_commit, remote_commit
+                ),
+            })
+
+    return {"checked_at": now_iso(), "updates": updates}
+
+
+def apply_updates(mgr: Manager, items: list[dict]) -> list[dict]:
+    """应用用户选中的技能更新（覆盖式）。"""
+    updated: list[dict] = []
+    for item in items:
+        repo_id = item.get("repo_id", "")
+        name = item.get("name", "")
+        if not repo_id or not name:
+            continue
+        updated.extend(update_skills(mgr, repo_id, name))
+    return updated
+
+
 def sync_skills_batch(
     mgr: Manager,
     repo_id: str,
@@ -864,7 +947,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 
 
 def cmd_update(args: argparse.Namespace) -> int:
-    """更新技能。"""
+    """应用技能更新（覆盖式）。"""
     mgr = load_manager(args.device)
     updated = update_skills(mgr, args.repo_id, args.skill)
     if not updated:
@@ -872,6 +955,21 @@ def cmd_update(args: argparse.Namespace) -> int:
     else:
         for u in updated:
             print(f"已更新: {u['name']} ({u['repo']}) -> {u['commit'][:8]}")
+    return 0
+
+
+def cmd_check_updates(args: argparse.Namespace) -> int:
+    """检查云端与本地差异，不自动更新。"""
+    mgr = load_manager(args.device)
+    result = check_updates(mgr)
+    updates = result.get("updates", [])
+    if not updates:
+        print("所有已同步技能均与云端一致。")
+        return 0
+    print(f"发现 {len(updates)} 项可更新（{result.get('checked_at')}）:")
+    for u in updates:
+        print(f"  [{u['repo_id']}] {u['name']}: {u['local_commit']} → {u['remote_commit']}")
+        print(f"    {u.get('diff_summary', '')}")
     return 0
 
 
@@ -946,9 +1044,11 @@ def build_parser() -> argparse.ArgumentParser:
     uninst = sub.add_parser("uninstall", help="卸载技能")
     uninst.add_argument("name")
 
-    upd = sub.add_parser("update", help="更新技能")
+    upd = sub.add_parser("update", help="应用技能更新（覆盖式）")
     upd.add_argument("--repo", dest="repo_id")
     upd.add_argument("--skill")
+
+    sub.add_parser("check-updates", help="检查云端与本地差异")
 
     sub.add_parser("status", help="状态摘要")
 
@@ -973,6 +1073,7 @@ def main(argv: list[str] | None = None) -> int:
         "install": cmd_install,
         "uninstall": cmd_uninstall,
         "update": cmd_update,
+        "check-updates": cmd_check_updates,
         "status": cmd_status,
         "ui": cmd_ui,
     }

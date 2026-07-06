@@ -230,6 +230,15 @@ class Handler(BaseHTTPRequestHandler):
             updated = sm.update_skills(mgr, body.get("repo_id"), body.get("skill"))
             return json_response(self, 200, {"updated": updated})
 
+        if path == "/api/updates/check" and method == "POST":
+            result = sm.check_updates(mgr)
+            return json_response(self, 200, result)
+
+        if path == "/api/updates/apply" and method == "POST":
+            body = read_body(self)
+            updated = sm.apply_updates(mgr, body.get("items", []))
+            return json_response(self, 200, {"updated": updated})
+
         if path == "/api/skills/batch" and method == "POST":
             body = read_body(self)
             result = sm.sync_skills_multi(mgr, body.get("actions", []))

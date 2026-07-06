@@ -367,6 +367,14 @@
       font-family: var(--sans);
       user-select: none;
     }
+    .skill-group summary .summary-main {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      flex: 1;
+      min-width: 0;
+    }
+    .skill-group summary .group-actions { flex-shrink: 0; }
     .skill-group summary::-webkit-details-marker { display: none; }
     .skill-group summary::before {
       content: '▸';
@@ -377,7 +385,20 @@
     .skill-group[open] summary::before { transform: rotate(90deg); }
     .skill-group .table-wrap { padding: 0 var(--sp-4) var(--sp-4); }
     .badge.synced { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+    .badge.warn { background: #fff3cd; color: #856404; }
     .time-cell { font-family: var(--mono); font-size: 11px; color: var(--grey-3); white-space: nowrap; }
+    .diff-cell { font-size: 12px; color: var(--grey-3); max-width: 280px; }
+    .tab-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 6px;
+      padding: 1px 6px;
+      background: var(--danger);
+      color: #fff;
+      vertical-align: middle;
+    }
+    .tab-badge:empty { display: none; }
   </style>
 </head>
 <body>
@@ -399,6 +420,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" role="tab" data-tab="repos" aria-selected="true">仓库管理</button>
       <button class="tab" role="tab" data-tab="skills" aria-selected="false">技能管理</button>
+      <button class="tab" role="tab" data-tab="updates" aria-selected="false">更新<span class="tab-badge" id="updatesBadge"></span></button>
     </nav>
 
     <!-- 仓库管理 -->
@@ -447,6 +469,23 @@
         <div id="skillsTable"><p class="empty">加载中…</p></div>
       </div>
     </section>
+
+    <!-- 更新 -->
+    <section id="panel-updates" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>待更新技能</h2>
+          <p class="t-meta" id="updatesCheckedAt">尚未检查</p>
+        </div>
+        <div class="skill-toolbar" id="updatesToolbar" hidden>
+          <button type="button" class="btn btn-ghost btn-sm" id="selectAllUpdates">全选</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="clearUpdatesSelection">取消选择</button>
+          <button type="button" class="btn btn-primary btn-sm" id="applyUpdatesBtn">应用选中更新</button>
+          <span class="t-meta" id="updatesSelectedCount">已选 0</span>
+        </div>
+        <div id="updatesTable"><p class="empty"><strong>暂无更新</strong>点击顶部「检查更新」扫描云端差异</p></div>
+      </div>
+    </section>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
@@ -455,6 +494,7 @@
     let deviceData = null;
     let reposCache = [];
     let skillsRowsCache = [];
+    let pendingUpdatesCache = [];
 
     /** 转义 HTML 防注入 */
     function esc(s) {
@@ -470,9 +510,22 @@
 
     /** 更新已选计数 */
     function updateSelectedCount() {
-      const n = document.querySelectorAll('.row-select:checked').length;
+      const n = document.querySelectorAll('#panel-skills .row-select:checked').length;
       const el = document.getElementById('selectedCount');
       if (el) el.textContent = `已选 ${n}`;
+    }
+
+    /** 更新「更新」Tab 已选计数 */
+    function updateUpdatesSelectedCount() {
+      const n = document.querySelectorAll('#panel-updates .update-select:checked').length;
+      const el = document.getElementById('updatesSelectedCount');
+      if (el) el.textContent = `已选 ${n}`;
+    }
+
+    /** 刷新更新 Tab 角标 */
+    function refreshUpdatesBadge() {
+      const badge = document.getElementById('updatesBadge');
+      if (badge) badge.textContent = pendingUpdatesCache.length ? String(pendingUpdatesCache.length) : '';
     }
 
     /** 绑定技能表内事件 */
@@ -527,13 +580,84 @@
         return `
           <details class="skill-group" data-repo="${esc(g.repo_id)}" ${open ? 'open' : ''}>
             <summary>
-              <span class="skill-name">${esc(g.repo_id)}</span>
-              <span class="t-meta">${g.skills.length} 项 · 仓库更新 ${fmtTime(g.repo_updated_at)} · 已同步 ${g.skills.filter(s => s.sync).length}</span>
+              <div class="summary-main">
+                <span class="skill-name">${esc(g.repo_id)}</span>
+                <span class="t-meta">${g.skills.length} 项 · 仓库更新 ${fmtTime(g.repo_updated_at)} · 已同步 ${g.skills.filter(s => s.sync).length}</span>
+              </div>
+              <span class="group-actions">
+                <button type="button" class="btn btn-ghost btn-sm group-select-all" data-repo="${esc(g.repo_id)}">组内全选</button>
+              </span>
             </summary>
             ${renderSkillTable(g.skills)}
           </details>
         `;
       }).join('');
+    }
+
+    /** 渲染更新列表 */
+    function renderUpdatesTable(updates) {
+      if (!updates.length) {
+        return '<p class="empty"><strong>暂无更新</strong>所有已同步技能均与云端一致</p>';
+      }
+      return `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr>
+              <th style="width:36px">选择</th>
+              <th>技能</th>
+              <th>仓库</th>
+              <th>本地</th>
+              <th>云端</th>
+              <th>差异摘要</th>
+            </tr></thead>
+            <tbody>
+              ${updates.map(u => `
+                <tr>
+                  <td>
+                    <input type="checkbox" class="update-select" checked
+                      data-repo="${esc(u.repo_id)}" data-name="${esc(u.name)}"
+                      aria-label="选择更新 ${esc(u.name)}">
+                  </td>
+                  <td><span class="skill-name">${esc(u.name)}</span></td>
+                  <td><span class="repo-tag">${esc(u.repo_id)}</span></td>
+                  <td class="time-cell"><code>${esc(u.local_commit)}</code><br>${fmtTime(u.local_updated_at)}</td>
+                  <td class="time-cell"><code>${esc(u.remote_commit)}</code><br>${fmtTime(u.remote_updated_at)}</td>
+                  <td class="diff-cell">${esc(u.diff_summary || '—')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    /** 渲染更新面板 */
+    function renderUpdatesPanel() {
+      const el = document.getElementById('updatesTable');
+      const toolbar = document.getElementById('updatesToolbar');
+      const checkedAt = document.getElementById('updatesCheckedAt');
+      refreshUpdatesBadge();
+
+      if (checkedAt) {
+        checkedAt.textContent = pendingUpdatesCache.length
+          ? `检查于 ${pendingUpdatesCache._checkedAt || '—'}`
+          : (pendingUpdatesCache._checkedAt ? `检查于 ${pendingUpdatesCache._checkedAt} · 无差异` : '尚未检查');
+      }
+
+      if (!pendingUpdatesCache.length) {
+        toolbar.hidden = true;
+        el.innerHTML = pendingUpdatesCache._checkedAt
+          ? '<p class="empty"><strong>暂无更新</strong>所有已同步技能均与云端一致</p>'
+          : '<p class="empty"><strong>暂无更新</strong>点击顶部「检查更新」扫描云端差异</p>';
+        return;
+      }
+
+      toolbar.hidden = false;
+      el.innerHTML = renderUpdatesTable(pendingUpdatesCache);
+      el.querySelectorAll('.update-select').forEach(cb => {
+        cb.addEventListener('change', updateUpdatesSelectedCount);
+      });
+      updateUpdatesSelectedCount();
     }
 
     /** API 请求封装 */
@@ -571,6 +695,7 @@
           p.hidden = !active;
         });
         if (tab === 'skills') loadSkillsPanel();
+        if (tab === 'updates') renderUpdatesPanel();
       });
     });
 
@@ -710,6 +835,15 @@
             det.addEventListener('toggle', () => {
               sessionStorage.setItem(`sm-fold-${det.dataset.repo}`, det.open ? '0' : '1');
             });
+            const groupBtn = det.querySelector('.group-select-all');
+            if (groupBtn) {
+              groupBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                det.querySelectorAll('.row-select').forEach(cb => { cb.checked = true; });
+                updateSelectedCount();
+              });
+            }
             bindSkillTableEvents(det);
           });
         } else {
@@ -726,12 +860,46 @@
 
     /** 全选 / 取消选择 */
     document.getElementById('selectAllSkills').addEventListener('click', () => {
-      document.querySelectorAll('.row-select').forEach(cb => { cb.checked = true; });
+      document.querySelectorAll('#panel-skills .row-select').forEach(cb => { cb.checked = true; });
       updateSelectedCount();
     });
     document.getElementById('clearSelectionBtn').addEventListener('click', () => {
-      document.querySelectorAll('.row-select').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('#panel-skills .row-select').forEach(cb => { cb.checked = false; });
       updateSelectedCount();
+    });
+
+    document.getElementById('selectAllUpdates').addEventListener('click', () => {
+      document.querySelectorAll('#panel-updates .update-select').forEach(cb => { cb.checked = true; });
+      updateUpdatesSelectedCount();
+    });
+    document.getElementById('clearUpdatesSelection').addEventListener('click', () => {
+      document.querySelectorAll('#panel-updates .update-select').forEach(cb => { cb.checked = false; });
+      updateUpdatesSelectedCount();
+    });
+
+    /** 应用选中的更新 */
+    document.getElementById('applyUpdatesBtn').addEventListener('click', async () => {
+      const items = [];
+      document.querySelectorAll('#panel-updates .update-select:checked').forEach(cb => {
+        items.push({ repo_id: cb.dataset.repo, name: cb.dataset.name });
+      });
+      if (!items.length) return toast('请选择要更新的技能');
+      if (!confirm(`确认应用选中的 ${items.length} 项更新？本地文件将被覆盖。`)) return;
+      toast(`正在应用 ${items.length} 项更新…`);
+      try {
+        const result = await api('POST', '/api/updates/apply', { items });
+        toast(`已更新 ${(result.updated || []).length} 个技能`);
+        const applied = new Set((result.updated || []).map(u => `${u.repo}:${u.name}`));
+        pendingUpdatesCache = pendingUpdatesCache.filter(
+          u => !applied.has(`${u.repo_id}:${u.name}`)
+        );
+        pendingUpdatesCache._checkedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        renderUpdatesPanel();
+        await loadRepos();
+        if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+      } catch (e) {
+        toast('更新失败: ' + e.message);
+      }
     });
 
     /** 批量同步选中技能 */
@@ -808,15 +976,25 @@
       if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
     }
 
-    /** 检查更新 */
+    /** 检查云端与本地差异（不自动覆盖） */
     async function doUpdate() {
-      toast('正在检查更新…');
-      const data = await api('POST', '/api/update', {});
-      toast(data.updated.length
-        ? `已更新 ${data.updated.length} 个技能`
-        : '所有技能已是最新');
-      await loadRepos();
-      if (!document.getElementById('panel-skills').hidden) await loadSkillsPanel();
+      toast('正在检查云端差异…');
+      try {
+        const data = await api('POST', '/api/updates/check', {});
+        pendingUpdatesCache = data.updates || [];
+        pendingUpdatesCache._checkedAt = (data.checked_at || '').slice(0, 19).replace('T', ' ');
+        refreshUpdatesBadge();
+        renderUpdatesPanel();
+
+        if (pendingUpdatesCache.length) {
+          toast(`发现 ${pendingUpdatesCache.length} 项可更新`);
+          document.querySelector('.tab[data-tab="updates"]').click();
+        } else {
+          toast('所有已同步技能均与云端一致');
+        }
+      } catch (e) {
+        toast('检查失败: ' + e.message);
+      }
     }
 
     /** 全量刷新 */
