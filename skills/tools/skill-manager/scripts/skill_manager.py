@@ -216,9 +216,15 @@ def git_head(repo_path: Path) -> str:
 
 
 def git_fetch(repo_path: Path, branch: str) -> str:
-    """fetch 远程分支并返回 origin/<branch> 的 commit SHA。"""
+    """
+    fetch 远程分支并同步工作区到最新 commit。
+
+    ponytail: 浅克隆 fetch 后 HEAD 不会自动前进，复制文件前必须 reset。
+    """
     run_git(["fetch", "origin", branch, "--depth", "1"], cwd=repo_path)
-    return run_git(["rev-parse", f"origin/{branch}"], cwd=repo_path)
+    commit = run_git(["rev-parse", f"origin/{branch}"], cwd=repo_path)
+    run_git(["reset", "--hard", commit], cwd=repo_path)
+    return commit
 
 
 def clone_repo(url: str, branch: str, dest: Path) -> None:
@@ -678,31 +684,227 @@ def update_skills(
     return updated
 
 
-def skill_diff_summary(
-    cache: Path,
-    source_path: str,
-    old_commit: str | None,
-    new_commit: str,
-) -> str:
-    """生成技能目录在两次 commit 之间的 diff 摘要。"""
-    if not old_commit or old_commit in ("local", "") or old_commit == new_commit:
-        return "云端有新版本"
+def is_skill_path_excluded(rel_path: str) -> bool:
+    """判断 SKILL.md 路径是否在排除目录中。"""
+    parts = Path(rel_path).parts
+    dir_parts = parts[:-1] if parts and parts[-1] == "SKILL.md" else parts
+    return any(p in EXCLUDE_PARTS or p.startswith(".") for p in dir_parts)
+
+
+def git_ensure_commits(cache: Path, *commits: str) -> None:
+    """确保浅克隆缓存中存在指定 commit（按需 fetch）。"""
+    for commit in commits:
+        if not commit or commit in ("local", ""):
+            continue
+        try:
+            run_git(["rev-parse", "--verify", f"{commit}^{{commit}}"], cwd=cache)
+        except RuntimeError:
+            run_git(["fetch", "origin", commit, "--depth", "1"], cwd=cache)
+
+
+def skill_dirs_at_commit(cache: Path, commit: str) -> set[str]:
+    """返回某 commit 下所有技能目录（含 SKILL.md 的父路径）。"""
+    if not commit or commit in ("local", ""):
+        return set()
+    git_ensure_commits(cache, commit)
     try:
-        stat = run_git(
-            ["diff", "--stat", old_commit, new_commit, "--", source_path],
-            cwd=cache,
-        )
-        lines = [ln.strip() for ln in stat.strip().splitlines() if ln.strip()]
-        if not lines:
-            return "commit 已变化，该技能路径无文件差异"
-        return lines[-1][:120]
+        out = run_git(["ls-tree", "-r", "--name-only", commit], cwd=cache)
     except RuntimeError:
-        return f"{old_commit[:8]} → {new_commit[:8]}"
+        return set()
+    dirs: set[str] = set()
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.endswith("SKILL.md") or is_skill_path_excluded(line):
+            continue
+        dirs.add(Path(line).parent.as_posix())
+    return dirs
+
+
+def git_diff_name_status(
+    cache: Path,
+    old_commit: str,
+    new_commit: str,
+    path: str = "",
+) -> list[tuple[str, str]]:
+    """返回 git diff --name-status 的 (状态, 文件路径) 列表。"""
+    if not old_commit or old_commit in ("local", "") or old_commit == new_commit:
+        return []
+    git_ensure_commits(cache, old_commit, new_commit)
+    try:
+        args = ["diff", "--name-status", old_commit, new_commit]
+        if path:
+            args += ["--", path]
+        out = run_git(args, cwd=cache)
+    except RuntimeError:
+        return []
+    results: list[tuple[str, str]] = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("\t")
+        status = parts[0]
+        if status.startswith("R") and len(parts) >= 3:
+            results.append((status, parts[2]))
+        elif len(parts) >= 2:
+            results.append((status, parts[-1]))
+    return results
+
+
+def summarize_file_changes(changes: list[tuple[str, str]], source_path: str) -> str | None:
+    """
+    汇总技能目录内的文件增删改。
+
+    Returns:
+        如「新增 2、删除 1、修改 3 个文件」；无变化时返回 None。
+    """
+    prefix = source_path.rstrip("/") + "/"
+    added = deleted = modified = 0
+    samples: list[str] = []
+    for status, fp in changes:
+        if not (fp.startswith(prefix) or fp == source_path):
+            continue
+        base = fp[len(prefix):] if fp.startswith(prefix) else fp
+        if status.startswith("A"):
+            added += 1
+        elif status.startswith("D"):
+            deleted += 1
+        else:
+            modified += 1
+        if len(samples) < 3:
+            samples.append(Path(base).name)
+    total = added + deleted + modified
+    if total == 0:
+        return None
+    parts: list[str] = []
+    if added:
+        parts.append(f"新增 {added}")
+    if deleted:
+        parts.append(f"删除 {deleted}")
+    if modified:
+        parts.append(f"修改 {modified}")
+    detail = f"（{', '.join(samples)}{'…' if total > len(samples) else ''}）"
+    return "、".join(parts) + f" 个文件{detail}"
+
+
+def skill_info_at_path(cache: Path, source_path: str) -> DiscoveredSkill | None:
+    """从缓存工作区读取指定路径的技能信息。"""
+    skill_md = cache / source_path / "SKILL.md"
+    if not skill_md.is_file():
+        return None
+    name, description = parse_frontmatter(skill_md)
+    return DiscoveredSkill(
+        name=name,
+        source_path=source_path,
+        description=description,
+        summary=summarize_description(description),
+    )
+
+
+def repo_baseline_commit(repo: dict) -> str:
+    """取仓库用于对比的基准 commit。"""
+    baseline = repo.get("last_commit") or ""
+    if baseline:
+        return baseline
+    synced = [
+        s.get("installed_commit", "")
+        for s in repo.get("skills", [])
+        if s.get("sync") and s.get("installed_commit")
+    ]
+    return synced[0] if synced else ""
+
+
+def collect_repo_updates(
+    repo: dict,
+    cache: Path,
+    remote_commit: str,
+    remote_time: str,
+) -> list[dict]:
+    """收集单个仓库的可展示更新项（仅新增/删除/文件变更）。"""
+    updates: list[dict] = []
+    baseline = repo_baseline_commit(repo)
+    synced_by_path = {
+        s.get("source_path", ""): s
+        for s in repo.get("skills", [])
+        if s.get("sync")
+    }
+
+    if baseline and baseline != remote_commit:
+        old_dirs = skill_dirs_at_commit(cache, baseline)
+        new_dirs = skill_dirs_at_commit(cache, remote_commit)
+        for sp in sorted(new_dirs - old_dirs):
+            info = skill_info_at_path(cache, sp)
+            if not info:
+                continue
+            updates.append({
+                "repo_id": repo["id"],
+                "name": info.name,
+                "source_path": sp,
+                "change_type": "new",
+                "summary": "云端新增技能",
+                "local_commit": baseline[:8],
+                "remote_commit": remote_commit[:8],
+                "local_updated_at": repo.get("last_updated_at"),
+                "remote_updated_at": remote_time,
+            })
+        for sp in sorted(old_dirs - new_dirs):
+            sk = synced_by_path.get(sp)
+            if not sk:
+                continue
+            updates.append({
+                "repo_id": repo["id"],
+                "name": sk["name"],
+                "source_path": sp,
+                "change_type": "deleted",
+                "summary": "云端已删除此技能",
+                "local_commit": (sk.get("installed_commit") or baseline)[:8],
+                "remote_commit": remote_commit[:8],
+                "local_updated_at": sk.get("installed_at"),
+                "remote_updated_at": remote_time,
+            })
+
+    deleted_paths = {
+        u["source_path"] for u in updates if u.get("change_type") == "deleted"
+    }
+    new_paths = {
+        u["source_path"] for u in updates if u.get("change_type") == "new"
+    }
+
+    for sk in repo.get("skills", []):
+        if not sk.get("sync"):
+            continue
+        sp = sk.get("source_path", "")
+        if sp in deleted_paths or sp in new_paths:
+            continue
+        local_commit = sk.get("installed_commit") or baseline
+        if local_commit == remote_commit:
+            continue
+        if not (cache / sp).exists():
+            continue
+        changes = git_diff_name_status(cache, local_commit, remote_commit, sp)
+        summary = summarize_file_changes(changes, sp)
+        if not summary:
+            continue
+        updates.append({
+            "repo_id": repo["id"],
+            "name": sk["name"],
+            "source_path": sp,
+            "change_type": "modified",
+            "summary": summary,
+            "local_commit": local_commit[:8] if local_commit else "—",
+            "remote_commit": remote_commit[:8],
+            "local_updated_at": sk.get("installed_at"),
+            "remote_updated_at": remote_time,
+        })
+
+    return updates
 
 
 def check_updates(mgr: Manager) -> dict:
     """
-    检查云端仓库与本地已同步技能的差异（仅 fetch，不覆盖本地）。
+    检查云端仓库与本地差异（仅 fetch，不覆盖本地）。
+
+    仅返回三类变更：新增技能、删除技能、技能目录内文件增删改。
 
     Returns:
         {"checked_at": "...", "updates": [...]}
@@ -721,43 +923,31 @@ def check_updates(mgr: Manager) -> dict:
             remote_commit = git_head(cache)
 
         remote_time = git_commit_time(cache, remote_commit)
-
-        for sk in repo.get("skills", []):
-            if not sk.get("sync"):
-                continue
-            local_commit = sk.get("installed_commit") or ""
-            if local_commit == remote_commit:
-                continue
-
-            src = cache / sk.get("source_path", "")
-            if not src.exists():
-                continue
-
-            updates.append({
-                "repo_id": repo["id"],
-                "name": sk["name"],
-                "source_path": sk.get("source_path", ""),
-                "local_commit": local_commit[:8] if local_commit else "—",
-                "remote_commit": remote_commit[:8],
-                "local_updated_at": sk.get("installed_at"),
-                "remote_updated_at": remote_time,
-                "diff_summary": skill_diff_summary(
-                    cache, sk.get("source_path", ""), local_commit, remote_commit
-                ),
-            })
+        updates.extend(collect_repo_updates(repo, cache, remote_commit, remote_time))
 
     return {"checked_at": now_iso(), "updates": updates}
 
 
 def apply_updates(mgr: Manager, items: list[dict]) -> list[dict]:
-    """应用用户选中的技能更新（覆盖式）。"""
+    """应用用户选中的变更：新增→安装、删除→卸载、修改→覆盖更新。"""
     updated: list[dict] = []
     for item in items:
         repo_id = item.get("repo_id", "")
         name = item.get("name", "")
         if not repo_id or not name:
             continue
-        updated.extend(update_skills(mgr, repo_id, name))
+        change_type = item.get("change_type", "modified")
+        if change_type == "new":
+            ref = item.get("source_path") or name
+            r = install_skill(mgr, repo_id, ref, save=False)
+            updated.append({**r, "repo": repo_id, "change_type": "new"})
+        elif change_type == "deleted":
+            uninstall_skill(mgr, name, save=False)
+            updated.append({"name": name, "repo": repo_id, "change_type": "deleted"})
+        else:
+            for r in update_skills(mgr, repo_id, name):
+                updated.append({**r, "change_type": "modified"})
+    mgr.save()
     return updated
 
 
@@ -966,10 +1156,11 @@ def cmd_check_updates(args: argparse.Namespace) -> int:
     if not updates:
         print("所有已同步技能均与云端一致。")
         return 0
-    print(f"发现 {len(updates)} 项可更新（{result.get('checked_at')}）:")
+    print(f"发现 {len(updates)} 项变更（{result.get('checked_at')}）:")
+    type_labels = {"new": "新增", "deleted": "删除", "modified": "变更"}
     for u in updates:
-        print(f"  [{u['repo_id']}] {u['name']}: {u['local_commit']} → {u['remote_commit']}")
-        print(f"    {u.get('diff_summary', '')}")
+        label = type_labels.get(u.get("change_type", ""), "?")
+        print(f"  [{label}] [{u['repo_id']}] {u['name']}: {u.get('summary', '')}")
     return 0
 
 

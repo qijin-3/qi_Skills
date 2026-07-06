@@ -386,6 +386,8 @@
     .skill-group .table-wrap { padding: 0 var(--sp-4) var(--sp-4); }
     .badge.synced { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
     .badge.warn { background: #fff3cd; color: #856404; }
+    .badge.new { background: #d1f4d9; color: var(--ok); }
+    .badge.del { background: #fde8e8; color: var(--danger); }
     .time-cell { font-family: var(--mono); font-size: 11px; color: var(--grey-3); white-space: nowrap; }
     .diff-cell { font-size: 12px; color: var(--grey-3); max-width: 280px; }
     .tab-badge {
@@ -597,8 +599,10 @@
     /** 渲染更新列表 */
     function renderUpdatesTable(updates) {
       if (!updates.length) {
-        return '<p class="empty"><strong>暂无更新</strong>所有已同步技能均与云端一致</p>';
+        return '<p class="empty"><strong>暂无更新</strong>未发现新增、删除或文件变更</p>';
       }
+      const typeLabel = { new: '新增', deleted: '删除', modified: '变更' };
+      const typeBadge = { new: 'new', deleted: 'del', modified: 'warn' };
       return `
         <div class="table-wrap">
           <table class="data">
@@ -606,9 +610,8 @@
               <th style="width:36px">选择</th>
               <th>技能</th>
               <th>仓库</th>
-              <th>本地</th>
-              <th>云端</th>
-              <th>差异摘要</th>
+              <th>变更类型</th>
+              <th>说明</th>
             </tr></thead>
             <tbody>
               ${updates.map(u => `
@@ -616,13 +619,14 @@
                   <td>
                     <input type="checkbox" class="update-select" checked
                       data-repo="${esc(u.repo_id)}" data-name="${esc(u.name)}"
-                      aria-label="选择更新 ${esc(u.name)}">
+                      data-change-type="${esc(u.change_type || 'modified')}"
+                      data-path="${esc(u.source_path || '')}"
+                      aria-label="选择 ${esc(u.name)}">
                   </td>
                   <td><span class="skill-name">${esc(u.name)}</span></td>
                   <td><span class="repo-tag">${esc(u.repo_id)}</span></td>
-                  <td class="time-cell"><code>${esc(u.local_commit)}</code><br>${fmtTime(u.local_updated_at)}</td>
-                  <td class="time-cell"><code>${esc(u.remote_commit)}</code><br>${fmtTime(u.remote_updated_at)}</td>
-                  <td class="diff-cell">${esc(u.diff_summary || '—')}</td>
+                  <td><span class="badge ${typeBadge[u.change_type] || 'muted'}">${typeLabel[u.change_type] || '—'}</span></td>
+                  <td class="diff-cell">${esc(u.summary || '—')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -647,7 +651,7 @@
       if (!pendingUpdatesCache.length) {
         toolbar.hidden = true;
         el.innerHTML = pendingUpdatesCache._checkedAt
-          ? '<p class="empty"><strong>暂无更新</strong>所有已同步技能均与云端一致</p>'
+          ? '<p class="empty"><strong>暂无更新</strong>未发现新增、删除或文件变更</p>'
           : '<p class="empty"><strong>暂无更新</strong>点击顶部「检查更新」扫描云端差异</p>';
         return;
       }
@@ -881,7 +885,12 @@
     document.getElementById('applyUpdatesBtn').addEventListener('click', async () => {
       const items = [];
       document.querySelectorAll('#panel-updates .update-select:checked').forEach(cb => {
-        items.push({ repo_id: cb.dataset.repo, name: cb.dataset.name });
+        items.push({
+          repo_id: cb.dataset.repo,
+          name: cb.dataset.name,
+          change_type: cb.dataset.changeType || 'modified',
+          source_path: cb.dataset.path || '',
+        });
       });
       if (!items.length) return toast('请选择要更新的技能');
       if (!confirm(`确认应用选中的 ${items.length} 项更新？本地文件将被覆盖。`)) return;
@@ -889,7 +898,11 @@
       try {
         const result = await api('POST', '/api/updates/apply', { items });
         toast(`已更新 ${(result.updated || []).length} 个技能`);
-        const applied = new Set((result.updated || []).map(u => `${u.repo}:${u.name}`));
+        const applied = new Set((result.updated || []).map(u => {
+          const repo = u.repo || u.repo_id || '';
+          const nm = u.name || u.uninstalled || '';
+          return `${repo}:${nm}`;
+        }));
         pendingUpdatesCache = pendingUpdatesCache.filter(
           u => !applied.has(`${u.repo_id}:${u.name}`)
         );
@@ -990,7 +1003,7 @@
           toast(`发现 ${pendingUpdatesCache.length} 项可更新`);
           document.querySelector('.tab[data-tab="updates"]').click();
         } else {
-          toast('所有已同步技能均与云端一致');
+          toast('所有技能均与云端一致');
         }
       } catch (e) {
         toast('检查失败: ' + e.message);
