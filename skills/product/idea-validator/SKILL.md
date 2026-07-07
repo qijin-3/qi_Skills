@@ -2,18 +2,19 @@
 name: idea-validator
 description: >
   Idea 快速验证工具 - 通过结构化多步骤方法论帮助独立开发者在投入开发前验证产品想法。
-  覆盖危险信号预筛 → 假设锁定 → 用户声音挖掘（动态平台选择，最多 9 平台）→ 竞品解构 → 综合评估的完整流程，最终输出可视化 HTML 报告 + 用户反馈留档文件。
-  当用户说「验证这个 idea」「分析这个产品想法」「帮我做市场调研」「这个方向值得做吗」「我有个想法」「走赛道 A」「这个产品可行吗」，或者直接描述一个产品/创业想法时触发。
+  覆盖危险信号预筛 → 假设锁定 → 用户声音挖掘（动态平台选择，最多 9 平台）→ 竞品解构 → 综合评估的完整流程，最终输出可视化 HTML 报告 + 用户反馈留档文件；HTML 完成后可询问用户是否生成 Markdown PRD（自动选择最合适的 PRD 模板）。
+  当用户说「验证这个 idea」「分析这个产品想法」「帮我做市场调研」「这个方向值得做吗」「我有个想法」「走赛道 A」「这个产品可行吗」「生成 PRD」「把验证结果写成 PRD」，或者直接描述一个产品/创业想法时触发。
 ---
 
 # Idea Validator · 产品化验证
 
-独立开发者视角的产品化 idea 验证流程。全程自动推进，用户只在 3 个节点参与：Step 0 预筛问题回答（可选）、Step 1 JTBD 回答、Step 1 假设确认。
+独立开发者视角的产品化 idea 验证流程。全程自动推进，用户参与节点：Step 0 预筛（可选）、Step 1 JTBD 回答、Step 1 假设确认、**Step 5 PRD 确认（可选）**。
 
 **输出文件统一存放至** `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`：
-- `report.html`：可视化 HTML 报告
+- `report.html`：可视化 HTML 报告（必出）
 - `user-feedback.jsonl`：用户反馈数据（JSONL，可跨次调研追加复用）
 - `feedback-meta.json`：调研元信息（区域/平台/统计）
+- `prd.md`：Markdown PRD（可选，用户确认后生成）
 
 ---
 
@@ -53,9 +54,10 @@ agent-reach doctor
 
 ## 执行规则
 
-- 每个 Step 开始前输出：`▶ Step X / 4 · 标题`
+- 每个 Step 开始前输出：`▶ Step X / 5 · 标题`
 - 每个 Step 完成后输出关键发现摘要，**立即自动进入下一步**，不询问
-- 唯一等待节点：Step 0 提问 / Step 1 JTBD 提问 / Step 1 假设确认
+- 等待节点：Step 0 提问 / Step 1 JTBD 提问 / Step 1 假设确认 / **Step 5 PRD 确认**
+- Step 0–4 除上述节点外自动推进；Step 4 完成后必须询问是否生成 PRD
 
 ---
 
@@ -272,6 +274,52 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 - 若目录不存在则自动创建：`mkdir -p "/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>"`
 - 若该目录已存在 `user-feedback.jsonl`（历史调研留档），读取其 `session_date` 列表，在报告 Tab 2 中注明「已有 X 次历史调研，本次新增 Y 条」
 
+**4c. 询问是否生成 PRD**（HTML 保存成功后执行，**必须停下来等待用户回复**）：
+
+```
+▶ Step 5 / 5 · PRD 生成（可选）
+
+HTML 报告已保存至 …/report.html
+
+是否需要基于本次验证结果生成 Markdown 格式的 PRD？
+- 回复「要」/「生成 PRD」→ 自动选择模板并生成
+- 回复「不要」/跳过 → 流程结束
+```
+
+用户拒绝或跳过 → 输出流程完成摘要，结束。
+
+用户确认 → 进入 Step 5 生成流程。
+
+---
+
+## Step 5 · PRD 生成（可选）
+
+> 模板选择逻辑、数据映射、6 套模板结构 → `references/prd-template-guide.md`
+> 各模板骨架 → `references/prd-templates/<template-id>.md`
+
+**5a. 选择模板**：按 `prd-template-guide.md` 决策树自动选择；向用户说明选择理由。用户可指定其他模板。
+
+| 模板 ID | 名称 | 典型场景 |
+|---------|------|---------|
+| `lenny-one-pager` | Lenny 个人一页纸 | 独立开发者默认；GRAVEYARD/PIVOT 轻量记录 |
+| `adam-initiative` | Adam Thomas 倡议 | 向合伙人/投资人争取资源 |
+| `steve-morin-one-pager` | Steve Morin 1-Pager | 技术向/开发者工具 |
+| `asana-brief` | Asana 项目简报 | 新产品叙事驱动立项 |
+| `figma-prd` | Figma PRD | 现有产品新功能 |
+| `kevin-yien-prd` | Kevin Yien PRD | 多角色团队、BUILD 高分正式立项 |
+
+**5b. 生成 PRD**：读取选定模板骨架，用本次验证数据填充（不得编造报告中没有的数据；缺失标「待补充」）。
+
+**5c. 保存**：`/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/prd.md`
+
+**5d. 完成摘要**：
+```
+✓ PRD 已生成
+模板：[模板中文名]
+路径：…/prd.md
+说明：[一句话为何选此模板]
+```
+
 ---
 
 ## 禁止事项
@@ -289,8 +337,9 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 
 **流程**
 - 不得跳过 Step 1 的用户确认节点
-- 不得输出 Markdown 格式的最终报告（必须是 HTML）
+- Step 4 最终报告必须是 HTML（`report.html`）；Markdown PRD 仅在 Step 5 用户确认后作为补充产出
 - 不得在 Step 2–3 中途停下来询问用户
+- 不得在用户未确认时自动生成 PRD
 - 不得对明显面向海外用户的 idea 执行小红书/哔哩哔哩搜索（无效数据污染结论）
 - 不得对明显面向国内用户的 idea 执行 Reddit/HN/Google Play 搜索（同上）
 - 不得以「证据不够」为由跳过任何**启用平台**；证据不足应扩大搜索词后重试
@@ -313,3 +362,4 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 - [ ] 每个评分维度先列证据再给分，证据不足维度已封顶并标注
 - [ ] **HTML 报告已保存**至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/report.html`，包含全部 5 个 Tab，离线可打开；平台覆盖含 YouTube / 哔哩哔哩计数；声音表含原文 + 中文翻译
 - [ ] MVP 路径每步包含可量化成功信号
+- [ ] **Step 5**：HTML 保存后已询问用户是否生成 PRD；若用户确认，已按决策树选模板并保存 `prd.md`，数据来自验证报告无编造

@@ -51,6 +51,21 @@
         {"name": "competitor-resume", "description": "竞品含 Rezi/Teal/Jobscan 或同类"},
         {"name": "challenging-evidence", "description": "含挑战假设及意外发现维度"}
       ]
+    },
+    {
+      "id": 4,
+      "name": "prd-generation",
+      "prompt": "帮我验证：面向小团队的轻量 OKR 追踪工具，$5/月，差异化是「从 Linear/GitHub PR 自动提取进展」。\n\n【模拟用户回答，直接推进】\nStep 0 跳过。Step 1 JTBD 已回答，假设直接锁定。完整执行 Step 0-4 生成 HTML 报告到 outputs/。\n\nHTML 完成后，用户回复「要，生成 PRD」→ 执行 Step 5，自动选择模板并生成 prd.md。",
+      "expected_output": "HTML 报告完成后询问 PRD；用户确认后生成 prd.md，含 frontmatter（template/action/score），内容映射自验证数据无编造。",
+      "files": [],
+      "assertions": [
+        {"name": "html-report-exists", "description": "outputs 目录中存在 HTML 报告"},
+        {"name": "prd-asked", "description": "HTML 保存后询问用户是否生成 PRD"},
+        {"name": "prd-exists", "description": "用户确认后 outputs 或 idea-slug 目录存在 prd.md"},
+        {"name": "prd-frontmatter", "description": "prd.md 含 YAML frontmatter：template、action、total_score"},
+        {"name": "prd-no-fabrication", "description": "PRD 问题/用户/竞品内容与 HTML 报告一致，无凭空编造"},
+        {"name": "template-selected", "description": "向用户说明了所选 PRD 模板及原因"}
+      ]
     }
   ]
 }
