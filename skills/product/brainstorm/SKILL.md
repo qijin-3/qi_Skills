@@ -151,6 +151,8 @@ description: >
 
 全部输出后问：「哪 1–2 个方向最让你有感觉？」用户未选则基于传播动力推荐 1–2 个。
 
+**发散记录留存**：Phase 3 的全部方向（含未选中的）必须在 Phase 4 写入 HTML 的「发散记录」Tab。用户在 Phase 1–3 中的任何修正（情绪内核改写、方向微调、自发新方向）记入「用户调整记录」区块。
+
 > 发散质量标准（好/坏例子）、概念错位与自由漂移的实操 → `references/thinking-methods.md`
 
 ---
@@ -169,17 +171,18 @@ description: >
    - **视觉方向**：具体色彩 + 核心视觉动作 + 情绪氛围
    - **Vibe Coding 提示词**：五要素齐全，可直接粘贴
    - **传播钩子**：2–3 个候选，符合「1000 人点赞」标准
-3. 替换模板中所有 `[[占位符]]`（见 `html-output-spec.md` 清单）
-4. 按情绪重量选 `data-theme`（轻的不用 `midnight-ink`）
-5. **Write** 到固定目录（先 `mkdir -p`）：
+3. **填发散记录 Tab**（`[[IDEA_LOG_ITEMS]]` + `[[USER_REVISION_ITEMS]]` + `[[IDEA_COUNT]]`）：回填 Phase 3 全部方向与用户调整记录，格式见 `html-output-spec.md`
+4. 替换模板中所有 `[[占位符]]`（见 `html-output-spec.md` 清单）
+5. 按情绪重量选 `data-theme`（轻的不用 `midnight-ink`）
+6. **Write** 到固定目录（先 `mkdir -p`）：
 
 ```
 /Users/jin/SynologyDrive/Working/Ideas/💥 Brainstorm/<概念名>.html
 ```
 
-文件名按**选定主产品名**命名（中文可直接用；英文用小写连字符）。用户选了 2 个方向 → 各写一张 HTML。
+文件名按**选定主产品名**命名（中文可直接用；英文用小写连字符）。用户选了 2 个方向 → 各写一张 HTML，每张 HTML 的「发散记录」Tab 均含同一次会话的全部 Phase 3 方向。
 
-6. 对话结尾告知完整保存路径，附一句「用浏览器打开即可查看」
+7. 对话结尾告知完整保存路径，附一句「用浏览器打开即可查看；切换到『发散记录』Tab 可回顾全部发散方向」
 
 **视觉风格**：参考 guizang-social-card 的 Editorial Magazine 排版（衬线标题、纸质感、issue strip），模板已内置，勿改 CSS 骨架。
 
@@ -242,5 +245,6 @@ description: >
 - [ ] 概念卡六字段齐全；产品名给 2–3 候选；vibe coding 提示词五要素完整
 - [ ] 传播钩子给 2–3 候选，符合「1000 人点赞」标准
 - [ ] **已基于 `assets/concept-card-template.html` 生成 HTML，无残留 `[[` 占位符**
+- [ ] **发散记录 Tab 已回填 Phase 3 全部方向 + 用户调整记录**
 - [ ] **HTML 已保存到 `/Users/jin/SynologyDrive/Working/Ideas/💥 Brainstorm/<概念名>.html`**
 - [ ] 若执行了搜索/验证：调用了 agent-reach，未越界做市场调研

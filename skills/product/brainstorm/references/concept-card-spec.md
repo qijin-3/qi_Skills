@@ -117,4 +117,5 @@
 - 模板：`assets/concept-card-template.html`（样例：`assets/concept-card-sample.html`）
 - 保存：`/Users/jin/SynologyDrive/Working/Ideas/💥 Brainstorm/<概念名>.html`
 - 视觉：Guizang Editorial Magazine 风格，主题按情绪重量选择
+- **两个 Tab**：「灵感卡片」（选中方向六字段）+「发散记录」（Phase 3 全部方向 + 用户调整）
 - **禁止**只输出 Markdown 而不写 HTML 文件

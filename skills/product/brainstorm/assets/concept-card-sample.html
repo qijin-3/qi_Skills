@@ -49,9 +49,24 @@
     .issue-row {
       display: flex; align-items: center; gap: 12px;
       font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
-      text-transform: uppercase; color: var(--muted); margin-bottom: 40px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 28px;
     }
     .issue-row .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .tab-nav {
+      display: flex; border-bottom: 1px solid var(--line);
+      margin-bottom: 36px; gap: 0; overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 12px 20px; background: none; border: none; cursor: pointer;
+      font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      white-space: nowrap; transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: rgba(var(--ink-rgb), .75); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
     .title {
       font-family: var(--serif-zh); font-weight: 500; font-size: clamp(36px, 6vw, 52px);
       line-height: 1.12; letter-spacing: .03em; margin: 0 0 8px;
@@ -109,6 +124,46 @@
       background: var(--paper-2); border: 1px solid var(--line);
       padding: 20px 24px; margin: 0; overflow-x: auto; white-space: pre-wrap;
     }
+    .logbook-intro {
+      font-family: var(--serif-zh); font-size: 15px; line-height: 1.6;
+      color: var(--muted); margin: 0 0 28px;
+    }
+    .idea-log-list { display: flex; flex-direction: column; gap: 16px; }
+    .idea-log-item {
+      border: 1px solid var(--line); background: var(--paper-2);
+      padding: 20px 24px; position: relative;
+    }
+    .idea-log-item.selected { border-color: var(--accent); border-left-width: 3px; }
+    .idea-log-item.revised { border-style: dashed; background: var(--paper); }
+    .idea-log-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; margin-bottom: 10px;
+    }
+    .idea-log-name {
+      font-family: var(--serif-zh); font-size: 18px; font-weight: 500;
+      line-height: 1.3; margin: 0;
+    }
+    .idea-status {
+      flex-shrink: 0; font-family: var(--mono); font-size: 10px;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 4px 10px; border: 1px solid var(--line); color: var(--muted);
+    }
+    .idea-status.selected { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+    .idea-status.revised { border-color: var(--accent); color: var(--accent); }
+    .idea-log-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px;
+      font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--muted);
+    }
+    .idea-method { color: var(--accent); }
+    .idea-log-field { margin: 0 0 8px; font-size: 14px; line-height: 1.55; }
+    .idea-log-field strong {
+      font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted); font-weight: 500; margin-right: 8px;
+    }
+    .idea-log-empty {
+      font-family: var(--serif-zh); font-size: 15px; color: var(--muted);
+      font-style: italic; margin: 0; padding: 12px 0;
+    }
     .issue-strip {
       display: flex; justify-content: space-between; align-items: center;
       padding: 20px 64px; border-top: 1px solid var(--line);
@@ -127,65 +182,71 @@
           <span>2026.06.24</span><span class="dot"></span><span>头脑风暴</span>
         </div>
 
-        <h1 class="title">过劳报警器</h1>
-        <p class="subtitle">OverWork Alarm</p>
-        <p class="one-liner">一个让你越努力它越受不了、会当场抓你现行的报警器。</p>
+        <nav class="tab-nav" aria-label="卡片导航">
+          <button type="button" class="tab-btn active" data-tab="tab-concept">灵感卡片</button>
+          <button type="button" class="tab-btn" data-tab="tab-logbook">发散记录</button>
+        </nav>
 
-        <div class="meta-grid">
-          <div class="meta-item">
-            <div class="label">情绪内核</div>
-            <div class="value">被进度条追了一整天，一个东西突然一本正经命令你「快去浪费时间」，你愣一下然后偷偷笑了。</div>
+        <div id="tab-concept" class="tab-panel active">
+          <h1 class="title">过劳报警器</h1>
+          <p class="subtitle">OverWork Alarm</p>
+          <p class="one-liner">一个让你越努力它越受不了、会当场抓你现行的报警器。</p>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="label">情绪内核</div>
+              <div class="value">被进度条追了一整天，一个东西突然一本正经命令你「快去浪费时间」，你愣一下然后偷偷笑了。</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">思维方法</div>
+              <div class="value">自由漂移（反转 + 极端化：把「提醒你去浪费」反过来——监测过度高效，推到最极端的对抗）</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">感知形态</div>
+              <div class="value">身体型 + 声音型</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">传播动力</div>
+              <div class="value">压不住的笑</div>
+            </div>
           </div>
-          <div class="meta-item">
-            <div class="label">思维方法</div>
-            <div class="value">自由漂移（反转 + 极端化：把「提醒你去浪费」反过来——监测过度高效，推到最极端的对抗）</div>
-          </div>
-          <div class="meta-item">
-            <div class="label">感知形态</div>
-            <div class="value">身体型 + 声音型</div>
-          </div>
-          <div class="meta-item">
-            <div class="label">传播动力</div>
-            <div class="value">压不住的笑</div>
-          </div>
-        </div>
 
-        <section class="section">
-          <h2 class="section-title">候选产品名</h2>
-          <div class="names">
-            <span class="name-tag primary">过劳报警器</span>
-            <span class="name-tag">OverWork Alarm</span>
-            <span class="name-tag">太努力了 警告</span>
-          </div>
-        </section>
+          <section class="section">
+            <h2 class="section-title">候选产品名</h2>
+            <div class="names">
+              <span class="name-tag primary">过劳报警器</span>
+              <span class="name-tag">OverWork Alarm</span>
+              <span class="name-tag">太努力了 警告</span>
+            </div>
+          </section>
 
-        <section class="section">
-          <h2 class="section-title">核心情绪时刻</h2>
-          <p class="section-body lead">正干得起劲，机器突然像抓现行一样「滴——滴——」红灯狂闪，屏幕黑掉甩出一句「检测到过劳，已为您强制休息」——你被气笑了，但手真的停了下来。</p>
-        </section>
+          <section class="section">
+            <h2 class="section-title">核心情绪时刻</h2>
+            <p class="section-body lead">正干得起劲，机器突然像抓现行一样「滴——滴——」红灯狂闪，屏幕黑掉甩出一句「检测到过劳，已为您强制休息」——你被气笑了，但手真的停了下来。</p>
+          </section>
 
-        <section class="section">
-          <h2 class="section-title">交互隐喻</h2>
-          <p class="section-body metaphor">持续高效工作 = 触发警报，被强制摸鱼</p>
-        </section>
+          <section class="section">
+            <h2 class="section-title">交互隐喻</h2>
+            <p class="section-body metaphor">持续高效工作 = 触发警报，被强制摸鱼</p>
+          </section>
 
-        <section class="section">
-          <h2 class="section-title">视觉方向</h2>
-          <p class="section-body">安全警示黄 + 警报红 + 工业黑，像消防报警器或施工警示牌。进度条悄悄涨满后，整屏「红黑频闪」+ 横幅式警告滑入，像系统蓝屏那样毫无商量——一本正经的工业级严肃，配上荒唐的报警理由，反差越硬越好笑。</p>
-        </section>
+          <section class="section">
+            <h2 class="section-title">视觉方向</h2>
+            <p class="section-body">安全警示黄 + 警报红 + 工业黑，像消防报警器或施工警示牌。进度条悄悄涨满后，整屏「红黑频闪」+ 横幅式警告滑入，像系统蓝屏那样毫无商量——一本正经的工业级严肃，配上荒唐的报警理由，反差越硬越好笑。</p>
+          </section>
 
-        <section class="section">
-          <h2 class="section-title">传播钩子</h2>
-          <ul class="hooks">
-            <li>全网第一个你越努力它越生气的 App</li>
-            <li>检测到过劳，已为您强制休息。</li>
-            <li>别人的闹钟叫你起床，我的闹钟叫我别干了。</li>
-          </ul>
-        </section>
+          <section class="section">
+            <h2 class="section-title">传播钩子</h2>
+            <ul class="hooks">
+              <li>全网第一个你越努力它越生气的 App</li>
+              <li>检测到过劳，已为您强制休息。</li>
+              <li>别人的闹钟叫你起床，我的闹钟叫我别干了。</li>
+            </ul>
+          </section>
 
-        <section class="section">
-          <h2 class="section-title">Vibe Coding 提示词</h2>
-          <pre class="vibe">过劳报警器（OverWork Alarm）交互原型
+          <section class="section">
+            <h2 class="section-title">Vibe Coding 提示词</h2>
+            <pre class="vibe">过劳报警器（OverWork Alarm）交互原型
 
 视觉风格：industrial warning, hazard yellow &amp; alarm red, blinking siren, system-alert banner, monospaced
 核心动效：后台计时连续高效时长，进度满后整屏红黑频闪 + 顶部滑入警告横幅 + 短促「滴滴」蜂鸣，屏幕变灰锁定 N 分钟倒计时
@@ -194,7 +255,68 @@
 核心交互逻辑：用户开始工作即计时；连续高效达阈值（如 90 分钟无中断）触发全屏报警，强制锁屏进入「摸鱼倒计时」。
 
 请构建一个可在浏览器中运行的交互原型，重点实现「连续高效 → 全屏红黑频闪报警 → 强制摸鱼锁屏倒计时」，整体风格参考工业警示牌，让用户感受到「正干得起劲被机器抓现行、气笑了但真停下来」。</pre>
-        </section>
+          </section>
+        </div>
+
+        <div id="tab-logbook" class="tab-panel">
+          <p class="logbook-intro">本次头脑风暴 Phase 3 发散的全部方向，以及你在共创过程中调整过的新想法。留作回溯与二次发散的素材库。</p>
+
+          <section class="section">
+            <h2 class="section-title">发散方向（6）</h2>
+            <div class="idea-log-list">
+              <article class="idea-log-item selected">
+                <div class="idea-log-head">
+                  <h3 class="idea-log-name">过劳报警器</h3>
+                  <span class="idea-status selected">已选中</span>
+                </div>
+                <div class="idea-log-meta">
+                  <span class="idea-method">自由漂移</span>
+                  <span>身体型 × 压不住的笑</span>
+                </div>
+                <p class="idea-log-field"><strong>交互隐喻</strong>持续高效工作 = 触发警报，被强制摸鱼</p>
+                <p class="idea-log-field"><strong>情绪时刻</strong>正干得起劲，机器突然像抓现行一样红灯狂闪——你被气笑了，但手真的停了下来。</p>
+              </article>
+              <article class="idea-log-item">
+                <div class="idea-log-head">
+                  <h3 class="idea-log-name">摸鱼功德木鱼</h3>
+                  <span class="idea-status">备选</span>
+                </div>
+                <div class="idea-log-meta">
+                  <span class="idea-method">概念错位</span>
+                  <span>身体型 × 荒诞共谋</span>
+                </div>
+                <p class="idea-log-field"><strong>交互隐喻</strong>敲一下木鱼 = 为摸鱼积攒功德，理直气壮地浪费时间</p>
+                <p class="idea-log-field"><strong>情绪时刻</strong>上班偷偷点屏幕，功德+1，像在做一件正经事。</p>
+              </article>
+              <article class="idea-log-item">
+                <div class="idea-log-head">
+                  <h3 class="idea-log-name">反卷倒计时</h3>
+                  <span class="idea-status">备选</span>
+                </div>
+                <div class="idea-log-meta">
+                  <span class="idea-method">触发反推</span>
+                  <span>时间型 × 参与冲动</span>
+                </div>
+                <p class="idea-log-field"><strong>交互隐喻</strong>倒计时归零 = 今天必须浪费的时间到了</p>
+                <p class="idea-log-field"><strong>情绪时刻</strong>闹钟响的不是「该干活了」，而是「该去浪费了」。</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2 class="section-title">用户调整记录</h2>
+            <div class="idea-log-list">
+              <article class="idea-log-item revised">
+                <div class="idea-log-head">
+                  <h3 class="idea-log-name">报警语气再狠一点</h3>
+                  <span class="idea-status revised">用户调整</span>
+                </div>
+                <p class="idea-log-field"><strong>调整说明</strong>用户希望警告文案更像系统蓝屏，毫无商量余地，不要可爱语气。</p>
+                <p class="idea-log-field"><strong>新文案</strong>「检测到过劳，已为您强制休息」——工业级严肃，反差越好笑。</p>
+              </article>
+            </div>
+          </section>
+        </div>
       </div>
       <footer class="issue-strip">
         <span>头脑风暴 · brainstorm skill</span>
@@ -202,5 +324,19 @@
       </footer>
     </article>
   </main>
+  <script>
+    (function () {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabPanels = document.querySelectorAll('.tab-panel');
+      tabBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          tabBtns.forEach(function (b) { b.classList.remove('active'); });
+          tabPanels.forEach(function (p) { p.classList.remove('active'); });
+          btn.classList.add('active');
+          document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
