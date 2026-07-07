@@ -14,6 +14,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,12 +26,39 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import skill_manager as sm  # noqa: E402
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
-WEB_DIR = SKILL_DIR / "web"
+SAMPLE_WEB_DIR = SKILL_DIR / "web"
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8791
 
 # 进程级设备覆盖（GUI 切换后生效）
 _active_device: str | None = None
+_http_server: ThreadingHTTPServer | None = None
+_mgr_cache: sm.Manager | None = None
+
+
+def get_mgr() -> sm.Manager:
+    """加载当前活跃设备的管理器（进程内缓存，避免重复 bootstrap）。"""
+    global _mgr_cache
+    if _mgr_cache is None:
+        _mgr_cache = sm.load_manager(_active_device)
+    return _mgr_cache
+
+
+def reset_mgr_cache() -> None:
+    """切换设备或写操作后刷新管理器缓存。"""
+    global _mgr_cache
+    _mgr_cache = None
+
+
+def schedule_shutdown() -> None:
+    """延迟关闭 HTTP 服务并退出进程。"""
+    def _shutdown() -> None:
+        time.sleep(0.25)
+        if _http_server is not None:
+            _http_server.shutdown()
+        os._exit(0)
+
+    threading.Thread(target=_shutdown, daemon=True).start()
 
 
 def log(msg: str) -> None:
@@ -44,11 +72,6 @@ def log_error(method: str, path: str, msg: str) -> None:
     print(line, file=sys.stderr, flush=True)
 
 
-def get_mgr() -> sm.Manager:
-    """加载当前活跃设备的管理器。"""
-    return sm.load_manager(_active_device)
-
-
 def json_response(handler: BaseHTTPRequestHandler, code: int, data: dict) -> None:
     """发送 JSON 响应。"""
     body = json.dumps(data, ensure_ascii=False).encode("utf-8")
@@ -56,6 +79,7 @@ def json_response(handler: BaseHTTPRequestHandler, code: int, data: dict) -> Non
     handler.send_header("Content-Type", "application/json; charset=utf-8")
     handler.send_header("Content-Length", str(len(body)))
     handler.send_header("Cache-Control", "no-store")
+    handler.send_header("Access-Control-Allow-Origin", "*")
     handler.end_headers()
     handler.wfile.write(body)
 
@@ -82,6 +106,17 @@ def guess_content_type(path: Path) -> str:
     if ext == ".js":
         return "application/javascript; charset=utf-8"
     return "application/octet-stream"
+
+
+def gui_index_path() -> Path:
+    """返回当前应提供的 GUI 入口（优先工作区根目录 index.html）。"""
+    if sm.GUI_INDEX.is_file():
+        return sm.GUI_INDEX
+    sample = sm.SAMPLE_GUI_INDEX
+    if sample.is_file():
+        return sample
+    legacy = SAMPLE_WEB_DIR / "index.html"
+    return legacy if legacy.is_file() else sample
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -116,17 +151,19 @@ class Handler(BaseHTTPRequestHandler):
         path = unquote(parsed.path)
 
         if path == "/" or path == "/index.html":
-            return self._serve_file(WEB_DIR / "index.html")
+            return self._serve_file(gui_index_path())
 
         if path.startswith("/web/"):
             rel = path[len("/web/"):]
-            target = (WEB_DIR / rel).resolve()
-            try:
-                target.relative_to(WEB_DIR.resolve())
-            except ValueError:
-                return json_response(self, 403, {"error": "forbidden"})
-            if target.is_file():
-                return self._serve_file(target)
+            roots = [sm.SM_ROOT, SAMPLE_WEB_DIR]
+            for root in roots:
+                target = (root / rel).resolve()
+                try:
+                    target.relative_to(root.resolve())
+                except ValueError:
+                    continue
+                if target.is_file():
+                    return self._serve_file(target)
             return json_response(self, 404, {"error": "not found"})
 
         if not path.startswith("/api/"):
@@ -174,6 +211,7 @@ class Handler(BaseHTTPRequestHandler):
             old_id = mgr.device_id
             result = sm.switch_config(old_id, device_id, relink=relink)
             _active_device = device_id
+            reset_mgr_cache()
             mgr = get_mgr()
             info = sm.get_device_info(mgr)
             return json_response(self, 200, {**info, **result})
@@ -203,6 +241,7 @@ class Handler(BaseHTTPRequestHandler):
                 body = read_body(self)
                 result = sm.config_rename(config_id, body.get("name", ""))
                 _active_device = result["config_id"]
+                reset_mgr_cache()
                 return json_response(self, 200, result)
             if method == "DELETE":
                 result = sm.config_delete(config_id)
@@ -324,14 +363,19 @@ class Handler(BaseHTTPRequestHandler):
             opened = sm.open_agent_path(body.get("path", ""))
             return json_response(self, 200, {"opened": opened})
 
+        if path == "/api/shutdown" and method == "POST":
+            schedule_shutdown()
+            return json_response(self, 200, {"ok": True})
+
         log_error(method, path, "API not found")
         json_response(self, 404, {"error": "not found"})
 
 
 def run_server(port: int = DEFAULT_PORT, device_id: str | None = None, open_browser: bool = True) -> None:
     """启动 Web 服务。"""
-    global _active_device
+    global _active_device, _http_server
     _active_device = device_id
+    sm.ensure_watchdog_running()
 
     if open_browser:
         url = f"http://{HOST}:{port}/"
@@ -344,6 +388,7 @@ def run_server(port: int = DEFAULT_PORT, device_id: str | None = None, open_brow
     signal.signal(signal.SIGINT, handle_signal)
 
     server = ThreadingHTTPServer((HOST, port), Handler)
+    _http_server = server
     log(f"技能管理器 GUI: http://{HOST}:{port}/")
     log("API 错误将打印到此终端（stderr）")
     try:

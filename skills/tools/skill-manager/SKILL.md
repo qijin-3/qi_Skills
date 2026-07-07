@@ -8,32 +8,34 @@ description: |
 
 # 技能管理器
 
-统一管理 `~/Skill Manager`（本地数据）与 `~/.agents/skills`（默认软链接注册）。已安装技能存放在 `~/Skill Manager/Skills/`。skill-manager 自身可通过 `~/.agent/skills/skill-manager` 软链指向仓库，不放入 Skill Manager 目录。
+统一管理 `~/Skill Manager`（本地数据）与 `~/.agents/skills`（默认软链接注册）。初始化后 skill-manager 会安装到 `~/Skill Manager/<配置>/Skills/local/skill-manager/`，GUI 主页面为 `~/Skill Manager/index.html`（技能包内 `web/*.sample.html` 仅为模板）。
 
 ## 首次使用（Bootstrap）
 
-skill-manager 代码不复制到 Skill Manager 目录，只需注册软链：
-
 ```bash
-mkdir -p ~/.agent/skills
-ln -sf <技能源路径>/skill-manager ~/.agent/skills/skill-manager
-python3 ~/.agent/skills/skill-manager/scripts/skill_manager.py init
+python3 skills/tools/skill-manager/scripts/skill_manager.py init
 ```
 
-技能源路径示例：克隆的 `qi_Skills/skills/tools/skill-manager`。
+`init` 会自动：
 
-`init` 会自动创建：
+1. 创建工作区与设备配置
+2. 将 skill-manager 复制到 Local 并创建 Agent 软链
+3. 将 `web/index.sample.html` 部署为 `~/Skill Manager/index.html`
+
+之后可通过 Finder 双击 `~/Skill Manager/Open Skill Manager.command` 启动服务并打开 GUI。
 
 ```
 ~/Skill Manager/
-├── Open Skill Manager.html      # 双击：检测服务并打开 GUI
+├── index.html                   # GUI 主页面（工作副本）
 ├── Open Skill Manager.command   # Mac 双击：启动服务 + 浏览器
-├── configs/<device-id>.json
+├── <config-id>/
+│   ├── config.json
+│   └── Skills/
+│       └── local/
+│           └── skill-manager/   # 管理器本体（已软链到 Agent）
 ├── .cache/repos/
-└── Skills/                      # 已安装技能
+└── settings.json
 ```
-
-之后可通过 Finder 打开 `~/Skill Manager/Open Skill Manager.html` 或 `.command` 使用。
 
 ## 触发时第一步
 
@@ -56,20 +58,18 @@ GUI 默认 `http://127.0.0.1:8791/`，支持增删仓库、勾选同步技能、
 
 ```
 ~/Skill Manager/
-├── Open Skill Manager.html
+├── index.html
 ├── Open Skill Manager.command
-├── configs/
-│   ├── devices.json          # hostname → device-id 映射（可选）
-│   └── <device-id>.json      # 当前设备的仓库与技能配置
-├── .cache/repos/             # git 浅克隆缓存
-└── Skills/
-    └── <skill-name>/         # 已安装技能
+├── <config-id>/
+│   ├── config.json
+│   └── Skills/
+│       ├── local/
+│       │   └── skill-manager/
+│       └── <repo-slug>/
+├── .cache/repos/
 
 ~/.agents/skills/
-├── <skill-name> -> ~/Skill Manager/Skills/<skill-name>
-
-~/.agent/skills/                    # 可选：管理器 CLI 入口
-└── skill-manager -> <仓库路径>/skill-manager
+├── <skill-name> -> ~/Skill Manager/<config>/Skills/.../<skill-name>
 ```
 
 ## 多设备识别

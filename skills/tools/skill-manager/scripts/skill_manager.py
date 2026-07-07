@@ -16,6 +16,8 @@ import shutil
 import socket
 import subprocess
 import sys
+import threading
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -41,11 +43,18 @@ ACTIVE_DEVICE_FILE = SM_ROOT / ".active-device"
 ACTIVE_CONFIG_FILE = SM_ROOT / ".active-config"
 LAYOUT_MIGRATION_FLAG = SM_ROOT / ".layout-v2"
 SM_RESERVED_NAMES = frozenset({
-    ".cache", "configs", "Skills", "Open Skill Manager.html", "Open Skill Manager.command",
+    ".cache", "configs", "Skills", "Open Skill Manager.command",
 })
-LAUNCHER_HTML = SM_ROOT / "Open Skill Manager.html"
+GUI_INDEX = SM_ROOT / "index.html"
+LEGACY_LAUNCHER_HTML = SM_ROOT / "Open Skill Manager.html"
+OBSOLETE_LAUNCHER_CMD = SM_ROOT / "Start Service.command"
 LAUNCHER_CMD = SM_ROOT / "Open Skill Manager.command"
+DEFAULT_UI_PORT = 8791
+WATCHDOG_PORT = 8790
+WATCHDOG_SCRIPT = SKILL_DIR / "scripts" / "watchdog.py"
 SETTINGS_FILE = SM_ROOT / "settings.json"
+SAMPLE_WEB_DIR = SKILL_DIR / "web"
+SAMPLE_GUI_INDEX = SAMPLE_WEB_DIR / "index.sample.html"
 
 DEFAULT_AGENTS: list[dict] = [
     {"id": "agent", "name": "Agent", "path": "~/.agents/skills", "enabled": True},
@@ -85,6 +94,11 @@ BUILTIN_REPOS: list[dict] = [
 
 EXCLUDE_PARTS = {".git", "node_modules", "deprecated", "template", ".cache", "__pycache__"}
 
+# ponytail: 进程内只 bootstrap 一次，避免每个 API 请求重复写盘/拉 watchdog
+_bootstrapped_devices: set[str] = set()
+_bootstrap_lock = threading.Lock()
+_watchdog_lock = threading.Lock()
+
 
 @dataclass
 class DiscoveredSkill:
@@ -105,13 +119,13 @@ class Manager:
     data: dict = field(default_factory=dict)
 
     def save(self) -> None:
-        """将当前设备配置写回磁盘。"""
+        """将当前设备配置写回磁盘（原子写入，避免并发截断）。"""
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         self.data["device_id"] = self.device_id
-        self.manifest_path.write_text(
-            json.dumps(self.data, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        payload = json.dumps(self.data, ensure_ascii=False, indent=2) + "\n"
+        tmp = self.manifest_path.with_suffix(".json.tmp")
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(self.manifest_path)
 
 
 def parse_frontmatter(skill_md: Path) -> tuple[str, str]:
@@ -728,21 +742,238 @@ def ensure_workspace() -> None:
     deploy_launcher_files()
 
 
-def deploy_launcher_files() -> None:
-    """将 HTML 启动器与 Mac .command 脚本部署到 Skill Manager 根目录。"""
-    src_html = SKILL_DIR / "web" / "launcher.html"
-    if src_html.exists():
-        shutil.copy2(src_html, LAUNCHER_HTML)
+def manager_script_path(mgr: Manager | None = None) -> Path:
+    """解析 skill_manager.py 路径（优先 Local 安装副本）。"""
+    if mgr is not None:
+        local_script = skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID) / "scripts" / "skill_manager.py"
+        if local_script.is_file():
+            return local_script
+    did = resolve_device_id()
+    local_script = config_skills_dir_for(did) / "local" / MANAGER_LINK_NAME / "scripts" / "skill_manager.py"
+    if local_script.is_file():
+        return local_script
+    return SKILL_DIR / "scripts" / "skill_manager.py"
 
-    if sys.platform == "darwin":
-        script = SKILL_DIR / "scripts" / "skill_manager.py"
-        LAUNCHER_CMD.write_text(
-            f"#!/bin/bash\n"
-            f'cd "{SM_ROOT}"\n'
-            f'exec python3 "{script}" ui\n',
-            encoding="utf-8",
+
+def config_skills_dir_for(config_id: str) -> Path:
+    """返回某配置下的 Skills 根目录。"""
+    return config_dir(config_id) / "Skills"
+
+
+def watchdog_script_path(mgr: Manager | None = None) -> Path:
+    """解析 watchdog.py 路径（优先 Local 安装副本）。"""
+    if mgr is not None:
+        local = skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID) / "scripts" / "watchdog.py"
+        if local.is_file():
+            return local
+    did = resolve_device_id()
+    local = config_skills_dir_for(did) / "local" / MANAGER_LINK_NAME / "scripts" / "watchdog.py"
+    if local.is_file():
+        return local
+    return WATCHDOG_SCRIPT
+
+
+def watchdog_is_up(port: int | None = None) -> bool:
+    """检测 watchdog 是否在线。"""
+    import urllib.error
+    import urllib.request
+
+    p = port or WATCHDOG_PORT
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{p}/health", timeout=0.5) as resp:
+            return resp.status == 200
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+
+
+def ensure_watchdog_running(mgr: Manager | None = None) -> bool:
+    """确保 watchdog 在后台运行（单例，带锁防并发重复拉起）。"""
+    if watchdog_is_up():
+        return True
+    with _watchdog_lock:
+        if watchdog_is_up():
+            return True
+        script = watchdog_script_path(mgr)
+        if not script.is_file():
+            return False
+        subprocess.Popen(
+            [sys.executable, str(script)],
+            cwd=SM_ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
-        LAUNCHER_CMD.chmod(0o755)
+        for _ in range(20):
+            if watchdog_is_up():
+                return True
+            time.sleep(0.1)
+        return False
+
+
+def deploy_gui_files() -> str:
+    """
+    将 sample GUI 部署到 Skill Manager 根目录（仅首次）。
+
+    Returns:
+        created | exists | missing_sample
+    """
+    if GUI_INDEX.is_file() and GUI_INDEX.stat().st_size > 0:
+        return "exists"
+    return sync_gui_index()
+
+
+def _gui_index_ok() -> bool:
+    """GUI 主文件存在且非空。"""
+    return GUI_INDEX.is_file() and GUI_INDEX.stat().st_size > 0
+
+
+def gui_index_config(mgr: Manager | None = None) -> dict:
+    """生成注入 index.html 的本地服务配置。"""
+    ensure_watchdog_running(mgr)
+    port = int(os.environ.get("SM_PORT", str(DEFAULT_UI_PORT)))
+    wd_port = int(os.environ.get("SM_WATCHDOG_PORT", str(WATCHDOG_PORT)))
+    return {
+        "serviceUrl": f"http://127.0.0.1:{port}",
+        "watchdogUrl": f"http://127.0.0.1:{wd_port}",
+    }
+
+
+def render_gui_index(mgr: Manager | None = None) -> str:
+    """从 sample 渲染 GUI，并注入本机启动配置。"""
+    sample = SAMPLE_GUI_INDEX
+    if not sample.is_file():
+        legacy = SAMPLE_WEB_DIR / "index.html"
+        sample = legacy if legacy.is_file() else sample
+    if not sample.is_file():
+        raise FileNotFoundError(f"缺少 GUI 模板: {SAMPLE_GUI_INDEX}")
+    text = sample.read_text(encoding="utf-8")
+    config = json.dumps(gui_index_config(mgr), ensure_ascii=False)
+    if "const SM_CONFIG =" in text:
+        return re.sub(
+            r"const SM_CONFIG = \{[\s\S]*?\};",
+            f"const SM_CONFIG = {config};",
+            text,
+            count=1,
+        )
+    return text.replace(
+        "</head>",
+        f"<script>const SM_CONFIG = {config};</script>\n</head>",
+        1,
+    )
+
+
+def sync_gui_index(mgr: Manager | None = None) -> str:
+    """同步 GUI 到工作区根目录并写入启动配置（原子写入）。"""
+    SM_ROOT.mkdir(parents=True, exist_ok=True)
+    content = render_gui_index(mgr)
+    if not content.strip():
+        raise RuntimeError("GUI 渲染结果为空，已中止写入")
+    tmp = GUI_INDEX.with_suffix(".html.tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(GUI_INDEX)
+    return "synced"
+
+
+def deploy_launcher_files(mgr: Manager | None = None) -> None:
+    """将 Mac 快捷启动脚本部署到 Skill Manager 根目录。"""
+    if sys.platform != "darwin":
+        return
+    SM_ROOT.mkdir(parents=True, exist_ok=True)
+    wd_script = watchdog_script_path(mgr)
+    wd_port = int(os.environ.get("SM_WATCHDOG_PORT", str(WATCHDOG_PORT)))
+    port = int(os.environ.get("SM_PORT", str(DEFAULT_UI_PORT)))
+    LAUNCHER_CMD.write_text(
+        f"#!/bin/bash\n"
+        f'set -e\n'
+        f'cd "{SM_ROOT}"\n'
+        f'WD="{wd_script}"\n'
+        f'if ! curl -sf "http://127.0.0.1:{wd_port}/health" >/dev/null 2>&1; then\n'
+        f'  nohup python3 "$WD" >/dev/null 2>&1 &\n'
+        f"  sleep 0.3\n"
+        f"fi\n"
+        f'curl -sf -X POST "http://127.0.0.1:{wd_port}/start" >/dev/null\n'
+        f'open "http://127.0.0.1:{port}/"\n',
+        encoding="utf-8",
+    )
+    LAUNCHER_CMD.chmod(0o755)
+
+
+def install_skill_manager_local(mgr: Manager, *, save: bool = True) -> bool:
+    """将 skill-manager 复制到 Local 仓库并创建 Agent 软链。"""
+    dest = skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID)
+    if not dest.exists():
+        copy_skill_tree(SKILL_DIR, dest)
+    else:
+        wd_dest = dest / "scripts" / "watchdog.py"
+        if not wd_dest.is_file() and WATCHDOG_SCRIPT.is_file():
+            wd_dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(WATCHDOG_SCRIPT, wd_dest)
+
+    web_dir = dest / "web"
+    for name in ("launcher.sample.html", "launcher.html"):
+        (web_dir / name).unlink(missing_ok=True)
+
+    local_repo = find_repo(mgr, LOCAL_REPO_ID)
+    if not local_repo:
+        return False
+
+    skills_list = local_repo.setdefault("skills", [])
+    entry = next((s for s in skills_list if s.get("name") == MANAGER_LINK_NAME), None)
+    if entry is None:
+        skills_list.append({
+            "name": MANAGER_LINK_NAME,
+            "source_path": f"local/{MANAGER_LINK_NAME}",
+            "sync": True,
+            "installed_at": now_iso(),
+            "installed_commit": "local",
+        })
+    else:
+        entry["sync"] = True
+        entry["source_path"] = f"local/{MANAGER_LINK_NAME}"
+        entry.setdefault("installed_at", now_iso())
+        entry["installed_commit"] = "local"
+
+    create_symlink(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID)
+    if save:
+        mgr.save()
+    return True
+
+
+def cleanup_obsolete_workspace_files(mgr: Manager | None = None) -> list[str]:
+    """删除工作区中已废弃的 HTML 启动页与 launcher 模板。"""
+    removed: list[str] = []
+    for path in (LEGACY_LAUNCHER_HTML, OBSOLETE_LAUNCHER_CMD):
+        if path.is_file():
+            path.unlink()
+            removed.append(path.name)
+
+    if mgr is not None:
+        web_dir = skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID) / "web"
+        for name in ("launcher.sample.html", "launcher.html"):
+            obsolete = web_dir / name
+            if obsolete.is_file():
+                obsolete.unlink()
+                try:
+                    removed.append(str(obsolete.relative_to(SM_ROOT)))
+                except ValueError:
+                    removed.append(str(obsolete))
+    return removed
+
+
+def bootstrap_workspace(mgr: Manager) -> dict:
+    """初始化后：部署 GUI 到工作区根目录，并将 skill-manager 装入 Local。"""
+    with _bootstrap_lock:
+        installed = True
+        removed: list[str] = []
+        if mgr.device_id not in _bootstrapped_devices:
+            installed = install_skill_manager_local(mgr, save=False)
+            mgr.save()
+            removed = cleanup_obsolete_workspace_files(mgr)
+            deploy_launcher_files(mgr)
+            ensure_watchdog_running(mgr)
+            _bootstrapped_devices.add(mgr.device_id)
+        gui_status = sync_gui_index(mgr) if not _gui_index_ok() else "exists"
+        return {"gui": gui_status, "skill_manager": installed, "removed_obsolete": removed}
 
 
 def load_manager(device_id: str | None = None) -> Manager:
@@ -753,28 +984,38 @@ def load_manager(device_id: str | None = None) -> Manager:
     legacy = legacy_manifest_path(did)
 
     if path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
-    elif legacy.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(legacy, path)
-        data = json.loads(path.read_text(encoding="utf-8"))
-        archive_legacy_manifests()
+        raw = path.read_text(encoding="utf-8").strip()
+        if raw:
+            data = json.loads(raw)
+        else:
+            path.unlink(missing_ok=True)
+            data = None
     else:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "version": MANIFEST_VERSION,
-            "config_id": did,
-            "device_id": did,
-            "repos": [],
-        }
-        path.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        data = None
+
+    if data is None:
+        if legacy.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(legacy, path)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            archive_legacy_manifests()
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            data = {
+                "version": MANIFEST_VERSION,
+                "config_id": did,
+                "device_id": did,
+                "repos": [],
+            }
+            path.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
 
     (config_dir(did) / "Skills").mkdir(parents=True, exist_ok=True)
     mgr = Manager(device_id=did, manifest_path=path, data=data)
     ensure_builtin_repos(mgr)
+    bootstrap_workspace(mgr)
     return mgr
 
 
@@ -905,10 +1146,30 @@ def skill_link(mgr: Manager, name: str, agent_path: Path | None = None) -> Path:
     return base / name
 
 
-def skill_link_ok(mgr: Manager, name: str) -> bool:
-    """检查技能是否在任一已启用 Agent 目录中正确软链。"""
-    owner = find_skill_owner(mgr, name)
-    repo_id = owner[0]["id"] if owner else LOCAL_REPO_ID
+def find_synced_owner(mgr: Manager, skill_name: str) -> tuple[dict, dict] | None:
+    """查找已同步（sync=true）该技能名的仓库与记录。"""
+    for repo in mgr.data.get("repos", []):
+        for sk in repo.get("skills", []):
+            if sk.get("name") == skill_name and sk.get("sync"):
+                return repo, sk
+    return None
+
+
+def synced_name_taken_by(mgr: Manager, skill_name: str, repo_id: str) -> str | None:
+    """若其他仓库已同步同名技能，返回该仓库 id。"""
+    owner = find_synced_owner(mgr, skill_name)
+    if owner and owner[0].get("id") != repo_id:
+        return owner[0]["id"]
+    return None
+
+
+def skill_link_ok(mgr: Manager, name: str, repo_id: str | None = None) -> bool:
+    """检查技能软链是否指向指定仓库（或已同步归属仓库）的安装目录。"""
+    if repo_id is None:
+        owner = find_synced_owner(mgr, name)
+        if not owner:
+            return False
+        repo_id = owner[0]["id"]
     dest = skill_dest(mgr, name, repo_id)
     if not dest.exists():
         return False
@@ -930,17 +1191,10 @@ def find_skill_owner(mgr: Manager, skill_name: str) -> tuple[dict, dict] | None:
 
 
 def check_name_conflict(mgr: Manager, skill_name: str, repo_id: str) -> str | None:
-    """检查技能名是否已被其他仓库占用。"""
-    for repo in mgr.data.get("repos", []):
-        if repo.get("id") == repo_id:
-            continue
-        for sk in repo.get("skills", []):
-            if sk.get("name") == skill_name and sk.get("sync"):
-                return repo.get("id", "?")
-    if skill_dest(mgr, skill_name, repo_id).exists():
-        owner = find_skill_owner(mgr, skill_name)
-        if owner and owner[0].get("id") != repo_id:
-            return owner[0].get("id", "?")
+    """检查技能名是否已被其他仓库占用（已同步或 legacy 目录）。"""
+    taken = synced_name_taken_by(mgr, skill_name, repo_id)
+    if taken:
+        return taken
     legacy = LEGACY_SKILLS_DIR / skill_name
     if legacy.is_dir():
         return "legacy"
@@ -949,6 +1203,10 @@ def check_name_conflict(mgr: Manager, skill_name: str, repo_id: str) -> str | No
 
 def copy_skill_tree(src: Path, dest: Path) -> None:
     """覆盖复制技能目录到本地。"""
+
+    def _ignore(_dir: str, names: list[str]) -> list[str]:
+        return [n for n in names if n in {".git", "__pycache__", ".DS_Store"}]
+
     try:
         dest.resolve().relative_to(LEGACY_SKILLS_DIR.resolve())
         raise RuntimeError(f"拒绝写入旧版扁平目录: {dest}")
@@ -957,7 +1215,7 @@ def copy_skill_tree(src: Path, dest: Path) -> None:
     if dest.exists():
         shutil.rmtree(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(src, dest)
+    shutil.copytree(src, dest, ignore=_ignore)
 
 
 def create_symlink(mgr: Manager, name: str, repo_id: str | None = None) -> None:
@@ -965,9 +1223,12 @@ def create_symlink(mgr: Manager, name: str, repo_id: str | None = None) -> None:
     dest = skill_dest(mgr, name, repo_id)
     if not dest.exists():
         raise FileNotFoundError(f"技能目录不存在: {dest}")
+    dest_resolved = dest.resolve()
     for agent_path in get_enabled_agent_paths():
         agent_path.mkdir(parents=True, exist_ok=True)
         link = agent_path / name
+        if link.is_symlink() and link.resolve() == dest_resolved:
+            continue
         if link.is_symlink() or link.exists():
             link.unlink()
         link.symlink_to(dest)
@@ -1078,6 +1339,76 @@ def cleanup_orphan_empty_repo_dirs(mgr: Manager) -> list[str]:
     return removed
 
 
+def scan_local_disk_skills(mgr: Manager) -> dict[str, Path]:
+    """扫描 local 目录下的技能文件夹（以磁盘为准）。"""
+    found: dict[str, Path] = {}
+    local_dir = config_skills_dir(mgr) / "local"
+    if not local_dir.is_dir():
+        return found
+    for child in local_dir.iterdir():
+        if child.is_dir() and not child.name.startswith("."):
+            found[child.name] = child
+    return found
+
+
+def synced_skills_for_repo(repo: dict) -> dict[str, dict]:
+    """返回仓库内 sync=true 的技能 name -> entry。"""
+    return {
+        s["name"]: s
+        for s in repo.get("skills", [])
+        if s.get("sync") and s.get("name")
+    }
+
+
+def is_local_repo(repo: dict) -> bool:
+    """判断是否为 Local 内置仓库。"""
+    return bool(repo.get("local") or repo.get("id") == LOCAL_REPO_ID)
+
+
+def _remove_config_entry(mgr: Manager, name: str) -> bool:
+    """将技能从配置中取消同步（sync=false）。"""
+    owner = find_skill_owner(mgr, name)
+    if not owner:
+        return False
+    owner[1]["sync"] = False
+    return True
+
+
+def _check_skill_links(
+    mgr: Manager,
+    name: str,
+    repo_id: str,
+    links: dict[str, Path],
+    mismatches: list[dict],
+) -> None:
+    """检查已安装技能的 Agent 软链是否完整。"""
+    dest = skill_dest(mgr, name, repo_id)
+    if not dest.exists():
+        return
+    link = links.get(name)
+    if link is None:
+        mismatches.append(_enrich_mismatch({
+            "id": f"missing_link:{name}",
+            "type": "missing_link",
+            "name": name,
+            "repo_id": repo_id,
+        }))
+    elif not link.exists() or not link.resolve().exists():
+        mismatches.append(_enrich_mismatch({
+            "id": f"broken_link:{name}",
+            "type": "broken_link",
+            "name": name,
+            "repo_id": repo_id,
+        }))
+    elif link.resolve() != dest.resolve():
+        mismatches.append(_enrich_mismatch({
+            "id": f"wrong_link:{name}",
+            "type": "wrong_link",
+            "name": name,
+            "repo_id": repo_id,
+        }))
+
+
 def move_skill_to_local_repo(mgr: Manager, name: str, source: Path | None = None) -> bool:
     """
     将技能目录迁入 local 并登记到 Local 仓库（从其他仓库配置中移除）。
@@ -1129,36 +1460,43 @@ def move_skill_to_local_repo(mgr: Manager, name: str, source: Path | None = None
     return True
 
 
-def _health_group(mtype: str) -> str:
+def _health_group(mtype: str, repo_slug: str = "") -> str:
     """健康检查分组：config_mismatch | extra_disk | extra_link。"""
-    if mtype in ("misplaced_disk", "missing_disk", "missing_link", "broken_link", "wrong_link"):
+    if mtype in ("stale_config", "missing_disk", "missing_link", "broken_link", "wrong_link"):
         return "config_mismatch"
     if mtype == "orphan_disk":
         return "extra_disk"
     return "extra_link"
 
 
-def _health_hint(mtype: str) -> str:
+def _health_hint(mtype: str, repo_slug: str = "") -> str:
     """健康检查项简短说明。"""
+    if mtype == "orphan_disk" and repo_slug == "local":
+        return "本地目录有技能，配置未记录"
+    if mtype == "orphan_disk":
+        return "磁盘有目录，配置未标记同步"
     return {
-        "misplaced_disk": "文件在无效仓库目录",
-        "missing_disk": "本地技能目录缺失",
+        "stale_config": "配置有记录，本地目录缺失",
+        "missing_disk": "配置已同步，技能目录缺失",
         "missing_link": "未创建 Agent 软链",
         "broken_link": "软链已断裂",
         "wrong_link": "软链指向错误",
-        "orphan_disk": "磁盘有目录，配置未记录",
         "orphan_link": "软链存在，配置未记录",
     }.get(mtype, mtype)
 
 
-def _health_actions(mtype: str) -> dict[str, bool]:
+def _health_actions(mtype: str, repo_slug: str = "") -> dict[str, bool]:
     """每项可用的修复操作。"""
     base = {"config_add": False, "config_remove": False, "skill_add": False, "skill_remove": False}
-    if mtype == "misplaced_disk":
-        return {**base, "config_add": True, "skill_remove": True}
+    if mtype == "stale_config":
+        return {**base, "config_remove": True}
     if mtype in ("missing_disk", "missing_link", "broken_link", "wrong_link"):
         return {**base, "config_remove": True, "skill_add": True}
-    if mtype in ("orphan_disk", "orphan_link"):
+    if mtype == "orphan_disk" and repo_slug == "local":
+        return {**base, "config_add": True}
+    if mtype == "orphan_disk":
+        return {**base, "skill_remove": True}
+    if mtype == "orphan_link":
         return {**base, "config_add": True, "skill_remove": True}
     return base
 
@@ -1166,11 +1504,16 @@ def _health_actions(mtype: str) -> dict[str, bool]:
 def _enrich_mismatch(raw: dict) -> dict:
     """为不一致项补充分组、说明与可用操作。"""
     mtype = raw["type"]
-    item = {**raw, "group": _health_group(mtype), "hint": _health_hint(mtype), "actions": _health_actions(mtype)}
     slug = raw.get("repo_slug", "")
+    item = {
+        **raw,
+        "group": _health_group(mtype, slug),
+        "hint": _health_hint(mtype, slug),
+        "actions": _health_actions(mtype, slug),
+    }
     if slug:
         item["detail"] = f"目录 {slug}/"
-    elif raw.get("repo_id") and raw["repo_id"] != LOCAL_REPO_ID:
+    elif raw.get("repo_id") and not is_local_repo({"id": raw["repo_id"]}):
         item["detail"] = f"配置仓库 {raw['repo_id']}"
     else:
         item["detail"] = ""
@@ -1201,95 +1544,85 @@ def _add_local_config_entry(mgr: Manager, name: str) -> None:
 
 def healthcheck(mgr: Manager) -> dict:
     """
-    对比配置文件、本地技能目录与 Agent 软链，返回不一致项。
+    对比配置、磁盘与软链。
+
+    Local 仓库以 Skills/local/ 目录为准；GitHub 仓库以配置 sync 为准。
 
     Returns:
-        ok, mismatches（供 GUI 勾选修复）, removed_empty_dirs
+        ok, mismatches（供 GUI 修复）, removed_empty_dirs
     """
     removed_empty_dirs = cleanup_orphan_empty_repo_dirs(mgr)
-
-    expected: dict[str, dict] = {}
-    for repo in mgr.data.get("repos", []):
-        for sk in repo.get("skills", []):
-            if sk.get("sync"):
-                expected[sk["name"]] = {
-                    "repo_id": repo["id"],
-                    "repo_slug": repo_slug(repo["id"]),
-                }
-
-    on_disk = scan_disk_skills(mgr)
     links = scan_agent_links()
-    configured_slugs = configured_repo_slugs(mgr)
     mismatches: list[dict] = []
+    expected_synced: dict[str, str] = {}  # name -> repo_id
 
-    for name, info in expected.items():
-        repo_id = info["repo_id"]
-        dest = skill_dest(mgr, name, repo_id)
-        link = links.get(name)
+    local_repo = find_repo(mgr, LOCAL_REPO_ID)
+    local_synced = synced_skills_for_repo(local_repo) if local_repo else {}
+    local_disk = scan_local_disk_skills(mgr)
 
-        if name in on_disk:
-            disk_slug, disk_path = on_disk[name]
-            if disk_slug not in configured_slugs and disk_path.resolve() != dest.resolve():
-                mismatches.append(_enrich_mismatch({
-                    "id": f"misplaced_disk:{name}",
-                    "type": "misplaced_disk",
-                    "name": name,
-                    "repo_slug": disk_slug,
-                    "repo_id": repo_id,
-                }))
-                continue
-
-        if not dest.exists():
+    for name in local_disk:
+        if name not in local_synced:
             mismatches.append(_enrich_mismatch({
-                "id": f"missing_disk:{name}",
-                "type": "missing_disk",
-                "name": name,
-                "repo_id": repo_id,
-            }))
-        elif link is None:
-            mismatches.append(_enrich_mismatch({
-                "id": f"missing_link:{name}",
-                "type": "missing_link",
-                "name": name,
-                "repo_id": repo_id,
-            }))
-        elif not link.exists() or not link.resolve().exists():
-            mismatches.append(_enrich_mismatch({
-                "id": f"broken_link:{name}",
-                "type": "broken_link",
-                "name": name,
-                "repo_id": repo_id,
-            }))
-        elif link.resolve() != dest.resolve():
-            mismatches.append(_enrich_mismatch({
-                "id": f"wrong_link:{name}",
-                "type": "wrong_link",
-                "name": name,
-                "repo_id": repo_id,
-            }))
-
-    for name, (slug, _path) in on_disk.items():
-        if name in expected:
-            continue
-        if slug not in configured_slugs:
-            mismatches.append(_enrich_mismatch({
-                "id": f"orphan_disk:{name}",
+                "id": f"orphan_disk:local:{name}",
                 "type": "orphan_disk",
                 "name": name,
-                "repo_slug": slug,
+                "repo_slug": "local",
                 "repo_id": LOCAL_REPO_ID,
             }))
+        else:
+            expected_synced[name] = LOCAL_REPO_ID
+            _check_skill_links(mgr, name, LOCAL_REPO_ID, links, mismatches)
+
+    for name in local_synced:
+        if name not in local_disk:
+            mismatches.append(_enrich_mismatch({
+                "id": f"stale_config:{name}",
+                "type": "stale_config",
+                "name": name,
+                "repo_id": LOCAL_REPO_ID,
+                "repo_slug": "local",
+            }))
+        else:
+            expected_synced[name] = LOCAL_REPO_ID
+
+    for repo in mgr.data.get("repos", []):
+        if is_local_repo(repo):
             continue
-        mismatches.append(_enrich_mismatch({
-            "id": f"orphan_disk:{name}",
-            "type": "orphan_disk",
-            "name": name,
-            "repo_slug": slug,
-            "repo_id": LOCAL_REPO_ID if slug == "local" else None,
-        }))
+        repo_id = repo["id"]
+        slug = repo_slug(repo_id)
+        synced = synced_skills_for_repo(repo)
+        repo_disk_dir = config_skills_dir(mgr) / slug
+
+        for name in synced:
+            expected_synced[name] = repo_id
+            dest = skill_dest(mgr, name, repo_id)
+            if not dest.exists():
+                mismatches.append(_enrich_mismatch({
+                    "id": f"missing_disk:{name}",
+                    "type": "missing_disk",
+                    "name": name,
+                    "repo_id": repo_id,
+                    "repo_slug": slug,
+                }))
+            else:
+                _check_skill_links(mgr, name, repo_id, links, mismatches)
+
+        if not repo_disk_dir.is_dir():
+            continue
+        for child in repo_disk_dir.iterdir():
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            if child.name not in synced:
+                mismatches.append(_enrich_mismatch({
+                    "id": f"orphan_disk:{slug}:{child.name}",
+                    "type": "orphan_disk",
+                    "name": child.name,
+                    "repo_slug": slug,
+                    "repo_id": repo_id,
+                }))
 
     for name, link in links.items():
-        if name in expected:
+        if name in expected_synced:
             continue
         if link.exists() and link.resolve().exists():
             mismatches.append(_enrich_mismatch({
@@ -1325,36 +1658,30 @@ def apply_healthcheck_action(
 
     mtype = item.get("type", "")
     name = item.get("name", "")
+    slug = item.get("repo_slug", "")
     if not name:
         return False
 
     if action == "config_remove":
-        if mtype in ("missing_disk", "missing_link", "broken_link", "wrong_link", "misplaced_disk"):
-            owner = find_skill_owner(mgr, name)
-            if owner:
-                owner[1]["sync"] = False
+        if mtype in ("stale_config", "missing_disk", "missing_link", "broken_link", "wrong_link"):
+            if not _remove_config_entry(mgr, name):
+                return False
         else:
             return False
     elif action == "config_add":
-        if mtype == "misplaced_disk":
-            if not move_skill_to_local_repo(mgr, name):
-                return False
-        elif mtype == "orphan_disk":
-            configured = configured_repo_slugs(mgr)
-            slug = item.get("repo_slug", "")
-            if slug not in configured:
-                if not move_skill_to_local_repo(mgr, name):
-                    return False
-            else:
-                _add_local_config_entry(mgr, name)
+        if mtype == "orphan_disk" and slug == "local":
+            _add_local_config_entry(mgr, name)
+            create_symlink(mgr, name, LOCAL_REPO_ID)
         elif mtype == "orphan_link":
             _add_local_config_entry(mgr, name)
+            if skill_dest(mgr, name, LOCAL_REPO_ID).exists():
+                create_symlink(mgr, name, LOCAL_REPO_ID)
         else:
             return False
     elif action == "skill_add":
         if mtype == "missing_disk":
             owner = find_skill_owner(mgr, name)
-            if not owner:
+            if not owner or is_local_repo(owner[0]):
                 return False
             install_skill(mgr, owner[0]["id"], name, save=False)
         elif mtype in ("missing_link", "broken_link", "wrong_link"):
@@ -1365,12 +1692,10 @@ def apply_healthcheck_action(
         else:
             return False
     elif action == "skill_remove":
-        if mtype in ("orphan_disk", "misplaced_disk"):
+        if mtype == "orphan_disk" and slug != "local":
             disk = scan_disk_skills(mgr)
             if name in disk and disk[name][1].exists():
                 shutil.rmtree(disk[name][1])
-            for repo in mgr.data.get("repos", []):
-                repo["skills"] = [s for s in repo.get("skills", []) if s.get("name") != name]
         elif mtype == "orphan_link":
             remove_symlink(name)
         else:
@@ -1406,55 +1731,25 @@ def apply_healthcheck_fix(mgr: Manager, mode: str, items: list[dict]) -> dict:
     for item in items:
         mtype = item.get("type", "")
         name = item.get("name", "")
+        slug = item.get("repo_slug", "")
         if not name:
             continue
 
         if mode == "config":
-            if mtype in ("missing_disk", "missing_link", "broken_link", "wrong_link"):
-                owner = find_skill_owner(mgr, name)
-                if owner:
-                    owner[1]["sync"] = False
+            if mtype in ("stale_config", "missing_disk", "missing_link", "broken_link", "wrong_link"):
+                if _remove_config_entry(mgr, name):
                     fixed.append(name)
-            elif mtype in ("misplaced_disk", "orphan_disk"):
-                configured = configured_repo_slugs(mgr)
-                slug = item.get("repo_slug", "")
-                if mtype == "misplaced_disk" or slug not in configured:
-                    if move_skill_to_local_repo(mgr, name):
-                        fixed.append(name)
-                elif mtype == "orphan_disk":
-                    repo = find_repo(mgr, LOCAL_REPO_ID)
-                    if repo:
-                        skills_list = repo.setdefault("skills", [])
-                        if not any(s.get("name") == name for s in skills_list):
-                            skills_list.append({
-                                "name": name,
-                                "source_path": f"local/{name}",
-                                "sync": True,
-                                "installed_at": now_iso(),
-                                "installed_commit": "local",
-                            })
-                        else:
-                            for s in skills_list:
-                                if s.get("name") == name:
-                                    s["sync"] = True
-                        fixed.append(name)
+            elif mtype == "orphan_disk" and slug == "local":
+                _add_local_config_entry(mgr, name)
+                create_symlink(mgr, name, LOCAL_REPO_ID)
+                fixed.append(name)
             elif mtype == "orphan_link":
-                repo = find_repo(mgr, LOCAL_REPO_ID)
-                if repo:
-                    skills_list = repo.setdefault("skills", [])
-                    if not any(s.get("name") == name for s in skills_list):
-                        skills_list.append({
-                            "name": name,
-                            "source_path": f"local/{name}",
-                            "sync": True,
-                            "installed_at": now_iso(),
-                            "installed_commit": "local",
-                        })
-                    fixed.append(name)
+                _add_local_config_entry(mgr, name)
+                fixed.append(name)
         else:
             if mtype == "missing_disk":
                 owner = find_skill_owner(mgr, name)
-                if owner:
+                if owner and not is_local_repo(owner[0]):
                     install_skill(mgr, owner[0]["id"], name, save=False)
                     fixed.append(name)
             elif mtype in ("missing_link", "broken_link", "wrong_link"):
@@ -1462,16 +1757,10 @@ def apply_healthcheck_fix(mgr: Manager, mode: str, items: list[dict]) -> dict:
                 if owner and skill_dest(mgr, name, owner[0]["id"]).exists():
                     create_symlink(mgr, name, owner[0]["id"])
                     fixed.append(name)
-            elif mtype in ("orphan_disk", "misplaced_disk"):
-                configured = configured_repo_slugs(mgr)
-                slug = item.get("repo_slug", "")
-                if slug not in configured or mtype == "misplaced_disk":
-                    disk = scan_disk_skills(mgr)
-                    src = disk[name][1] if name in disk else None
-                    if src and src.exists():
-                        shutil.rmtree(src)
-                for repo in mgr.data.get("repos", []):
-                    repo["skills"] = [s for s in repo.get("skills", []) if s.get("name") != name]
+            elif mtype == "orphan_disk" and slug != "local":
+                disk = scan_disk_skills(mgr)
+                if name in disk and disk[name][1].exists():
+                    shutil.rmtree(disk[name][1])
                 fixed.append(name)
             elif mtype == "orphan_link":
                 remove_symlink(name)
@@ -1752,34 +2041,39 @@ def discover_repo(mgr: Manager, repo_id: str) -> list[dict]:
     for sk in discovered:
         seen.add(sk.name)
         existing = synced.get(sk.name)
-        link_ok = skill_link_ok(mgr, sk.name)
+        sync_here = bool(existing and existing.get("sync"))
+        taken_by = synced_name_taken_by(mgr, sk.name, repo_id)
         installed_at = None
-        if existing and existing.get("sync"):
+        if sync_here:
             installed_at = existing.get("installed_at")
         result.append({
             "name": sk.name,
             "source_path": sk.source_path,
             "description": sk.description,
             "summary": sk.summary,
-            "sync": bool(existing and existing.get("sync")),
+            "sync": sync_here,
             "installed_commit": existing.get("installed_commit") if existing else None,
             "installed_at": installed_at,
             "repo_updated_at": repo_time,
-            "link_ok": link_ok,
+            "link_ok": skill_link_ok(mgr, sk.name, repo_id) if sync_here else False,
+            "name_taken_by": taken_by or "",
         })
     for name, existing in synced.items():
         if name in seen:
             continue
+        sync_here = bool(existing.get("sync"))
+        taken_by = synced_name_taken_by(mgr, name, repo_id)
         result.append({
             "name": name,
             "source_path": existing.get("source_path", ""),
             "description": "",
             "summary": "",
-            "sync": bool(existing.get("sync")),
+            "sync": sync_here,
             "installed_commit": existing.get("installed_commit"),
             "installed_at": existing.get("installed_at"),
             "repo_updated_at": repo_time,
-            "link_ok": skill_link_ok(mgr, name),
+            "link_ok": skill_link_ok(mgr, name, repo_id) if sync_here else False,
+            "name_taken_by": taken_by or "",
         })
     result.sort(key=lambda x: x["name"])
     return result
@@ -1855,11 +2149,25 @@ def install_skill(
     return {"name": sk.name, "source_path": sk.source_path, "commit": commit}
 
 
-def uninstall_skill(mgr: Manager, skill_name: str, *, save: bool = True) -> dict:
+def uninstall_skill(
+    mgr: Manager,
+    skill_name: str,
+    *,
+    repo_id: str | None = None,
+    save: bool = True,
+) -> dict:
     """卸载技能：删除本地副本、软链和 manifest 记录。"""
-    owner = find_skill_owner(mgr, skill_name)
-    repo_id = owner[0]["id"] if owner else LOCAL_REPO_ID
-    dest = skill_dest(mgr, skill_name, repo_id)
+    if repo_id:
+        repo = find_repo(mgr, repo_id)
+        if not repo:
+            raise ValueError(f"仓库不存在: {repo_id}")
+        if not any(s.get("name") == skill_name for s in repo.get("skills", [])):
+            raise ValueError(f"技能不在仓库 {repo_id}: {skill_name}")
+        rid = repo_id
+    else:
+        owner = find_skill_owner(mgr, skill_name)
+        rid = owner[0]["id"] if owner else LOCAL_REPO_ID
+    dest = skill_dest(mgr, skill_name, rid)
     if dest.exists():
         shutil.rmtree(dest)
     remove_symlink(skill_name)
@@ -2219,16 +2527,19 @@ def sync_skills_batch(
     discovered = {s["name"]: s for s in discover_repo(mgr, repo_id)}
 
     for name, sync in want.items():
-        if name not in discovered:
-            continue
         if sync:
+            if name not in discovered:
+                continue
             install_skill(mgr, repo_id, name, save=False)
             installed.append(name)
         else:
-            owner = find_skill_owner(mgr, name)
-            if owner and owner[0].get("id") == repo_id:
-                uninstall_skill(mgr, name, save=False)
-                uninstalled.append(name)
+            repo = find_repo(mgr, repo_id)
+            if not repo:
+                continue
+            if not any(s.get("name") == name and s.get("sync") for s in repo.get("skills", [])):
+                continue
+            uninstall_skill(mgr, name, repo_id=repo_id, save=False)
+            uninstalled.append(name)
 
     mgr.save()
     return {"installed": installed, "uninstalled": uninstalled}
@@ -2314,7 +2625,13 @@ def cmd_healthcheck(args: argparse.Namespace) -> int:
         print("配置、技能目录与软链一致。")
         return 0
     for item in report.get("mismatches", []):
-        print(item.get("message", item))
+        hint = item.get("hint", item.get("type", ""))
+        name = item.get("name", "")
+        detail = item.get("detail", "")
+        line = f"{name}: {hint}"
+        if detail:
+            line += f" ({detail})"
+        print(line)
     return 1
 
 
@@ -2436,12 +2753,13 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_init(_args: argparse.Namespace) -> int:
     """初始化 Skill Manager 工作区与启动器。"""
-    ensure_workspace()
     mgr = load_manager(_args.device)
     print(f"工作区: {SM_ROOT}")
     print(f"技能目录: {config_skills_dir(mgr)}")
     print(f"配置文件: {mgr.manifest_path}")
-    print(f"启动器: {LAUNCHER_HTML}")
+    print(f"GUI: {GUI_INDEX} ({'已部署' if GUI_INDEX.is_file() else '缺失'})")
+    print(f"Local 技能: {skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID)}")
+    print(f"管理脚本: {manager_script_path(mgr)}")
     if LAUNCHER_CMD.exists():
         print(f"快捷启动: {LAUNCHER_CMD}")
     return 0
