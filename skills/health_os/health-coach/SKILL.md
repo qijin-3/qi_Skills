@@ -1,6 +1,6 @@
 ---
 name: health-coach
-version: 2.3.0
+version: 2.4.0
 description: "飞书健康教练。记录饮食/运动/体重/睡眠到本地 daily-log、估算卡路里、动态调整日历计划、饮食咨询、安全判断、更新个人约束。用户说吃了/练了/体重/健康/教练/膝盖/受伤/今天计划调整等时务必使用本技能，即使用户没明确说「教练」也要触发。"
 ---
 
@@ -21,7 +21,7 @@ description: "飞书健康教练。记录饮食/运动/体重/睡眠到本地 da
 1. **用户只说不填表**：用户只用自然语言口述；**白天所有记录写入本地 daily-log.md**，不写飞书 Base
 2. **白天禁止写 Base**：不调用 `health_base.py`；Base 由 `health-evening-close` 每晚从 daily-log 统一同步
 3. **卡路里必填**：每次记录饮食时在 daily-log 餐次行写入估算 `_卡路里`（见 `recording-rules.md`）
-4. **睡眠必记**：用户提及睡眠/起床时，按就寝日归属写入 daily-log 对应日期段落（见 `daily-log-format.md`）
+4. **睡眠必记**：用户提及睡眠/起床时，按就寝日归属写入 daily-log；格式 `就寝 HH:MM · 起床 HH:MM · 共 X.Xh`（可与体重同行，见 `daily-log-format.md`）
 5. **安全规则优先**：`references/safety-rules.md`
 6. **上下文只读本地**：`content/profile.md`、`content/{YYYY}/{MM}/monthly-plan.md`、`state/current-week.json`、脚本拉近期数据；禁止从飞书文档回读画像/月报
 7. **回复简洁**：≤10 行
@@ -51,7 +51,7 @@ description: "飞书健康教练。记录饮食/运动/体重/睡眠到本地 da
 | 记录运动 | 追加运动行（含时长） | `daily-log-format.md` |
 | 记录睡眠 | 按就寝日归属 → 写睡眠行（含分段清醒时算 **异常醒来**） | `recording-rules.md` |
 | 记录体重/体脂 | 更新 daily-log 体重/体脂行 | `daily-log-format.md` |
-| 口述情境（外食、膝盖疼、出差、熬夜等） | 更新 **身体状态** / **当日情境** 标签；其余写 **备注** | `daily-log-format.md` |
+| 口述情境（外食、膝盖疼、出差、熬夜等） | 追加写入 **备注**（自由文字，合并去重） | `daily-log-format.md` |
 | 情境变更 / 改计划 | 安全预检 → 更新 Calendar + current-week.json | `calendar-adjustment.md` |
 | 查询 | 读 daily-log + 脚本 + 本地文件 | — |
 | 饮食咨询 | 近 7 天记录 + profile + monthly-plan | `diet-principles.md` |
