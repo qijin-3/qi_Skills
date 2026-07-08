@@ -48,9 +48,12 @@ def start_main_server() -> None:
     if port_in_use(MAIN_PORT):
         return
     script = sm.manager_script_path()
+    env = os.environ.copy()
+    env["SKILL_MANAGER_ROOT"] = str(sm.SM_ROOT)
     subprocess.Popen(
         [sys.executable, str(script), "ui", "--no-open", "--port", str(MAIN_PORT)],
         cwd=sm.SM_ROOT,
+        env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,

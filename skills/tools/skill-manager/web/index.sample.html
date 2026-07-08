@@ -732,12 +732,9 @@
       <div class="card">
         <div class="card-head">
           <h2>Agents 技能目录</h2>
-          <div style="display:flex;gap:var(--sp-3)">
-            <button type="button" class="btn btn-ghost btn-sm" id="fixPathsBtn" title="换机或复制 Skill Manager 后重建启动器与软链">修复路径</button>
-            <button type="button" class="btn btn-primary btn-sm" id="saveSettingsBtn">保存</button>
-          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="saveSettingsBtn">保存</button>
         </div>
-        <p class="lead" style="margin-bottom:var(--sp-5)">第一项 <strong>Agents</strong>（<code>~/.agents/skills</code>，与 skill-creator 一致）为默认同步目录；启用后会在对应路径创建软链。点击「打开」可在 Finder 中查看目录。</p>
+        <p class="lead" style="margin-bottom:var(--sp-5)">第一项 <strong>Agents</strong>（<code>~/.agents/skills</code>）为默认同步目录；启用后会在对应路径创建软链。点击「打开」可在 Finder 中查看目录。</p>
         <div id="settingsAgents"></div>
       </div>
     </section>
@@ -1421,17 +1418,6 @@
         });
       });
     }
-
-    document.getElementById('fixPathsBtn').addEventListener('click', async () => {
-      if (!confirm('将重建启动器、GUI 与所有已同步技能的 ~/.agents/skills 软链。继续？')) return;
-      try {
-        const data = await api('POST', '/api/fix-paths');
-        toast(`已修复路径，重连 ${data.linked_count || 0} 个技能软链`);
-        await loadSettingsPanel();
-      } catch (e) {
-        toast('修复失败: ' + e.message);
-      }
-    });
 
     document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
       const agents = [];

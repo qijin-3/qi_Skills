@@ -1,9 +1,9 @@
 ---
 name: skill-manager
 description: |
-  管理 ~/.agents/skills 软链接与 ~/Skill Manager 本地技能库：从 GitHub 仓库选择性安装、覆盖更新、多设备配置、健康检查、换机路径修复。
-  只要用户提到安装/卸载/更新技能、管理技能仓库、打开技能管理页面、检查软链接、换机迁移、修复路径、Skill Manager 或 ~/.agents/skills，就应使用本技能——即使用户没说「skill-manager」。
-  触发词：安装技能、更新技能、管理技能仓库、技能管理页面、检查技能更新、清理软链接、同步技能、修复路径、换机。
+  管理 ~/.agents/skills 软链接与 ~/Skill Manager 本地技能库：从 GitHub 仓库选择性安装、覆盖更新、多设备配置、健康检查。
+  只要用户提到安装/卸载/更新技能、管理技能仓库、打开技能管理页面、检查软链接、Skill Manager 或 ~/.agents/skills，就应使用本技能——即使用户没说「skill-manager」。
+  触发词：安装技能、更新技能、管理技能仓库、技能管理页面、检查技能更新、清理软链接、同步技能。
 ---
 
 # 技能管理器
@@ -27,6 +27,7 @@ python3 skills/tools/skill-manager/scripts/skill_manager.py init
 1. 创建工作区与设备配置
 2. 将 skill-manager 复制到 Local 并创建 Agents 软链
 3. 将 `web/index.sample.html` 部署为 `~/Skill Manager/index.html`
+4. 生成可移植的 `Open Skill Manager.command`（相对自身目录定位，换机复制后仍可用）
 
 之后可通过 Finder 双击 `~/Skill Manager/Open Skill Manager.command` 启动服务并打开 GUI。
 
@@ -43,21 +44,15 @@ python3 skills/tools/skill-manager/scripts/skill_manager.py init
 └── settings.json
 ```
 
-## 换机 / 复制后修复路径
+## 换机 / 复制整个 Skill Manager
 
-将整个 `~/Skill Manager` 或 `skill-manager` 文件夹复制到新电脑后，软链与启动器可能仍指向旧机器的绝对路径。运行：
+将整个 `~/Skill Manager` 复制到新电脑后，双击 `Open Skill Manager.command` 即可（启动器按 `.command` 所在目录定位，不绑定旧用户名）。
 
-```bash
-python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py fix-paths
-```
-
-若尚未完成 `init` 或软链不存在，可直接用仓库内脚本：
+若复制的是**旧版**工作区（启动器仍写死 `/Users/旧用户名/...`），在新电脑执行一次 `init` 或从 Local 副本运行任意命令（会触发 bootstrap 重写启动器）：
 
 ```bash
-python3 path/to/skill-manager/scripts/skill_manager.py fix-paths
+python3 ~/Skill\ Manager/<配置>/Skills/local/skill-manager/scripts/skill_manager.py init
 ```
-
-`fix-paths` 会：重建 `Open Skill Manager.command` 与 GUI、刷新 Local 中的 skill-manager 副本、按当前 `~/Skill Manager` 位置重连所有已同步技能的 `~/.agents/skills` 软链。
 
 ## 触发时第一步
 
@@ -110,9 +105,6 @@ python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py device current
 # 初始化工作区
 python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py init
 
-# 换机后修复路径
-python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py fix-paths
-
 # 仓库
 python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py repo add owner/repo --branch main
 python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py repo list
@@ -140,10 +132,6 @@ python3 ~/.agents/skills/skill-manager/scripts/skill_manager.py ui
 
 **检查更新：**
 1. `update` — 对所有已同步技能 fetch 并覆盖更新
-
-**换机或复制 Skill Manager 后：**
-1. `fix-paths` — 重建启动器与软链
-2. `healthcheck` — 确认配置、目录与软链一致
 
 **用户删了本地技能文件夹：**
 1. `healthcheck` — 自动清理断裂软链

@@ -29,9 +29,38 @@ except ImportError:
     yaml = None  # type: ignore
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
-SM_ROOT = Path(
-    os.environ.get("SKILL_MANAGER_ROOT", os.environ.get("MYSKILLS_ROOT", "~/Skill Manager"))
-).expanduser()
+
+
+def infer_sm_root_from_script() -> Path | None:
+    """从 Local 安装路径反推 Skill Manager 根目录（换机复制后无需环境变量）。"""
+    script = Path(__file__).resolve()
+    parts = script.parts
+    try:
+        idx = parts.index("skill-manager")
+    except ValueError:
+        return None
+    if idx < 3 or parts[idx - 1] != "local" or parts[idx - 2] != "Skills":
+        return None
+    cfg_dir = Path(*parts[: idx - 2])
+    sm_root = cfg_dir.parent
+    if (cfg_dir / "config.json").is_file():
+        return sm_root
+    return None
+
+
+def resolve_sm_root() -> Path:
+    """解析 Skill Manager 工作区根目录。"""
+    for key in ("SKILL_MANAGER_ROOT", "MYSKILLS_ROOT"):
+        raw = os.environ.get(key, "").strip()
+        if raw:
+            return Path(raw).expanduser()
+    inferred = infer_sm_root_from_script()
+    if inferred is not None:
+        return inferred
+    return Path("~/Skill Manager").expanduser()
+
+
+SM_ROOT = resolve_sm_root()
 LEGACY_SKILLS_DIR = SM_ROOT / "Skills"
 LEGACY_CONFIGS_DIR = SM_ROOT / "configs"
 MIGRATED_DIR = SM_ROOT / ".migrated"
@@ -884,19 +913,49 @@ def sync_gui_index(mgr: Manager | None = None) -> str:
     return "synced"
 
 
+def _portable_launcher_prelude() -> str:
+    """生成 bash 前缀：以 .command 所在目录为 SM_ROOT，并定位 skill-manager 脚本。"""
+    return """SM_ROOT="$(cd "$(dirname "$0")" && pwd)"
+export SKILL_MANAGER_ROOT="$SM_ROOT"
+cd "$SM_ROOT"
+CFG=""
+if [ -f "$SM_ROOT/.active-config" ]; then
+  CFG="$(tr -d '[:space:]' < "$SM_ROOT/.active-config")"
+elif [ -f "$SM_ROOT/.active-device" ]; then
+  CFG="$(tr -d '[:space:]' < "$SM_ROOT/.active-device")"
+fi
+WD=""
+if [ -n "$CFG" ] && [ -f "$SM_ROOT/$CFG/Skills/local/skill-manager/scripts/watchdog.py" ]; then
+  WD="$SM_ROOT/$CFG/Skills/local/skill-manager/scripts/watchdog.py"
+fi
+if [ -z "$WD" ]; then
+  WD="$(find "$SM_ROOT" -path '*/local/skill-manager/scripts/watchdog.py' -print -quit 2>/dev/null)"
+fi
+"""
+
+
 def deploy_launcher_files(mgr: Manager | None = None) -> None:
-    """将 Mac 快捷启动脚本部署到 Skill Manager 根目录。"""
+    """将 Mac 快捷启动脚本部署到 Skill Manager 根目录（路径相对 .command 自身，可跨用户复制）。"""
     if sys.platform != "darwin":
         return
     SM_ROOT.mkdir(parents=True, exist_ok=True)
-    wd_script = watchdog_script_path(mgr)
     wd_port = int(os.environ.get("SM_WATCHDOG_PORT", str(WATCHDOG_PORT)))
     port = int(os.environ.get("SM_PORT", str(DEFAULT_UI_PORT)))
+    prelude = _portable_launcher_prelude()
+    missing_msg = (
+        "找不到 skill-manager。请确认已复制完整的 Skill Manager 文件夹，"
+        "或从仓库运行 init。"
+    )
+
     LAUNCHER_CMD.write_text(
         f"#!/bin/bash\n"
-        f'set -e\n'
-        f'cd "{SM_ROOT}"\n'
-        f'WD="{wd_script}"\n'
+        f"set -e\n"
+        f"{prelude}"
+        f'if [ ! -f "$WD" ]; then\n'
+        f'  osascript -e \'display alert "Skill Manager" message "{missing_msg}"\' 2>/dev/null || '
+        f'echo "error: 找不到 watchdog.py" >&2\n'
+        f"  exit 1\n"
+        f"fi\n"
         f'if ! curl -sf "http://127.0.0.1:{wd_port}/health" >/dev/null 2>&1; then\n'
         f'  nohup python3 "$WD" >/dev/null 2>&1 &\n'
         f"  sleep 0.3\n"
@@ -906,6 +965,10 @@ def deploy_launcher_files(mgr: Manager | None = None) -> None:
         encoding="utf-8",
     )
     LAUNCHER_CMD.chmod(0o755)
+
+    obsolete_fix = SM_ROOT / "Fix Paths.command"
+    if obsolete_fix.is_file():
+        obsolete_fix.unlink()
 
 
 def install_skill_manager_local(mgr: Manager, *, save: bool = True) -> bool:
@@ -1791,49 +1854,6 @@ def relink_config_skills(mgr: Manager) -> list[str]:
     return linked
 
 
-def fix_paths(mgr: Manager) -> dict:
-    """
-    换机或复制 Skill Manager / skill-manager 后修复本机路径。
-
-    重建启动器与 GUI、刷新 Local 中的 skill-manager 副本，并按当前
-    ~/Skill Manager 位置重连所有已同步技能的 Agent 软链。
-    """
-    steps: list[str] = []
-    skills_root = config_skills_dir(mgr).resolve()
-
-    deploy_launcher_files(mgr)
-    steps.append("launcher")
-
-    try:
-        sync_gui_index(mgr)
-        steps.append("gui")
-    except (FileNotFoundError, RuntimeError):
-        pass
-
-    if install_skill_manager_local(mgr, save=False):
-        steps.append("skill-manager-local")
-    else:
-        dest = skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID)
-        if dest.is_dir():
-            copy_skill_tree(SKILL_DIR, dest)
-            steps.append("skill-manager-copy")
-
-    linked = relink_config_skills(mgr)
-    for name in linked:
-        steps.append(f"symlink:{name}")
-
-    mgr.save()
-
-    return {
-        "sm_root": str(SM_ROOT.resolve()),
-        "skills_root": str(skills_root),
-        "manager_script": str(manager_script_path(mgr)),
-        "steps": steps,
-        "linked": linked,
-        "linked_count": len(linked),
-    }
-
-
 def clear_config_symlinks(mgr: Manager) -> list[str]:
     """移除当前配置所有已同步技能的 Agent 软链。"""
     cleared: list[str] = []
@@ -2670,19 +2690,6 @@ def get_device_info(mgr: Manager) -> dict:
 
 # --- CLI -------------------------------------------------------------------
 
-def cmd_fix_paths(args: argparse.Namespace) -> int:
-    """换机后修复启动器、本地副本与 Agent 软链。"""
-    mgr = load_manager(args.device)
-    result = fix_paths(mgr)
-    print(f"工作区: {result['sm_root']}")
-    print(f"技能库: {result['skills_root']}")
-    print(f"管理脚本: {result['manager_script']}")
-    print(f"已重建 {result['linked_count']} 个技能软链")
-    if result["steps"]:
-        print(f"步骤: {', '.join(result['steps'])}")
-    return 0
-
-
 def cmd_healthcheck(args: argparse.Namespace) -> int:
     """执行健康检查并打印结果。"""
     mgr = load_manager(args.device)
@@ -2847,7 +2854,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("healthcheck", help="清理断裂软链")
-    sub.add_parser("fix-paths", help="换机后修复启动器与软链路径")
     sub.add_parser("init", help="初始化 Skill Manager 工作区")
 
     dev = sub.add_parser("device", help="设备管理")
@@ -2897,7 +2903,6 @@ def main(argv: list[str] | None = None) -> int:
 
     handlers = {
         "healthcheck": cmd_healthcheck,
-        "fix-paths": cmd_fix_paths,
         "init": cmd_init,
         "device": cmd_device,
         "repo": cmd_repo,
