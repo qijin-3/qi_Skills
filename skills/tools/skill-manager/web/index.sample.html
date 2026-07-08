@@ -731,10 +731,13 @@
 
       <div class="card">
         <div class="card-head">
-          <h2>Agent 技能目录</h2>
-          <button type="button" class="btn btn-primary btn-sm" id="saveSettingsBtn">保存</button>
+          <h2>Agents 技能目录</h2>
+          <div style="display:flex;gap:var(--sp-3)">
+            <button type="button" class="btn btn-ghost btn-sm" id="fixPathsBtn" title="换机或复制 Skill Manager 后重建启动器与软链">修复路径</button>
+            <button type="button" class="btn btn-primary btn-sm" id="saveSettingsBtn">保存</button>
+          </div>
         </div>
-        <p class="lead" style="margin-bottom:var(--sp-5)">第一项 <strong>Agent</strong> 为默认同步目录；启用后会在对应路径创建软链。点击「打开」可在 Finder 中查看目录。</p>
+        <p class="lead" style="margin-bottom:var(--sp-5)">第一项 <strong>Agents</strong>（<code>~/.agents/skills</code>，与 skill-creator 一致）为默认同步目录；启用后会在对应路径创建软链。点击「打开」可在 Finder 中查看目录。</p>
         <div id="settingsAgents"></div>
       </div>
     </section>
@@ -773,7 +776,7 @@
       <p class="dialog-warn" id="switchConfigDialogWarn"></p>
       <label style="display:flex;gap:8px;align-items:center;font-size:13px">
         <input type="checkbox" id="switchConfigRelink" checked>
-        同时切换 Agent 技能软链（卸载当前配置软链，链接到新配置）
+        同时切换 Agents 技能软链（卸载当前配置软链，链接到新配置）
       </label>
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" id="switchConfigCancel">取消</button>
@@ -821,7 +824,7 @@
   <dialog id="healthcheckDialog" class="alias-dialog healthcheck-dialog">
     <div class="alias-dialog-form">
       <h3>健康检查</h3>
-      <p class="lead" style="margin:0">以下技能在配置文件、本地目录与 Agent 软链之间不一致。可逐项操作，或勾选后批量处理。</p>
+      <p class="lead" style="margin:0">以下技能在配置文件、本地目录与 Agents 软链之间不一致。可逐项操作，或勾选后批量处理。</p>
       <div id="healthcheckGroups"></div>
       <div class="dialog-actions" style="justify-content:flex-end">
         <button type="button" class="btn btn-ghost" id="healthcheckCancel">关闭</button>
@@ -984,7 +987,7 @@
       document.getElementById('removeRepoDialogId').textContent = repoId;
       document.getElementById('removeRepoDialogWarn').innerHTML =
         `确定移除 <strong>${esc(label)}</strong>？<br>` +
-        `移除后，该仓库下 <strong>${synced}</strong> 个已安装技能将一并卸载（删除 Agent 目录中的软链）。此操作不可撤销。`;
+        `移除后，该仓库下 <strong>${synced}</strong> 个已安装技能将一并卸载（删除 ~/.agents/skills 中的软链）。此操作不可撤销。`;
       const dlg = document.getElementById('removeRepoDialog');
       if (dlg.showModal) dlg.showModal();
       else dlg.setAttribute('open', '');
@@ -1419,13 +1422,24 @@
       });
     }
 
+    document.getElementById('fixPathsBtn').addEventListener('click', async () => {
+      if (!confirm('将重建启动器、GUI 与所有已同步技能的 ~/.agents/skills 软链。继续？')) return;
+      try {
+        const data = await api('POST', '/api/fix-paths');
+        toast(`已修复路径，重连 ${data.linked_count || 0} 个技能软链`);
+        await loadSettingsPanel();
+      } catch (e) {
+        toast('修复失败: ' + e.message);
+      }
+    });
+
     document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
       const agents = [];
       document.querySelectorAll('#settingsAgents .settings-agent-row').forEach((row, i) => {
         const prev = settingsAgentsCache[i] || {};
         agents.push({
-          id: prev.id || `agent-${i}`,
-          name: prev.name || `Agent ${i + 1}`,
+          id: prev.id || `agents-${i}`,
+          name: prev.name || `Agents ${i + 1}`,
           path: row.querySelector('.agent-path').value.trim(),
           enabled: row.querySelector('.agent-enabled').checked,
         });
@@ -1681,7 +1695,7 @@
       {
         id: 'extra_link',
         title: '软链多出技能',
-        desc: 'Agent 目录存在软链，但配置未记录',
+        desc: 'Agents 目录存在软链，但配置未记录',
       },
     ];
 

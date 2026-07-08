@@ -336,6 +336,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/status" and method == "GET":
             return json_response(self, 200, sm.get_status(mgr))
 
+        if path == "/api/fix-paths" and method == "POST":
+            result = sm.fix_paths(mgr)
+            reset_mgr_cache()
+            return json_response(self, 200, result)
+
         if path == "/api/healthcheck" and method == "POST":
             report = sm.healthcheck(mgr)
             return json_response(self, 200, report)

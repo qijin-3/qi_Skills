@@ -57,7 +57,7 @@ SAMPLE_WEB_DIR = SKILL_DIR / "web"
 SAMPLE_GUI_INDEX = SAMPLE_WEB_DIR / "index.sample.html"
 
 DEFAULT_AGENTS: list[dict] = [
-    {"id": "agent", "name": "Agent", "path": "~/.agents/skills", "enabled": True},
+    {"id": "agents", "name": "Agents", "path": "~/.agents/skills", "enabled": True},
     {"id": "cursor", "name": "Cursor", "path": "~/.cursor/skills", "enabled": False},
     {"id": "claude", "name": "Claude Code", "path": "~/.claude/skills", "enabled": False},
     {"id": "codex", "name": "Codex", "path": "~/.codex/skills", "enabled": False},
@@ -68,11 +68,12 @@ DEFAULT_AGENTS: list[dict] = [
     {"id": "cline", "name": "Cline", "path": "~/.cline/skills", "enabled": False},
     {"id": "roo", "name": "Roo Code", "path": "~/.roo/skills", "enabled": False},
 ]
-SETTINGS_VERSION = 4
+SETTINGS_VERSION = 5
 LEGACY_AGENT_PATH = "~/.agent/skills"
 LEGACY_AGENT_SKILLS = Path("~/.agent/skills").expanduser()
+LEGACY_AGENT_ID = "agent"
 MANAGER_LINK_NAME = "skill-manager"
-REMOVED_AGENT_IDS = frozenset({"cursor-builtin", "agents"})
+REMOVED_AGENT_IDS = frozenset({"cursor-builtin", LEGACY_AGENT_ID})
 DEFAULT_AGENT_IDS = {a["id"] for a in DEFAULT_AGENTS}
 
 LOCAL_REPO_ID = "__local__"
@@ -360,12 +361,14 @@ def merge_agent_settings(saved_agents: list[dict], *, reset_enabled: bool = Fals
     for default in DEFAULT_AGENTS:
         aid = default["id"]
         saved = by_id.get(aid, {})
+        if not saved and aid == "agents":
+            saved = by_id.get(LEGACY_AGENT_ID, {})
         if reset_enabled or aid not in by_id:
             enabled = default.get("enabled", False)
         else:
             enabled = saved.get("enabled", default.get("enabled", False))
         path = str(saved.get("path") or default["path"]).strip()
-        if aid == "agent" and path in (LEGACY_AGENT_PATH, "~/.agent/skills"):
+        if aid in ("agents", LEGACY_AGENT_ID) and path in (LEGACY_AGENT_PATH, "~/.agent/skills"):
             path = "~/.agents/skills"
         merged.append({
             "id": aid,
@@ -388,10 +391,17 @@ def migrate_settings(data: dict) -> bool:
 
     if version < SETTINGS_VERSION:
         for agent in agents:
-            if agent.get("id") == "agent" and agent.get("path") in (LEGACY_AGENT_PATH, "~/.agent/skills"):
-                agent["path"] = "~/.agents/skills"
+            if agent.get("id") == LEGACY_AGENT_ID:
+                agent["id"] = "agents"
                 changed = True
-        # 移除已废弃的 Agent 项
+            if agent.get("id") == "agents":
+                if agent.get("path") in (LEGACY_AGENT_PATH, "~/.agent/skills"):
+                    agent["path"] = "~/.agents/skills"
+                    changed = True
+                if agent.get("name") == "Agent":
+                    agent["name"] = "Agents"
+                    changed = True
+        # 移除已废弃的 Agent 项（含旧 id agent，已合并为 agents）
         before = len(agents)
         data["agents"] = [
             a for a in agents
@@ -548,7 +558,7 @@ def update_settings(agents: list[dict]) -> dict:
     cleaned: list[dict] = []
     seen: set[str] = set()
     for agent in agents:
-        aid = str(agent.get("id", "")).strip() or f"agent-{len(cleaned)}"
+        aid = str(agent.get("id", "")).strip() or f"agents-{len(cleaned)}"
         if aid in seen:
             continue
         seen.add(aid)
@@ -1478,7 +1488,7 @@ def _health_hint(mtype: str, repo_slug: str = "") -> str:
     return {
         "stale_config": "配置有记录，本地目录缺失",
         "missing_disk": "配置已同步，技能目录缺失",
-        "missing_link": "未创建 Agent 软链",
+        "missing_link": "未创建 Agents 软链",
         "broken_link": "软链已断裂",
         "wrong_link": "软链指向错误",
         "orphan_link": "软链存在，配置未记录",
@@ -1779,6 +1789,49 @@ def relink_config_skills(mgr: Manager) -> list[str]:
             create_symlink(mgr, name, repo["id"])
             linked.append(name)
     return linked
+
+
+def fix_paths(mgr: Manager) -> dict:
+    """
+    换机或复制 Skill Manager / skill-manager 后修复本机路径。
+
+    重建启动器与 GUI、刷新 Local 中的 skill-manager 副本，并按当前
+    ~/Skill Manager 位置重连所有已同步技能的 Agent 软链。
+    """
+    steps: list[str] = []
+    skills_root = config_skills_dir(mgr).resolve()
+
+    deploy_launcher_files(mgr)
+    steps.append("launcher")
+
+    try:
+        sync_gui_index(mgr)
+        steps.append("gui")
+    except (FileNotFoundError, RuntimeError):
+        pass
+
+    if install_skill_manager_local(mgr, save=False):
+        steps.append("skill-manager-local")
+    else:
+        dest = skill_dest(mgr, MANAGER_LINK_NAME, LOCAL_REPO_ID)
+        if dest.is_dir():
+            copy_skill_tree(SKILL_DIR, dest)
+            steps.append("skill-manager-copy")
+
+    linked = relink_config_skills(mgr)
+    for name in linked:
+        steps.append(f"symlink:{name}")
+
+    mgr.save()
+
+    return {
+        "sm_root": str(SM_ROOT.resolve()),
+        "skills_root": str(skills_root),
+        "manager_script": str(manager_script_path(mgr)),
+        "steps": steps,
+        "linked": linked,
+        "linked_count": len(linked),
+    }
 
 
 def clear_config_symlinks(mgr: Manager) -> list[str]:
@@ -2617,6 +2670,19 @@ def get_device_info(mgr: Manager) -> dict:
 
 # --- CLI -------------------------------------------------------------------
 
+def cmd_fix_paths(args: argparse.Namespace) -> int:
+    """换机后修复启动器、本地副本与 Agent 软链。"""
+    mgr = load_manager(args.device)
+    result = fix_paths(mgr)
+    print(f"工作区: {result['sm_root']}")
+    print(f"技能库: {result['skills_root']}")
+    print(f"管理脚本: {result['manager_script']}")
+    print(f"已重建 {result['linked_count']} 个技能软链")
+    if result["steps"]:
+        print(f"步骤: {', '.join(result['steps'])}")
+    return 0
+
+
 def cmd_healthcheck(args: argparse.Namespace) -> int:
     """执行健康检查并打印结果。"""
     mgr = load_manager(args.device)
@@ -2781,6 +2847,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("healthcheck", help="清理断裂软链")
+    sub.add_parser("fix-paths", help="换机后修复启动器与软链路径")
     sub.add_parser("init", help="初始化 Skill Manager 工作区")
 
     dev = sub.add_parser("device", help="设备管理")
@@ -2830,6 +2897,7 @@ def main(argv: list[str] | None = None) -> int:
 
     handlers = {
         "healthcheck": cmd_healthcheck,
+        "fix-paths": cmd_fix_paths,
         "init": cmd_init,
         "device": cmd_device,
         "repo": cmd_repo,

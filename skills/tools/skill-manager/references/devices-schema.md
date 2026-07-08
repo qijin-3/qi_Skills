@@ -31,5 +31,6 @@
 ## 说明
 
 - 每台设备的 `~/Skill Manager` 目录独立，不跨设备同步
-- skill-manager 管理器 CLI 可位于 `~/.agent/skills/skill-manager`；已安装技能默认软链到 `~/.agents/skills/`
+- skill-manager 管理器 CLI 位于 `~/.agents/skills/skill-manager`（与 skill-creator 相同）；已安装技能默认软链到 `~/.agents/skills/`
+- 换机或复制工作区后运行 `fix-paths` 重建启动器与软链
 - 其他设备的 `.json` 可因 dotfiles 同步存在，但仅当前 hostname 匹配的配置会被使用
