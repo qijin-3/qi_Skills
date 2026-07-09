@@ -27,8 +27,7 @@
 | 字段名 | 字段 ID | 类型 | Upsert Key |
 |--------|---------|------|------------|
 | 日期 | fld8aMB2Xx | datetime | ✅ 主键 |
-| 周次 | fldprMeSL7 | text | |
-| 月份 | fldjMOkfqx | text | |
+| 月份 | fldjMOkfqx | text | 晚间脚本从日期推导 `YYYY-MM` |
 | 体重_kg | fldWyjc7ZG | number | |
 | 体脂率_% | fldbzUPjNO | number | |
 | 起床时间 | fld0MR0Dmy | datetime | |
@@ -53,7 +52,7 @@
 | 运动完成率_% | fldzzUbABD | number | 晚间补填 |
 | 训练强度 | fldxHHJtEc | select | 晚间从运动文本时长推断 |
 
-> **已删除 / 废弃字段**：RPE、精力评分、计划版本、日总结、安全标记、当月文档链接、**训练主题**、**运动时长_分钟**（时长只存在运动_1/2/3 文本中）、**身体状态**、**当日情境**（改写入 **备注**，不同步 Base）。
+> **已删除 / 废弃字段**：**周次**、RPE、精力评分、计划版本、日总结、安全标记、当月文档链接、**训练主题**、**运动时长_分钟**（时长只存在运动_1/2/3 文本中）、**身体状态**、**当日情境**（改写入 **备注**，不同步 Base）。
 > 周计划主题与时段见本地 `state/current-week.json`；日总结见 `daily-log.md`。
 > **Base 写入时机**：仅 `health-evening-close` 晚间从 daily-log 统一同步。白天 health-coach 不写 Base。
 

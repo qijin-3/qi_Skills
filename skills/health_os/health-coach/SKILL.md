@@ -1,6 +1,6 @@
 ---
 name: health-coach
-version: 2.4.0
+version: 2.4.1
 description: "飞书健康教练。记录饮食/运动/体重/睡眠到本地 daily-log、估算卡路里、动态调整日历计划、饮食咨询、安全判断、更新个人约束。用户说吃了/练了/体重/健康/教练/膝盖/受伤/今天计划调整等时务必使用本技能，即使用户没明确说「教练」也要触发。"
 ---
 
@@ -12,9 +12,9 @@ description: "飞书健康教练。记录饮食/运动/体重/睡眠到本地 da
 
 ## 配置
 
-- **操作指引**：`references/config.md`（读什么文件、调什么脚本）
+- **操作指引**：`~/SynologyDrive/Sync/OS/Health_OS/references/config.md`（**只读**本地文件路径；**禁止**执行其中 Base upsert 命令）
 - **机器配置**：`references/system.json` — **禁止 AI 读取或抄其中的 Token/字段 ID**
-- **脚本路径**：`health-system/scripts/`（相对 Health_OS 根目录）
+- **脚本路径**：`health-system/scripts/`（相对 Health_OS 根目录；coach **不调用** `health_base.py`）
 
 ## 铁律
 
@@ -72,7 +72,6 @@ description: "飞书健康教练。记录饮食/运动/体重/睡眠到本地 da
 | `references/calendar-adjustment.md` | 用户要改今天/明天训练安排时 |
 | `references/safety-rules.md` | 每次给运动/饮食建议前 |
 | `references/diet-principles.md` | 饮食咨询或生成饮食建议时 |
-| `references/base-schema.md` | 需确认 Base 字段含义时（晚间收口用，coach 白天不读也可） |
 | `content/profile.md` | 长期画像 |
 | `content/{YYYY}/{MM}/monthly-plan.md` | 本月目标 |
 | `state/current-week.json` | 查本周已排计划 |
