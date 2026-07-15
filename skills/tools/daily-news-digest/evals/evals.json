@@ -4,19 +4,25 @@
     {
       "id": 1,
       "prompt": "生成今天的资讯日报",
-      "expected_output": "桌面 ~/Desktop/daily-news-digest/YYYY-MM-DD/index.html；五 Tab（含订阅源健康）；title 为日期；四板块健康摘要齐全；健康表不含 AIHOT",
+      "expected_output": "在 resolve_out 解析出的 DIGEST_DAY 下生成 index.html；五 Tab；title 为日期",
       "files": []
     },
     {
       "id": 2,
       "prompt": "出一份资讯日报，只要能打开看就行，注意订阅源健康报告",
-      "expected_output": "index.html 可打开；健康 Tab 有 x-ai/design/news 三源表；各日报 Tab 顶栏一句抓取统计",
+      "expected_output": "index.html 可打开；健康 Tab 有 x-ai/design/news；顶栏有健康句",
       "files": []
     },
     {
       "id": 3,
       "prompt": "抓一下 AIHOT 和 X 博主今天说了什么，汇总成日报 HTML",
-      "expected_output": "仍走完整四板块流程；AIHOT 来自 feed.xml（摘要+分类），无浏览器抓取；X 源失败走 mirror；健康表完整",
+      "expected_output": "完整四板块；AIHOT 来自 feed.xml；路径走 Agent 空间或 cwd 下 daily-news-digest/",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "把 https://www.smashingmagazine.com/feed/ 加进日报订阅",
+      "expected_output": "add_feed.py 写入 feeds.json；自动归入合理板块（多为 design 或 news）；回显 section 与 source",
       "files": []
     }
   ]
