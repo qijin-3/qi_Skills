@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="news-minimal">
+<head>
+  <meta charset="utf-8">
+  <title>{{DATE}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+  <style>
+    /* News / Articles list — minimal black & white (screenshot-inspired) */
+    :root, [data-theme="news-minimal"] {
+      --paper: #ffffff;
+      --ink: #111111;
+      --muted: #8a8a8a;
+      --line: #e6e6e6;
+      --accent: #111111;
+      --soft: #f7f7f7;
+      --ok: #2e6b4f;
+      --empty: #8f7650;
+      --fail: #9b3a2e;
+      --sans: "Inter", "Noto Sans SC", -apple-system, "PingFang SC", sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 56px 28px 96px;
+    }
+
+    .masthead {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 28px;
+      margin-bottom: 0;
+    }
+    .kicker {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .title {
+      margin: 0;
+      font-size: clamp(36px, 5vw, 52px);
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      line-height: 1.05;
+    }
+    .subtitle {
+      margin: 12px 0 0;
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: .04em;
+    }
+    .meta-line {
+      margin-top: 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: .04em;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+      margin: 0 0 8px;
+    }
+    .tab-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: 600 12px/1 var(--sans);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      padding: 18px 16px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--ink); }
+    .tab-btn[aria-selected="true"] {
+      color: var(--ink);
+      border-bottom-color: var(--ink);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .health-strip {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+      margin: 0;
+    }
+
+    .panel-body {
+      padding: 8px 0 24px;
+    }
+
+    /* Section heads */
+    .panel-body h2,
+    .section-head {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin: 36px 0 0;
+      padding: 20px 0 14px;
+      border-top: 1px solid var(--line);
+    }
+    .panel-body h2:first-child,
+    .section-head:first-child {
+      margin-top: 12px;
+      border-top: 0;
+      padding-top: 8px;
+    }
+    .section-sub {
+      font-size: 12px;
+      letter-spacing: .14em;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .section-kicker, .section-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 8px 0;
+    }
+    .section-meta a { color: var(--ink); }
+
+    /* News list：文左图右；无图时单列 */
+    .news-row {
+      display: grid;
+      grid-template-columns: 1fr minmax(140px, 220px);
+      gap: 28px;
+      align-items: start;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .news-row:not(:has(.news-media)) { grid-template-columns: 1fr; }
+    .news-row:last-child { border-bottom: 1px solid var(--line); }
+    .news-row.news-row--lead .news-title { font-size: 18px; }
+    .news-media {
+      margin: 0;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: var(--soft);
+      cursor: zoom-in;
+    }
+    .news-media img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .news-body { min-width: 0; }
+    .news-date {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      letter-spacing: .02em;
+    }
+    .news-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      line-height: 1.35;
+    }
+    .news-title a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .news-title a:hover { text-decoration: underline; }
+    .news-excerpt {
+      margin: 0 0 14px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: #555;
+    }
+    .news-source {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .read-more {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .read-more:hover { text-decoration: underline; }
+
+    /* Topic：有图时文左图右（不改 fragment DOM 顺序也能落位） */
+    .topic {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .topic:has(> .thumb) {
+      display: grid;
+      grid-template-columns: 1fr minmax(140px, 220px);
+      column-gap: 28px;
+      row-gap: 8px;
+      align-items: start;
+    }
+    .topic:has(> .thumb) > :not(.thumb) { grid-column: 1; }
+    .topic:has(> .thumb) > .thumb { grid-column: 2; }
+    .topic-title {
+      margin: 0 0 8px !important;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      line-height: 1.35;
+    }
+    .topic-lead {
+      margin: 0 0 14px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: #444;
+    }
+    .thumb {
+      margin: 0;
+      max-height: 180px;
+      overflow: hidden;
+      background: var(--soft);
+      cursor: zoom-in;
+    }
+    .thumb img {
+      display: block;
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+    }
+
+    .cite-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .cite-badge {
+      appearance: none;
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+    }
+    .cite-badge:hover { background: var(--soft); }
+    .cite-panel { display: none; }
+
+    .resource-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .resource-list li {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 6px;
+    }
+    .resource-list a {
+      color: var(--ink);
+      font-weight: 600;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .resource-list a:hover { text-decoration: underline; }
+    .resource-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Cite modal */
+    .cite-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .cite-modal.open { display: flex; }
+    .cite-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+    }
+    .cite-modal-card {
+      position: relative;
+      z-index: 1;
+      width: min(520px, 100%);
+      max-height: min(72vh, 640px);
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 28px 26px 24px;
+    }
+    .cite-modal-card h4 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .cite-modal-card .cite-zh {
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 0 0 14px;
+      color: #333;
+    }
+    .cite-modal-card .cite-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .cite-modal-card .cite-link {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .cite-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    /* Health accordion */
+    details.health-group {
+      margin: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    details.health-group > summary {
+      list-style: none;
+      cursor: pointer;
+      display: grid;
+      gap: 10px;
+      padding: 20px 0;
+      position: relative;
+    }
+    details.health-group > summary::-webkit-details-marker { display: none; }
+    .health-summary-title {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .health-summary-line {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .kpi-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+    .kpi {
+      font-size: 11px;
+      letter-spacing: .04em;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+    }
+    .kpi b { color: var(--ink); font-weight: 700; margin-right: 4px; }
+    .health-chevron {
+      position: absolute;
+      right: 4px;
+      top: 24px;
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid var(--muted);
+      border-bottom: 1.5px solid var(--muted);
+      transform: rotate(45deg);
+    }
+    details.health-group[open] > summary .health-chevron {
+      transform: rotate(225deg);
+      top: 28px;
+    }
+    .health-body { padding: 0 0 20px; }
+    .health-sub {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin: 18px 0 8px;
+    }
+    .health-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .health-table th, .health-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .health-table th {
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .mono { font-family: var(--mono); font-size: 11px; word-break: break-all; }
+    .small { font-size: 11px; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border: 1px solid var(--line);
+    }
+    .badge-ok { color: var(--ok); }
+    .badge-empty { color: var(--empty); }
+    .badge-fail { color: var(--fail); }
+    .empty-note { color: var(--muted); font-style: italic; margin: 12px 0; }
+
+    .panel-body h3:not(.topic-title):not(.news-title) {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 18px 0 8px;
+    }
+    .panel-body p, .panel-body li {
+      font-size: 14px;
+      line-height: 1.65;
+      color: #444;
+    }
+    .panel-body a { color: var(--ink); }
+
+    footer.site-foot {
+      margin-top: 40px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* 大图灯箱 */
+    .img-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .img-lightbox.open { display: flex; }
+    .img-lightbox-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.78);
+    }
+    .img-lightbox img {
+      position: relative;
+      z-index: 1;
+      max-width: min(96vw, 1200px);
+      max-height: 92vh;
+      object-fit: contain;
+      box-shadow: 0 12px 48px rgba(0,0,0,.45);
+    }
+    .img-lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      border: 0;
+      background: #fff;
+      color: #111;
+      font: 600 13px/1 var(--sans);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 720px) {
+      .shell { padding: 36px 18px 72px; }
+      .news-row { grid-template-columns: 1fr; gap: 14px; }
+      .news-media { max-width: 280px; }
+      .topic:has(> .thumb) {
+        display: flex;
+        flex-direction: column;
+      }
+      .topic:has(> .thumb) > .thumb {
+        order: 10;
+        max-width: 280px;
+        width: 100%;
+      }
+      .tab-btn { padding: 16px 10px; letter-spacing: .1em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <p class="kicker">Daily News Digest</p>
+      <h1 class="title">{{DATE}}</h1>
+      <p class="subtitle">AIHOT · X-AI · Design · News</p>
+      <p class="meta-line">Generated · {{GENERATED_AT}}</p>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="日报板块">
+      <button class="tab-btn" role="tab" aria-selected="true"  data-tab="aihot">AIHOT</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="x-ai">X-AI</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="design">设计</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="news">今日新闻</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="health">订阅源健康</button>
+    </nav>
+
+    <section class="panel active" id="panel-aihot" role="tabpanel">
+      <p class="health-strip">{{HEALTH_LINE_AIHOT}}</p>
+      <div class="panel-body">{{FRAGMENT_AIHOT}}</div>
+    </section>
+
+    <section class="panel" id="panel-x-ai" role="tabpanel">
+      <p class="health-strip">{{HEALTH_LINE_X_AI}}</p>
+      <div class="panel-body">{{FRAGMENT_X_AI}}</div>
+    </section>
+
+    <section class="panel" id="panel-design" role="tabpanel">
+      <p class="health-strip">{{HEALTH_LINE_DESIGN}}</p>
+      <div class="panel-body">{{FRAGMENT_DESIGN}}</div>
+    </section>
+
+    <section class="panel" id="panel-news" role="tabpanel">
+      <p class="health-strip">{{HEALTH_LINE_NEWS}}</p>
+      <div class="panel-body">{{FRAGMENT_NEWS}}</div>
+    </section>
+
+    <section class="panel" id="panel-health" role="tabpanel">
+      <p class="health-strip">X-AI / 设计 / 今日新闻 订阅源健康（点击分组展开明细）</p>
+      <div class="panel-body">{{HEALTH_TABLE}}</div>
+    </section>
+
+    <footer class="site-foot">All sections · Past 24h</footer>
+  </div>
+
+  <div class="cite-modal" id="cite-modal" aria-hidden="true">
+    <div class="cite-modal-backdrop" data-cite-close></div>
+    <div class="cite-modal-card" role="dialog" aria-modal="true" aria-labelledby="cite-modal-title">
+      <button type="button" class="cite-modal-close" data-cite-close>关闭</button>
+      <h4 id="cite-modal-title">引证详情</h4>
+      <div id="cite-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="img-lightbox" id="img-lightbox" aria-hidden="true">
+    <div class="img-lightbox-backdrop" data-img-close></div>
+    <button type="button" class="img-lightbox-close" data-img-close>关闭</button>
+    <img id="img-lightbox-src" alt="">
+  </div>
+
+  <script>
+    /** 切换日报 Tab。 */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.setAttribute('aria-selected', btn.getAttribute('data-tab') === tabId ? 'true' : 'false');
+      });
+      document.querySelectorAll('.panel').forEach(function (panel) {
+        panel.classList.toggle('active', panel.id === 'panel-' + tabId);
+      });
+    }
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        switchTab(btn.getAttribute('data-tab'));
+      });
+    });
+
+    /** 打开引证弹层。 */
+    function openCite(citeId, badgeLabel) {
+      var panel = document.getElementById('cite-' + citeId);
+      var modal = document.getElementById('cite-modal');
+      var body = document.getElementById('cite-modal-body');
+      var title = document.getElementById('cite-modal-title');
+      if (!panel || !modal || !body) return;
+      title.textContent = badgeLabel || '引证详情';
+      body.innerHTML = panel.innerHTML;
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    /** 关闭引证弹层。 */
+    function closeCite() {
+      var modal = document.getElementById('cite-modal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    /** 打开配图大图。 */
+    function openImg(src) {
+      var box = document.getElementById('img-lightbox');
+      var img = document.getElementById('img-lightbox-src');
+      if (!box || !img || !src) return;
+      img.src = src;
+      box.classList.add('open');
+      box.setAttribute('aria-hidden', 'false');
+    }
+
+    /** 关闭配图大图。 */
+    function closeImg() {
+      var box = document.getElementById('img-lightbox');
+      var img = document.getElementById('img-lightbox-src');
+      if (!box) return;
+      box.classList.remove('open');
+      box.setAttribute('aria-hidden', 'true');
+      if (img) img.removeAttribute('src');
+    }
+
+    document.addEventListener('click', function (e) {
+      var badge = e.target.closest('.cite-badge');
+      if (badge) {
+        var id = badge.getAttribute('data-cite-id');
+        if (id) openCite(id, badge.textContent.trim());
+        return;
+      }
+      if (e.target.closest('[data-cite-close]')) {
+        closeCite();
+        return;
+      }
+      if (e.target.closest('[data-img-close]')) {
+        closeImg();
+        return;
+      }
+      var zoom = e.target.closest('.thumb img, .news-media img');
+      if (zoom && zoom.src) {
+        e.preventDefault();
+        openImg(zoom.currentSrc || zoom.src);
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeCite();
+        closeImg();
+      }
+    });
+  </script>
+</body>
+</html>

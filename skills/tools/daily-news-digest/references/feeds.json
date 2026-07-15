@@ -1,0 +1,84 @@
+{
+  "aihot": {
+    "label": "AIHOT",
+    "has_health_report": false,
+    "sources": [
+      {
+        "id": "aihot-feed",
+        "name": "AI HOT 精选",
+        "url": "https://aihot.virxact.com/feed.xml",
+        "mirrors": []
+      }
+    ]
+  },
+  "x-ai": {
+    "label": "X-AI 日报",
+    "has_health_report": true,
+    "nitter_mirrors": [
+      "nitter.net",
+      "nitter.privacydev.net",
+      "nitter.poast.org",
+      "nitter.cz"
+    ],
+    "sources": [
+      { "id": "sama", "name": "Sam Altman", "handle": "sama" },
+      { "id": "gdb", "name": "Greg Brockman", "handle": "gdb" },
+      { "id": "karpathy", "name": "Andrej Karpathy", "handle": "karpathy" },
+      { "id": "miramurati", "name": "Mira Murati", "handle": "miramurati" },
+      { "id": "ilyasut", "name": "Ilya Sutskever", "handle": "ilyasut" },
+      { "id": "DarioAmodei", "name": "Dario Amodei", "handle": "DarioAmodei" },
+      { "id": "OfficialLoganK", "name": "Logan Kilpatrick", "handle": "OfficialLoganK" },
+      { "id": "dotey", "name": "宝玉 (dotey)", "handle": "dotey" },
+      { "id": "simonw", "name": "Simon Willison", "handle": "simonw" },
+      { "id": "lijigang", "name": "李继刚", "handle": "lijigang" },
+      { "id": "kaifulee", "name": "李开复", "handle": "kaifulee" },
+      { "id": "op7418", "name": "歸藏", "handle": "op7418" },
+      { "id": "gregisenberg", "name": "Greg Isenberg", "handle": "gregisenberg" },
+      { "id": "petergyang", "name": "Peter Yang", "handle": "petergyang" },
+      { "id": "zarazhangrui", "name": "Zara Zhang", "handle": "zarazhangrui" },
+      { "id": "lennysan", "name": "Lenny Rachitsky", "handle": "lennysan" },
+      { "id": "levelsio", "name": "Pieter Levels", "handle": "levelsio" },
+      { "id": "goodside", "name": "Riley Goodside", "handle": "goodside" },
+      { "id": "GoogleAIStudio", "name": "Google AI Studio", "handle": "GoogleAIStudio" },
+      { "id": "HamelHusain", "name": "Hamel Husain", "handle": "HamelHusain" },
+      { "id": "joshwoodward", "name": "Josh Woodward", "handle": "joshwoodward" },
+      { "id": "AmandaAskell", "name": "Amanda Askell", "handle": "AmandaAskell" },
+      { "id": "NanoBanana", "name": "Nano Banana Pro", "handle": "NanoBanana" },
+      { "id": "altcap", "name": "@altcap", "handle": "altcap" },
+      { "id": "sundarpichai", "name": "@sundarpichai", "handle": "sundarpichai" },
+      { "id": "satyanadella", "name": "@satyanadella", "handle": "satyanadella" },
+      { "id": "AndrewYNg", "name": "@AndrewYNg", "handle": "AndrewYNg" },
+      { "id": "DrJimFan", "name": "Jim Fan", "handle": "DrJimFan" },
+      { "id": "alexalbert__", "name": "@alexalbert__", "handle": "alexalbert__" }
+    ]
+  },
+  "design": {
+    "label": "设计日报",
+    "has_health_report": true,
+    "focus": "产品设计 / 视觉设计 / 设计趋势 / 装置设计（灵感优先；建筑类降权）",
+    "sources": [
+      { "id": "yankodesign", "name": "Yanko Design", "domain": "产品/工业设计", "url": "https://feeds.feedburner.com/yankodesign", "mirrors": [] },
+      { "id": "maltm", "name": "Maltm", "domain": "产品/工业设计", "url": "https://www.maltm.com/feed/", "mirrors": [] },
+      { "id": "core77", "name": "Core77", "domain": "产品/工业设计", "url": "https://www.core77.com/raw/blog_rss.xml", "mirrors": [] },
+      { "id": "itsnicethat", "name": "It's Nice That", "domain": "视觉设计/趋势", "url": "https://feeds.feedburner.com/itsnicethat", "mirrors": [] },
+      { "id": "designmilk", "name": "Design Milk", "domain": "视觉设计/趋势", "url": "https://design-milk.com/feed/", "mirrors": [] },
+      { "id": "abduzeedo", "name": "Abduzeedo", "domain": "视觉设计/趋势", "url": "https://www.abduzeedo.com/rss.xml", "mirrors": [] },
+      { "id": "dezeen", "name": "Dezeen", "domain": "综合设计（产品/装置优先筛选）", "url": "https://www.dezeen.com/feed/", "mirrors": [] },
+      { "id": "designboom", "name": "Designboom", "domain": "综合设计（装置/产品优先筛选）", "url": "https://www.designboom.com/feed/", "mirrors": [] },
+      { "id": "yellowtrace", "name": "Yellowtrace", "domain": "空间/装置（灵感轻量）", "url": "https://www.yellowtrace.com.au/feed/", "mirrors": [] },
+      { "id": "archdaily-cn", "name": "ArchDaily 中文", "domain": "建筑（降权，仅装置/非常规空间）", "url": "https://www.archdaily.cn/cn/feed.xml", "mirrors": [] }
+    ]
+  },
+  "news": {
+    "label": "今日新闻",
+    "has_health_report": true,
+    "sources": [
+      { "id": "idaily", "name": "每日环球视野", "domain": "国际新闻", "url": "https://feedx.net/rss/idaily.xml", "mirrors": [] },
+      { "id": "guancha", "name": "观察者网（头条）", "domain": "国内/时政", "url": "https://rsshub.biteof.top/guancha/headline", "mirrors": [] },
+      { "id": "rmrbwx", "name": "人民日报（微信）", "domain": "国内要闻", "url": "http://feedmaker.kindle4rss.com/feeds/rmrbwx.weixin.xml", "mirrors": [] },
+      { "id": "thepaper", "name": "澎湃新闻（微信）", "domain": "国内要闻", "url": "http://feedmaker.kindle4rss.com/feeds/thepapernews.weixin.xml", "mirrors": [] },
+      { "id": "economist", "name": "一天一篇经济学人", "domain": "国际/双语", "url": "https://plink.anyfeeder.com/weixin/Economist_fans", "mirrors": [] },
+      { "id": "fortunechina", "name": "财富中文网（商业）", "domain": "财经商业", "url": "https://plink.anyfeeder.com/fortunechina/shangye", "mirrors": [] }
+    ]
+  }
+}
