@@ -37,6 +37,15 @@ lark-cli task sections tasks --as user --section-guid "$MY_UNPLANNED" --format j
 lark-cli task sections tasks --as user --section-guid "$MY_WATCH" --format json --page-all
 ```
 
+## 过滤已完成任务（硬规则）
+
+对每个分组返回结果先做过滤：
+- `completed_at` 不为空（已完成）的任务，直接排除，不参与任何调度判断与移动。
+- 仅保留未完成任务进入后续「判断逻辑」和「执行移动」步骤。
+
+若发现已完成任务仍停留在分组中，在输出里追加说明：
+- 「已忽略 {N} 条已完成任务（仍在分组中）」。
+
 ## 判断逻辑
 
 | 当前分组 | 与本月目标关系 | 目标分组 |
@@ -78,6 +87,7 @@ lark-cli task +tasklist-task-add --as user \
   - 「{任务名}」（你认为重要，但本月不应安排：{原因}）
 
 未动：{N} 条
+已忽略已完成任务：{N} 条
 ```
 
 若无任何移动，直接说「各分组任务与本月目标一致，无需调整」。

@@ -14,6 +14,8 @@ lark-cli task sections tasks --as user \
 
 对 MY_TODAY、MY_WEEK、MY_MONTH、MY_UNPLANNED、MY_WATCH 各执行一次。
 
+**硬规则**：每个分组返回后先过滤 `completed_at` 不为空（已完成）的任务，仅保留未完成任务进入早报调度与快照写入。
+
 ## 读进行中目标
 
 ```bash
@@ -52,3 +54,5 @@ lark-cli task +comment --as user \
   --content "早报 {YYYY-MM-DD}：今天主攻这条，原因：{高杠杆/对齐目标/截止日等}" \
   --format json
 ```
+
+仅对未完成且被选入今日执行的任务添加评论；已完成任务禁止评论。

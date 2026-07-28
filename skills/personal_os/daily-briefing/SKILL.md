@@ -45,6 +45,7 @@ Read `[技能参考]/lark-commands.md`（Step 3 移动任务前必读）。
 
 - **进行中目标**：读 `$TABLE_MONTHLY`（状态=进行中，周期=本月）+ `$TABLE_WEEKLY`（状态=进行中，周期=本周），提取月度目标和本周主线的标题/验收标准
 - **各分组任务**：读 `$MY_TODAY`、`$MY_WEEK`、`$MY_MONTH`、`$MY_UNPLANNED`，记录每条任务的 guid、summary、importance、created_at
+- **完成状态过滤（硬规则）**：各分组任务读取后，先过滤 `completed_at` 不为空（已完成）的任务；已完成任务不参与偏差扫描、任务调度、评论与快照写入
 
 命令语法见 `[技能参考]/lark-commands.md`。
 
@@ -93,6 +94,10 @@ Read `[技能参考]/task-triage.md`（**注意：此文件在技能 references/
 写入 `{PERSONAL_OS_ROOT}/state/daily_snapshot_{YYYY-MM-DD}.json`。
 
 快照记录**晨间状态**（早报执行时刻），是晚报行为分析与日志表「今日计划」的唯一来源。`am.MY_TODAY` 需标记哪些是 AI 放入（`ai_placed: true`），以便晚报判断用户主动行为。
+
+**快照写入约束（硬规则）**：
+- 仅写入未完成任务到 `am.MY_TODAY` / `am.MY_WEEK` / `am.MY_MONTH` / `am.MY_WATCH`。
+- 已完成但仍停留在分组中的任务不得写入快照，避免晚报将其误判为当日计划或滞留任务。
 
 **不写飞书日志表**：`$TABLE_LOGS` 由 `evening-review` 统一写入，早报禁止对日志表执行任何 upsert。
 

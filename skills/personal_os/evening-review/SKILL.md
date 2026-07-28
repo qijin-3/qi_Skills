@@ -129,15 +129,21 @@ Read `[技能参考]/diary-assembly.md`（**注意：此文件在技能 referenc
 
 读取今日快照（`{PERSONAL_OS_ROOT}/state/daily_snapshot_{YYYY-MM-DD}.json`）的 `am` 字段，与当前飞书分组状态对比，识别用户的真实行为，写入 `behaviors` 和 `patterns`。
 
+**完成状态过滤（硬规则）**：
+- 行为分析前，先基于飞书任务完成状态过滤：
+  - 当日 `completed_at` 不为空（今日已完成）的任务，视为已完成，不参与未完成类判断。
+  - 仅对未完成任务执行 `user_removed`、`stale` 判断，避免把「已完成但仍留在分组」误判为滞留/被移出。
+- 若同一任务在 `am.MY_TODAY` 中存在且今日已完成，优先记为 `completed_ai` / `completed_user`，不得再记 `user_removed` 或 `stale`。
+
 **行为识别规则：**
 
 | 行为类型 | 判断条件 | pattern 标签 |
 |---------|---------|-------------|
 | `completed_ai` | 在 am.MY_TODAY 且 ai_placed=true，今日已完成 | `completed_ai:{guid}` |
 | `completed_user` | 在 am.MY_TODAY 且 ai_placed=false，今日已完成 | `completed_user:{guid}` |
-| `user_removed` | 在 am.MY_TODAY 且 ai_placed=true，晚间不在 MY_TODAY 且未完成（用户主动移出） | `user_removed:{guid}` |
+| `user_removed` | 在 am.MY_TODAY 且 ai_placed=true，晚间不在 MY_TODAY 且未完成（用户主动移出；已完成任务不计） | `user_removed:{guid}` |
 | `user_added` | 晚间在 MY_TODAY，但不在 am.MY_TODAY（用户白天主动加入） | `user_added:{guid}` |
-| `stale` | 今日和昨日快照 am.MY_TODAY 都有该任务，且今日未完成，连续 N 天 | `stale:{guid}:{N}` |
+| `stale` | 今日和昨日快照 am.MY_TODAY 都有该任务，且今日未完成，连续 N 天（已完成任务不计） | `stale:{guid}:{N}` |
 
 将识别结果写入今日快照的 `behaviors` 和 `patterns` 字段。
 
