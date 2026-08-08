@@ -38,7 +38,7 @@ skills/
 │   └── interview-coach/  — High-rigor interview coaching skill for…
 ├── design/
 │   ├── ai-design-reviewer/  — AI 功能设计评审工具
-│   └── ui-copy/  — UI Copy：从参考图提取设计风格
+│   └── ui-copy/  — UI Copy
 ├── dev/
 │   ├── ali-deploy-guide-generator/  — 根据项目技术栈生成阿里云 ECS 部署方案与 GitHub 自动化部署配置
 │   └── ecs-server-manager/  — 阿里云 ECS 服务器运维管理工具
@@ -51,16 +51,6 @@ skills/
 │   ├── health-monthly-review/  — 健康月复盘
 │   ├── health-weekly-plan/  — 健康周计划
 │   └── health-weekly-review/  — 健康周反馈
-├── personal_os/
-│   ├── annual-review/  — 北极星管理与年度复盘的统一入口
-│   ├── daily-briefing/  — 每日早报调度
-│   ├── diary-capture/  — 日记碎片捕获入口
-│   ├── evening-review/  — 每日晚报收尾
-│   ├── monthly-plan/  — 月度目标规划
-│   ├── monthly-review/  — 月度复盘
-│   ├── quick-task/  — 飞书任务捕获入口
-│   ├── weekly-plan/  — 下周计划安排
-│   └── weekly-review/  — 周复盘
 ├── product/
 │   ├── 10x-impact-judge/  — 10倍影响力判断器
 │   ├── ai-user-research/  — AI-powered user research analysis techniques…
@@ -70,7 +60,9 @@ skills/
 │   ├── idea-validator/  — Idea 快速验证工具
 │   └── product-namer/  — 产品命名专家
 └── tools/
-    ├── meeting/  — 自动整理会议相关文件
+    ├── daily-news-digest/  — 生成每日资讯日报 HTML（四 Tab
+    ├── meeting/  — 会议录音与逐字稿整理
+    ├── skill-manager/  — 管理 ~/.agents/skills 软链接与 ~/Skill Manager…
     ├── tunnel-serve/  — Expose local HTML files or…
     └── wechat-doubler/  — macOS 微信双开工具
 ```
@@ -86,7 +78,7 @@ skills/
 `skills/design/`
 
 - **[ai-design-reviewer](./skills/design/ai-design-reviewer/SKILL.md)** — AI 功能设计评审工具
-- **[ui-copy](./skills/design/ui-copy/SKILL.md)** — UI Copy：从参考图提取设计风格并生成 design.md
+- **[ui-copy](./skills/design/ui-copy/SKILL.md)** — UI Copy
 
 ### Dev
 
@@ -112,20 +104,6 @@ skills/
 - **[health-weekly-plan](./skills/health_os/health-weekly-plan/SKILL.md)** — 健康周计划
 - **[health-weekly-review](./skills/health_os/health-weekly-review/SKILL.md)** — 健康周反馈
 
-### Personal OS
-
-`skills/personal_os/`
-
-- **[annual-review](./skills/personal_os/annual-review/SKILL.md)** — 北极星管理与年度复盘的统一入口
-- **[daily-briefing](./skills/personal_os/daily-briefing/SKILL.md)** — 每日早报调度
-- **[diary-capture](./skills/personal_os/diary-capture/SKILL.md)** — 日记碎片捕获入口
-- **[evening-review](./skills/personal_os/evening-review/SKILL.md)** — 每日晚报收尾
-- **[monthly-plan](./skills/personal_os/monthly-plan/SKILL.md)** — 月度目标规划
-- **[monthly-review](./skills/personal_os/monthly-review/SKILL.md)** — 月度复盘
-- **[quick-task](./skills/personal_os/quick-task/SKILL.md)** — 飞书任务捕获入口
-- **[weekly-plan](./skills/personal_os/weekly-plan/SKILL.md)** — 下周计划安排
-- **[weekly-review](./skills/personal_os/weekly-review/SKILL.md)** — 周复盘
-
 ### Product
 
 `skills/product/`
@@ -142,7 +120,9 @@ skills/
 
 `skills/tools/`
 
-- **[meeting](./skills/tools/meeting/SKILL.md)** — 自动整理会议相关文件
+- **[daily-news-digest](./skills/tools/daily-news-digest/SKILL.md)** — 生成每日资讯日报 HTML（四 Tab
+- **[meeting](./skills/tools/meeting/SKILL.md)** — 会议录音与逐字稿整理
+- **[skill-manager](./skills/tools/skill-manager/SKILL.md)** — 管理 ~/.agents/skills 软链接与 ~/Skill Manager…
 - **[tunnel-serve](./skills/tools/tunnel-serve/SKILL.md)** — Expose local HTML files or…
 - **[wechat-doubler](./skills/tools/wechat-doubler/SKILL.md)** — macOS 微信双开工具
 
