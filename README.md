@@ -37,7 +37,8 @@ skills/
 ├── career/
 │   └── interview-coach/  — High-rigor interview coaching skill for…
 ├── design/
-│   └── ai-design-reviewer/  — AI 功能设计评审工具
+│   ├── ai-design-reviewer/  — AI 功能设计评审工具
+│   └── ui-copy/  — UI Copy：从参考图提取设计风格
 ├── dev/
 │   ├── ali-deploy-guide-generator/  — 根据项目技术栈生成阿里云 ECS 部署方案与 GitHub 自动化部署配置
 │   └── ecs-server-manager/  — 阿里云 ECS 服务器运维管理工具
@@ -85,6 +86,7 @@ skills/
 `skills/design/`
 
 - **[ai-design-reviewer](./skills/design/ai-design-reviewer/SKILL.md)** — AI 功能设计评审工具
+- **[ui-copy](./skills/design/ui-copy/SKILL.md)** — UI Copy：从参考图提取设计风格并生成 design.md
 
 ### Dev
 
