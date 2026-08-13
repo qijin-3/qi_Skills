@@ -1,5 +1,20 @@
 # Pain-Driven Search Framework · 搜索策略
 
+> 本文件较长，按需跳读，不要整文件一次载入执行。
+
+## 目录
+
+1. [核心原则](#核心原则)
+2. [用户画像区域判断与平台选择](#用户画像区域判断与平台选择)
+3. [搜索词矩阵生成规则](#搜索词矩阵生成规则)
+4. [平台定向搜索策略](#平台定向搜索策略) — Reddit / X / 小红书 / App Store / Google Play / GitHub / HN / YouTube / 哔哩哔哩 / G2
+5. [平台降级处理](#平台降级处理) — 总览已迁至 `platform-access.md`
+6. [证据质量分级](#证据质量分级来源周全性)
+7. [时效性要求](#时效性要求)
+8. [搜索覆盖目标](#搜索覆盖目标)
+
+---
+
 ## 核心原则
 
 不搜话题，搜情绪。「productivity app」找到的是评测文章；「I hate my task manager because」找到的是真实用户痛点。目标是找到用户在没有人付钱让他们说好话时的真实声音。
@@ -225,7 +240,7 @@ curl -sL "https://play.google.com/store/apps/details?id=[包名]&hl=en&gl=us" \
 
 **用户表达特点**：开发者工具、开源竞品的核心社区；Issues 含真实 Bug 抱怨与功能请求，Discussions 有使用心得与迁移讨论；高 star + 高 open issues 说明用户活跃但需求未被满足。
 
-**工具命令**（Agent-Reach 基础安装含 gh CLI，无需额外配置）：
+**工具命令**（无需额外配置；本机有 `gh` 则优先用）：
 
 ```bash
 # 搜 Issues / PR（痛点、功能请求、迁移讨论）
@@ -373,18 +388,9 @@ curl "https://r.jina.ai/https://www.producthunt.com/posts/[产品slug]"
 
 ## 平台降级处理
 
-当 Reddit / X / 小红书 未通过 Agent-Reach 配置时：
+体检、能力表、静默降级与报告标注 → `references/platform-access.md`（进入 Step 2 前已读）。
 
-```bash
-# Exa 全网搜索（替代）
-exa search "[竞品名] problems site:reddit.com"
-exa search "[产品类别] frustrating"
-```
-
-在报告的「覆盖平台列表」中，降级平台需标注：
-```
-Reddit：⚠️ 使用 Exa 全网搜索替代（直接访问未配置），结果质量低于直接访问
-```
+各平台具体降级命令仍见上文对应小节（Reddit / X / 小红书）。
 
 ---
 

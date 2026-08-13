@@ -1,114 +1,76 @@
 ---
 name: idea-validator
 description: >
-  Idea 快速验证工具 - 通过结构化多步骤方法论帮助独立开发者在投入开发前验证产品想法。
-  覆盖危险信号预筛 → 假设锁定 → 用户声音挖掘（动态平台选择，最多 9 平台）→ 竞品解构 → 综合评估的完整流程，最终输出可视化 HTML 报告 + 用户反馈留档文件；HTML 完成后可询问用户是否生成 Markdown PRD（自动选择最合适的 PRD 模板）。
-  当用户说「验证这个 idea」「分析这个产品想法」「帮我做市场调研」「这个方向值得做吗」「我有个想法」「走赛道 A」「这个产品可行吗」「生成 PRD」「把验证结果写成 PRD」，或者直接描述一个产品/创业想法时触发。
+  面向独立开发者 / 早期创业者，验证「SaaS / App / 独立软件产品」想法是否值得继续投入。
+  基于公开网络用户讨论与竞品信息，输出固定结构的 HTML 验证报告。
+  适用：写代码前确认软件产品痛点是否真实、竞品空白是否存在。
+  触发示例：「验证这个产品idea」「这个独立软件产品方向值得做吗」。
 ---
 
-# Idea Validator · 产品化验证
+# Idea Validator · 软件产品想法验证
 
-独立开发者视角的产品化 idea 验证流程。全程自动推进，用户参与节点：Step 0 预筛（可选）、Step 1 JTBD 回答、Step 1 假设确认、**Step 5 PRD 确认（可选）**。
+独立开发者视角的 **SaaS / App / 独立软件产品** idea 验证。全程自动推进；用户参与节点：Step 0（可选）、Step 1 JTBD + 假设确认、Step 5 PRD（可选）。
 
-**输出文件统一存放至** `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`：
-- `report.html`：可视化 HTML 报告（必出）
-- `user-feedback.jsonl`：用户反馈数据（JSONL，可跨次调研追加复用）
-- `feedback-meta.json`：调研元信息（区域/平台/统计）
-- `prd.md`：Markdown PRD（可选，用户确认后生成）
+**范围：** 只验证软件产品类想法并产出结构化报告；不生成文案/营销内容，不提供医疗/法律/金融建议，不编造用户引用或竞品数据。
 
----
+**输出目录** `$IDEA_DIR` = `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`  
+`<idea-slug>`：英文小写 + 连字符；目录不存在则 `mkdir -p`。
 
-## 0. 前置安装检查（首次使用时执行）
-
-运行以下命令检查 Agent-Reach 是否已安装：
-
-```bash
-agent-reach doctor
-```
-
-**如果命令不存在**，告知用户并引导安装：
-
-> Agent-Reach 未安装。需要它才能访问 Reddit / X / 小红书。复制以下内容发给我：
->
-> `帮我安装 Agent Reach：https://raw.githubusercontent.com/Panniantong/agent-reach/main/docs/install.md`
->
-> 安装完成后，可选配置 Reddit / X / 小红书登录态：告诉我「帮我配 Reddit」即可。
-
-**如果已安装**，直接查看 doctor 输出，记录哪些平台已配置、哪些未配置，进入 Step 0。未配置的平台静默降级（Exa 全网搜索），不打断用户。
+| 文件 | 说明 |
+|------|------|
+| `report.html` | HTML 验证报告（必出） |
+| `user-feedback.jsonl` | 用户声音留档（追加写入） |
+| `feedback-meta.json` | 调研元信息 |
+| `prd.md` | PRD（可选，用户确认后） |
 
 ---
 
-## 平台访问配置（Step 2 依赖）
+## 渐进加载：何时读哪个文件
 
-| 平台 | 适用区域 | 需要配置？ |
-|------|---------|-----------|
-| Reddit / X / 小红书 | 🌐 海外 / 🇨🇳 国内 | 需 Agent-Reach 配置，未配时降级为 Exa 全网搜索 |
-| App Store / Google Play | 🌐🇨🇳 通用 | 无需配置（Jina Reader + iTunes API） |
-| GitHub / Hacker News | 🌐 技术向 | 无需配置（gh CLI + Algolia API） |
-| YouTube / 哔哩哔哩 | 🌐 海外 / 🇨🇳 国内 | 无需配置（Jina Reader） |
+Skill 正文只保留流程与门槛。细节按需打开，避免一次塞满上下文。
 
-> 各平台完整命令、降级策略、时间窗口 → `references/search-strategy.md`
-> 实际执行哪些平台由 Step 1d 的**目标用户区域判断**决定
+| 时机 | 读取 |
+|------|------|
+| 进入 Step 0 | `references/prescreen.md` |
+| 进入 Step 1 | `references/jtbd-questions.md` |
+| Step 1d 判区域 | `references/search-strategy.md`「区域判断」 |
+| 进入 Step 2 前 | `references/platform-access.md`（体检 + 降级；缺能力不中断） |
+| Step 2 搜索 | `references/search-strategy.md`（先「搜索词」，再读各启用平台小节） |
+| Step 2e 写留档 | `references/feedback-schema.md` |
+| 进入 Step 3 | `references/competitor-analysis.md` |
+| 进入 Step 4 打分 | `references/scoring-rubric.md` |
+| Step 4 写 HTML | `assets/report-template.html` + `references/html-report.md` |
+| 用户确认要 PRD | `references/prd-template-guide.md` → 再读 `references/prd-templates/<id>.md` |
+| 交付前 | `references/delivery-checklist.md` |
+
+`search-strategy.md` 较长：只读当前需要的章节，不要整文件通读。
 
 ---
 
 ## 执行规则
 
-- 每个 Step 开始前输出：`▶ Step X / 5 · 标题`
-- 每个 Step 完成后输出关键发现摘要，**立即自动进入下一步**，不询问
-- 等待节点：Step 0 提问 / Step 1 JTBD 提问 / Step 1 假设确认 / **Step 5 PRD 确认**
-- Step 0–4 除上述节点外自动推进；Step 4 完成后必须询问是否生成 PRD
+- 每步开始：`▶ Step X / 5 · 标题`
+- 每步结束后输出关键发现，**立刻进入下一步**（除等待节点外不问）
+- **等待节点**：Step 0 提问 / Step 1 JTBD / Step 1 假设确认 / Step 5 PRD 确认
+- Step 4 完成后必须询问是否整理 PRD
 
 ---
 
 ## Step 0 · 危险信号预筛（可选）
 
-如果用户已描述 idea，主动提示：「我想先问你 4 个快速问题（约 5 分钟），判断这个方向是否值得完整调研。要跳过直接进入正式流程也可以。」
-
-用户选择跳过 → 直接进入 Step 1。
-
-**逐一提问，不要一次性列出：**
-
-- **A 护城河**：「你有什么别人难以复制的组合优势？（技能 + 资源 + 经验的组合，不是单一优势）」
-- **B 商业模式历史**：「这种商业模式在历史上成功过吗？类似项目大多失败的原因是什么？」
-- **C 创始人适配**：「如果产品成功了，你每天主要做什么？这些事情你喜欢，且能通过系统或团队自动化吗？」
-- **D 竞争格局**：「现在有多少人在尝试同样的事？你是第一次创业吗？」
-
-| 红灯数 | 处理 |
-|--------|------|
-| 0–1 | 直接进入 Step 1，红灯记录供 D5 评分参考 |
-| 2 | 提示风险后询问是否继续 |
-| 3–4 | 输出预警；D5 自动扣 5 分基础分；仍可继续 |
-
-**输出格式**：
-```
-✓ 危险信号预筛完成
-A 护城河：🟢/🟡/🔴  B 商业模式：🟢/🟡/🔴
-C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
-红灯数：X / 4
-```
+读取并执行 `references/prescreen.md`。跳过则直接 Step 1。红灯数写入后续 D5。
 
 ---
 
 ## Step 1 · 假设锁定
 
-> 提问框架详见 `references/jtbd-questions.md`
+读取 `references/jtbd-questions.md`。
 
-**1a.** 判断 idea 类型（工具类 / 内容类 / 平台类 / 服务类），决定提问侧重。
+**1a.** 判断 idea 类型（工具 / 内容 / 平台 / 服务），决定提问侧重。  
+**1b.** 按该文件从五类 JTBD 中选 3–5 个提问（不要全问）。等用户答完再继续。
 
-**1b.** 从五类 JTBD 问题中选 3–5 个（不要全问）：
+**1c.** 构建 Lean Hypothesis（六字段全填）：
 
-| 问题类型 | 适用场景 | 示例问法 |
-|---------|---------|---------|
-| 触发时刻 | 所有类型必问 | 「什么情况下你会开始找这个问题的解决方案？」|
-| 现有替代方案 | 所有类型必问 | 「你现在怎么处理这个问题？用什么工具？」|
-| 替代方案不满 | 工具类/服务类必问 | 「现有方案让你最不满意的是什么？」|
-| 切换阻力 | 平台类/内容类重点问 | 「是什么让你没有换掉现在的方案？」|
-| 付费参照 | 所有类型必问 | 「你现在为解决这个问题花了多少钱？」|
-
-等待用户回答后，执行 1c。
-
-**1c.** 构建 Lean Hypothesis（六个字段必须全部填写）：
 ```
 我们相信：[具体用户群]
 在 [触发场景] 下遇到 [具体问题，含严重程度]
@@ -118,7 +80,9 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 验证成功的信号是 [可量化指标]
 ```
 
-**1d.** 呈现假设 → 等用户确认或修正 → 锁定后输出摘要，**同时判断用户画像区域**，进入 Step 2：
+**1d.** 呈现假设 → **等用户确认** → 锁定后判断区域并列出启用/跳过平台。
+
+读取 `references/search-strategy.md`「用户画像区域判断与平台选择」执行判断；摘要格式：
 
 ```
 ✓ 假设已锁定
@@ -126,110 +90,41 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 现有替代：___  差异化方向：___  验证信号：___
 
 📍 用户画像区域判断：[🌐 海外 / 🇨🇳 国内 / 🌐🇨🇳 全球]
-启用平台：[列出将执行的平台列表]
-跳过平台：[列出跳过的平台及原因]
+启用平台：[...]
+跳过平台：[...及原因]
 ```
-
-**区域判断规则**（从目标用户描述、竞品语言、使用场景中推断）：
-
-- 🇨🇳 国内：启用 小红书 / App Store(cn) / 哔哩哔哩 / GitHub；跳过 Reddit / X / Google Play / HN / YouTube
-- 🌐 海外：启用 Reddit / X / App Store(us) / Google Play / GitHub / HN / YouTube；跳过 小红书 / 哔哩哔哩  
-- 🌐🇨🇳 全球：启用全部 9 个平台，搜索词需中英双语
-- 技术开发者向（任何区域）：额外确保 GitHub + HN 已启用
-
-> 详细判断信号和平台矩阵 → `references/search-strategy.md`「用户画像区域判断与平台选择」
 
 ---
 
 ## Step 2 · 用户声音挖掘
 
-> 搜索词生成规则、各平台完整命令、降级策略见 `references/search-strategy.md`
+先读 `references/platform-access.md`（确认直连/降级），再读 `references/search-strategy.md`：先「搜索词矩阵」，再按启用平台读对应小节与「时效性 / 覆盖目标」。
 
-**2a. 生成搜索词矩阵**（根据区域判断生成对应语言的搜索词）：
+**门槛（不可降）：**
 
-| 类型 | 目的 | 模板示例 |
-|------|------|---------|
-| 痛苦词 | 验证痛点强度 | `[竞品名] frustrating / hate / broken` |
-| 妥协词 | 找 workaround | `switched from [竞品] / [类别] workaround` |
-| 期望词 | 找未被满足需求 | `wish [产品类别] could / feature request` |
-| 付费词 | 验证付费意愿 | `worth paying for / [竞品] too expensive` |
+- 证据优先最近 **6 个月**；超 1 年仅备用
+- ≥ **100** 条高+中可信度；四种情绪各 ≥ 10；每启用平台 ≥ **5**；开发者工具类 GitHub ≥ 5
+- 凑不够 → 扩大搜索词重试，不降标准；仍不够则报告标注「证据不足：共 X 条」
 
-**2b. 定向平台搜索**（仅执行 Step 1d 判断出的**启用平台**，跳过的平台在报告中标注原因）：
+**2c 声音表列：** 平台 | 原始引用(+URL) | 中文翻译 | 情绪 | 可信度 | 时间 | 关联假设维度  
+每条保留 `content`（原文）+ `content_zh`（中文）。
 
-- **Reddit** → 情绪帖、迁移帖、求推荐讨论（🌐 海外/全球）
-- **X/Twitter** → 实时抱怨、切换宣告、求推荐（🌐 海外/全球）
-- **小红书** → 避坑帖、推荐帖评论区反对意见（🇨🇳 国内/全球）
-- **App Store** → 两步法：iTunes API 查 App ID → Jina 读评论页；提取 1–2 星与功能缺失抱怨（🌐🇨🇳 通用，按区域选 us/cn）
-- **Google Play** → 两步法：搜索页提取 `id=com.xxx` 包名 → Jina/curl 读详情页评论；提取 1–2 星与功能缺失抱怨（🌐 海外/全球）
-- **GitHub** → `gh search issues` 搜痛点/功能请求；`gh search repos` 找开源竞品；对已知竞品仓库读 Issues/Discussions（技术向 idea 必须执行）
-- **Hacker News** → 搜 `Ask HN: What do you use for X`、竞品 Show HN 评论区质疑（🌐 海外技术向）
-- **YouTube** → 用 Jina Reader 抓取相关视频评论区，提取痛点与需求（🌐 海外/全球）
-- **哔哩哔哩** → 搜索相关视频评论区，提取中文用户真实声音（🇨🇳 国内/全球）
+**2d 结论四栏全填：** 验证了假设的 / 挑战了假设的（必填）/ 未覆盖的 / 意外发现
 
-**⏱️ 时效性要求**：所有证据**优先采集最近 6 个月**内的内容；超过 6 个月的内容降低权重（可引用但需注明时间，且不计入主力证据）；超过 1 年的内容仅在无其他证据时备用。
-
-**2c. 构建结构化用户声音表**（≥ **100** 条高+中可信度；四种情绪类型各≥ 10 条；每个启用平台至少提供 **5 条**；开发者工具类 idea 需含 ≥ 5 条 GitHub 来源）：
-
-| 平台 | 原始引用（附可访问 URL） | 中文翻译 | 情绪类型 | 可信度 | 时间 | 关联假设维度 |
-|------|----------------------|---------|---------|-------|------|------------|
-
-**翻译规则**：每条声音必须同时保存原文和中文译文。
-- `content`：保留原始语言原文，不改写
-- `content_zh`：`language` 为 `zh` 时与 `content` 相同；`en` / `other` 时填写准确中文翻译
-- HTML 报告声音表：原文与 `content_zh` 分行展示（见 `references/html-report.md`）
-
-> 若单次搜索凑不够 100 条，应扩大搜索词范围、增加搜索次数，而不是降低要求。若最终仍不足 100 条，在报告中明确标注「证据不足：共 X 条，建议补充调研」。
-
-**2d. 结论摘要**（四个维度全部填写，不得省略任何一项）：
-- **验证了假设的**：哪些证据支持了哪个字段（引用条数和平台）
-- **挑战了假设的**：哪些证据与假设不符（**不得省略**）
-- **未覆盖的**：哪些假设维度没找到证据，标注「证据不足」
-- **意外发现**：原假设没有考虑到的需求信号
-
-**2e. 用户反馈留档**（Step 2 完成后立即保存）：
-
-> 字段定义、枚举值、分析命令 → `references/feedback-schema.md`
-
-保存两个文件至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`：
-
-**① `user-feedback.jsonl`**（每条声音一行，追加写入）：
-```bash
-# 每条记录格式（字段说明见 feedback-schema.md）
-{"id":"reddit-0001","idea_slug":"<slug>","idea_name":"<name>","session_date":"YYYY-MM-DD","source_platform":"reddit","source_url":"<url>","source_type":"comment","source_region":"global","content":"<原文>","content_zh":"<中文翻译>","language":"en","search_query":"<搜索词>","sentiment_type":"pain","credibility":"high","hypothesis_dimension":"pain_point","published_at":"YYYY-MM-DD","is_recent":true,"competitors_mentioned":["<竞品>"],"engagement":{"upvotes":89,"comments":14,"views":null}}
-```
-若文件已存在（历史调研），直接追加；不要覆盖。
-
-**② `feedback-meta.json`**（调研元信息，每次覆盖写入）：
-```json
-{
-  "idea_slug": "<slug>",
-  "idea_name": "<name>",
-  "sessions": [{
-    "session_date": "YYYY-MM-DD",
-    "target_region": "global",
-    "enabled_platforms": ["reddit","twitter","..."],
-    "skipped_platforms": [{"platform":"xiaohongshu","reason":"目标用户为海外用户"}],
-    "total_entries": 103,
-    "high_credibility": 58,
-    "medium_credibility": 45,
-    "entries_recent_6m": 91
-  }]
-}
-```
+**2e 留档：** 读 `references/feedback-schema.md`，写入 `$IDEA_DIR`：
+- `user-feedback.jsonl` — 追加，不覆盖历史
+- `feedback-meta.json` — 本次会话元信息（可覆盖写当前 sessions 结构，按 schema）
 
 ---
 
 ## Step 3 · 竞品解构
 
-> 竞品定位矩阵方法、空白区判断逻辑见 `references/competitor-analysis.md`
+读取 `references/competitor-analysis.md`。
 
-**3a.** 从 Step 2 已出现的产品名开始，补充搜索 `best [类别] tools` / `[类别] alternatives` / `[类别] indie`。确定 3–6 个主要竞品（< 3 个时标注覆盖不足）。
-
-**3b.** 对每个竞品收集：定价、核心定位、目标用户、用户高频抱怨（App Store/G2）、社区切换原因。
-
-**3c.** 动态选择两个最能区分竞品的坐标轴，绘制定位矩阵，识别：竞争最激烈象限、明显空白象限、idea 潜在落点。
-
-**3d.** 空白区有效性判断：必须同时满足「无成熟竞品」+「有 Step 2 用户声音支持」，二者缺一不算有效空白。
+**3a.** 从 Step 2 产品名扩展搜索，定 3–6 个主竞品（<3 标注覆盖不足）。  
+**3b.** 收集：定价、定位、目标用户、高频抱怨、切换原因。  
+**3c.** 选两轴绘定位矩阵，标激烈象限 / 空白象限 / idea 落点。  
+**3d.** 有效空白 =「无成熟竞品」**且**「有 Step 2 声音支持」，缺一不算。
 
 ```
 ✓ 竞品解构完成
@@ -241,18 +136,9 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 
 ## Step 4 · 综合评估 + HTML 报告
 
-> 评分区间、证据标准、防乐观偏差规则见 `references/scoring-rubric.md`
-> HTML 视觉规范见 `references/html-report.md`
+读取 `references/scoring-rubric.md` 打分；写报告前读 `references/html-report.md`，并从 `assets/report-template.html` 替换占位符（不要从零写 HTML）。
 
-**4a. 5 维打分**（先列证据，再给分；< 3 条独立来源 → 自动封顶 60 分）：
-
-| 维度 | 满分 | 核心问题 |
-|------|------|---------|
-| D1 痛点锐度 | 20 | 是「真的很痛（3–4 级）」还是「忍着用（1–2 级）」？|
-| D2 利基可触达性 | 20 | 不投广告，能有机找到前 100 个用户吗？|
-| D3 竞争空白 | 20 | 是否存在「大公司不屑、小团队没做好」的有效空白？|
-| D4 付费意愿信号 | 20 | 有没有人已经在为这个问题花钱？|
-| D5 MVP 可验证性 | 20 | 4 周内能低成本验证核心假设吗？|
+**4a.** 先列证据再给分；独立来源 < 3 → 按 `scoring-rubric.md` 封顶。五维：D1 痛点锐度 / D2 利基可触达 / D3 竞争空白 / D4 付费意愿 / D5 MVP 可验证（各 20）。
 
 | 总分 | Action |
 |------|--------|
@@ -261,105 +147,41 @@ C 创始人适配：🟢/🟡/🔴  D 竞争格局：🟢/🟡/🔴
 | 40–59 | `PIVOT OR WAIT` |
 | < 40 | `GRAVEYARD` |
 
-**4b. 输出单文件 HTML 报告**：读取 `assets/report-template.html`，按 `references/html-report.md` 的说明逐步替换全部占位符，不要从零写 HTML：
-- Tab 1 总览：Action Badge + 5 维雷达图 + 总分 + 机会点 + 风险 + MVP 路径
-- Tab 2 用户声音：结论摘要 + 可筛选声音表（含时间列、平台覆盖统计）
-- Tab 3 竞品分析：定位矩阵（SVG）+ 竞品数据表 + 有效空白说明
-- Tab 4 评估详情：每维度证据列表 + 得分理由 + 不足警告
-- Tab 5 Lean Canvas：九格 Canvas，无证据格子标注「待验证」
+**4b.** 五 Tab：总览 · 用户声音 · 竞品分析 · 评估详情 · Lean Canvas → `$IDEA_DIR/report.html`  
+若已有历史 `user-feedback.jsonl`，Tab 2 注明「已有 X 次调研，本次新增 Y 条」。
 
-**保存路径**：`/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/report.html`
-
-- `<idea-slug>` 从 idea 名称生成（英文小写 + 连字符，如 `ai-writing-tool`）
-- 若目录不存在则自动创建：`mkdir -p "/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>"`
-- 若该目录已存在 `user-feedback.jsonl`（历史调研留档），读取其 `session_date` 列表，在报告 Tab 2 中注明「已有 X 次历史调研，本次新增 Y 条」
-
-**4c. 询问是否生成 PRD**（HTML 保存成功后执行，**必须停下来等待用户回复**）：
+**4c.** HTML 保存后**必须停下**询问是否整理 PRD：
 
 ```
-▶ Step 5 / 5 · PRD 生成（可选）
-
-HTML 报告已保存至 …/report.html
-
-是否需要基于本次验证结果生成 Markdown 格式的 PRD？
-- 回复「要」/「生成 PRD」→ 自动选择模板并生成
-- 回复「不要」/跳过 → 流程结束
+▶ Step 5 / 5 · PRD（可选）
+HTML 已保存。是否基于本次验证结果整理 Markdown PRD？
+- 「要」→ Step 5
+- 「不要」→ 结束并输出完成摘要
 ```
-
-用户拒绝或跳过 → 输出流程完成摘要，结束。
-
-用户确认 → 进入 Step 5 生成流程。
 
 ---
 
-## Step 5 · PRD 生成（可选）
+## Step 5 · PRD（可选）
 
-> 模板选择逻辑、数据映射、6 套模板结构 → `references/prd-template-guide.md`
-> 各模板骨架 → `references/prd-templates/<template-id>.md`
+读取 `references/prd-template-guide.md` 选模板并说明理由；再读对应 `references/prd-templates/<id>.md` 填充。  
+只用本次报告已有数据，缺失标「待补充」，不编造。保存 `$IDEA_DIR/prd.md`。
 
-**5a. 选择模板**：按 `prd-template-guide.md` 决策树自动选择；向用户说明选择理由。用户可指定其他模板。
-
-| 模板 ID | 名称 | 典型场景 |
-|---------|------|---------|
-| `lenny-one-pager` | Lenny 个人一页纸 | 独立开发者默认；GRAVEYARD/PIVOT 轻量记录 |
-| `adam-initiative` | Adam Thomas 倡议 | 向合伙人/投资人争取资源 |
-| `steve-morin-one-pager` | Steve Morin 1-Pager | 技术向/开发者工具 |
-| `asana-brief` | Asana 项目简报 | 新产品叙事驱动立项 |
-| `figma-prd` | Figma PRD | 现有产品新功能 |
-| `kevin-yien-prd` | Kevin Yien PRD | 多角色团队、BUILD 高分正式立项 |
-
-**5b. 生成 PRD**：读取选定模板骨架，用本次验证数据填充（不得编造报告中没有的数据；缺失标「待补充」）。
-
-**5c. 保存**：`/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/prd.md`
-
-**5d. 完成摘要**：
 ```
 ✓ PRD 已生成
-模板：[模板中文名]
-路径：…/prd.md
-说明：[一句话为何选此模板]
+模板：[中文名]  路径：…/prd.md  说明：[一句话理由]
 ```
 
 ---
 
-## 禁止事项
+## 质量红线
 
-**证据质量**
-- 不得引用无法回溯到真实来源的用户声音（无可访问 URL → 降为中/低可信度）
-- 不得在证据 < 3 条时突破封顶规则给高分
-- 不得因用户语气自信就给高分
+这套流程的价值是在投入几个月前把坏消息说出来。破了下面几条，报告就只是自我安慰：
 
-**分析质量**
-- 不得写通用结论（「用户希望产品更好用」无价值）；结论必须含具体产品名/功能缺失/场景
-- 不得省略挑战假设的证据；2d 四个维度必须全部填写
-- 不得只选支持性证据；矛盾证据必须显式列出
-- 不得编造用户引用或竞品数据
+1. **证据可回溯** — 无 URL → 降可信度；独立来源不足 → 按 rubric 封顶；自信语气不加分  
+2. **矛盾证据必写** — 2d「挑战了假设的」空着 = 把验证做成了确认  
+3. **结论可落地** — 落到具体产品名 / 缺失功能 / 场景，禁止空泛「更好用」  
+4. **只搜目标用户所在平台** — 区域错则信号污染；证据以 6 个月内为主  
+5. **证据不足是结论不是借口** — 扩词重试；不够就写明条数；禁止编造  
+6. **该停则停** — Step 1 / Step 5 必须等用户；Step 2–3 不要中途打断  
 
-**流程**
-- 不得跳过 Step 1 的用户确认节点
-- Step 4 最终报告必须是 HTML（`report.html`）；Markdown PRD 仅在 Step 5 用户确认后作为补充产出
-- 不得在 Step 2–3 中途停下来询问用户
-- 不得在用户未确认时自动生成 PRD
-- 不得对明显面向海外用户的 idea 执行小红书/哔哩哔哩搜索（无效数据污染结论）
-- 不得对明显面向国内用户的 idea 执行 Reddit/HN/Google Play 搜索（同上）
-- 不得以「证据不够」为由跳过任何**启用平台**；证据不足应扩大搜索词后重试
-- 不得引用超过 1 年的内容作为主力证据（时效性失效）
-
----
-
-## 输出前自查
-
-- [ ] Agent-Reach 状态已检查，降级平台已标注
-- [ ] Step 0 红灯记录已传递到 D5 评分
-- [ ] Lean Hypothesis 六个字段全部填写，验证信号含可量化指标
-- [ ] **用户画像区域已判断**，启用/跳过平台已在摘要中列出并说明原因
-- [ ] 所有启用平台均已执行搜索；每个启用平台至少 5 条证据
-- [ ] **时效性**：证据以最近 6 个月内为主；超期内容已标注时间并降低权重
-- [ ] 用户声音表：≥ 100 条高+中可信度；高可信度条目全部附可访问 URL；含时间列；每条含 `content` + `content_zh`
-- [ ] **user-feedback.jsonl 和 feedback-meta.json 已保存**至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/`（jsonl 追加写入，不覆盖历史数据；每条记录含 `content_zh`）
-- [ ] 2d 结论四个维度全部填写，包括「挑战了假设的」
-- [ ] 竞品 3–6 个；空白区结论有双条件验证
-- [ ] 每个评分维度先列证据再给分，证据不足维度已封顶并标注
-- [ ] **HTML 报告已保存**至 `/Users/jin/SynologyDrive/Working/Ideas/<idea-slug>/report.html`，包含全部 5 个 Tab，离线可打开；平台覆盖含 YouTube / 哔哩哔哩计数；声音表含原文 + 中文翻译
-- [ ] MVP 路径每步包含可量化成功信号
-- [ ] **Step 5**：HTML 保存后已询问用户是否生成 PRD；若用户确认，已按决策树选模板并保存 `prd.md`，数据来自验证报告无编造
+交付前读取并勾选 `references/delivery-checklist.md`。
