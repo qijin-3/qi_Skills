@@ -44,20 +44,13 @@ skills/
 │   └── ecs-server-manager/  — 阿里云 ECS 服务器运维管理工具
 ├── havefun/
 │   └── travel-journal/  — 游记生成器
-├── health_os/
-│   ├── health-coach/  — 飞书健康教练
-│   ├── health-daily-remind/  — 健康每日提醒
-│   ├── health-evening-close/  — 健康每日晚间收口
-│   ├── health-monthly-review/  — 健康月复盘
-│   ├── health-weekly-plan/  — 健康周计划
-│   └── health-weekly-review/  — 健康周反馈
 ├── product/
 │   ├── 10x-impact-judge/  — 10倍影响力判断器
 │   ├── ai-user-research/  — AI-powered user research analysis techniques…
 │   ├── brainstorm/  — 头脑风暴 · 传播型想法共创
 │   ├── deep-research/  — 深度调研方法论（8步法）
 │   ├── idea-agile-assessment/  — 想法敏捷评估
-│   ├── idea-validator/  — Idea 快速验证工具
+│   ├── idea-validator/  — 面向独立开发者 / 早期创业者
 │   └── product-namer/  — 产品命名专家
 └── tools/
     ├── daily-news-digest/  — 生成每日资讯日报 HTML（四 Tab
@@ -93,17 +86,6 @@ skills/
 
 - **[travel-journal](./skills/havefun/travel-journal/SKILL.md)** — 游记生成器
 
-### Health OS
-
-`skills/health_os/`
-
-- **[health-coach](./skills/health_os/health-coach/SKILL.md)** — 飞书健康教练
-- **[health-daily-remind](./skills/health_os/health-daily-remind/SKILL.md)** — 健康每日提醒
-- **[health-evening-close](./skills/health_os/health-evening-close/SKILL.md)** — 健康每日晚间收口
-- **[health-monthly-review](./skills/health_os/health-monthly-review/SKILL.md)** — 健康月复盘
-- **[health-weekly-plan](./skills/health_os/health-weekly-plan/SKILL.md)** — 健康周计划
-- **[health-weekly-review](./skills/health_os/health-weekly-review/SKILL.md)** — 健康周反馈
-
 ### Product
 
 `skills/product/`
@@ -113,7 +95,7 @@ skills/
 - **[brainstorm](./skills/product/brainstorm/SKILL.md)** — 头脑风暴 · 传播型想法共创
 - **[deep-research](./skills/product/deep-research/SKILL.md)** — 深度调研方法论（8步法）
 - **[idea-agile-assessment](./skills/product/idea-agile-assessment/SKILL.md)** — 想法敏捷评估
-- **[idea-validator](./skills/product/idea-validator/SKILL.md)** — Idea 快速验证工具
+- **[idea-validator](./skills/product/idea-validator/SKILL.md)** — 面向独立开发者 / 早期创业者
 - **[product-namer](./skills/product/product-namer/SKILL.md)** — 产品命名专家
 
 ### Tools
